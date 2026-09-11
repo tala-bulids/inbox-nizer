@@ -14,44 +14,30 @@ model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
 # Switch the model to prediction mode
 model.eval()
 
+def classify_email(subject, body):
+    email_text = subject + " " + body
 
-# Get a new email from the user
-subject = input("Enter email subject: ")
-body = input("Enter email body: ")
+    inputs = tokenizer(
+        email_text,
+        return_tensors="pt",
+        truncation=True
+    )
 
-email_text = subject + " " + body
+    with torch.no_grad():
+        outputs = model(**inputs)
 
+    probabilities = torch.sigmoid(outputs.logits)[0]
 
-# Convert the email into tokens
-inputs = tokenizer(
-    email_text,
-    return_tensors="pt",
-    truncation=True
-)
+    threshold = 0.2
+    results = []
 
-
-# Get model predictions
-with torch.no_grad():
-    outputs = model(**inputs)
-
-
-# Convert logits into independent probabilities
-probabilities = torch.sigmoid(outputs.logits)[0]
-
-
-# Display categories above the confidence threshold
-threshold = 0.5
-found_category = False
-
-print("\nPredicted categories:")
-
-for index, probability in enumerate(probabilities):
-    if probability >= threshold:
+    for index, probability in enumerate(probabilities):
+     if probability >= threshold:
         label = model.config.id2label[index]
 
-        print(f"- {label}: {probability.item():.2%}")
-        found_category = True
+        results.append({
+            "category": label,
+            "confidence": probability.item()
+        })
 
-
-if not found_category:
-    print("No category passed the confidence threshold.")
+    return results
