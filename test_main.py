@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from main import app
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -33,3 +34,17 @@ def test_classify_valid_email():
 
     assert response.status_code == 200
     assert "predictions" in response.json()    
+def test_classification_error():
+    with patch("main.classify_email", side_effect=Exception("test error")):
+        response = client.post(
+            "/classify-email",
+            json={
+                "subject": "Test",
+                "body": "Test email"
+            }
+        )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Email classification failed"
+    }  
