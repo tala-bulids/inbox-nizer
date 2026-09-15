@@ -8,3 +8,4 @@ numpy
 fastapi[standard]
 pytest
 httpx
+google-auth-oauthlib>=1.4.1,<2
