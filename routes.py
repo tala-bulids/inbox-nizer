@@ -1,5 +1,3 @@
-import base64
-
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 
@@ -7,7 +5,7 @@ from schemas import EmailRequest
 from predict import classify_email
 from gmail_auth import create_google_flow
 from gmail_service import get_gmail_service
-
+from email_utils import extract_email_body
 
 router = APIRouter()
 
@@ -26,44 +24,44 @@ def get_messages():
     if not messages:
         return {"message": "No emails found"}
 
-    first_message_id = messages[0]["id"]
+    classified_emails = []
 
-    email = service.users().messages().get(
-        userId="me",
-        id=first_message_id,
-        format="full"
-    ).execute()
+    for message in messages:
+        message_id = message["id"]
 
-    headers = email["payload"]["headers"]
+        email = service.users().messages().get(
+            userId="me",
+            id=message_id,
+            format="full"
+        ).execute()
 
-    subject = next(
-        header["value"]
-        for header in headers
-        if header["name"] == "Subject"
-    )
+        payload = email.get("payload", {})
 
-    payload = email["payload"]
+        subject = next(
+            (
+                header["value"]
+                for header in payload.get("headers", [])
+                if header["name"].lower() == "subject"
+            ),
+            ""
+        )
 
-    body = ""
+        cleaned_body = extract_email_body(payload)
 
-    if "data" in payload.get("body", {}):
-        body_data = payload["body"]["data"]
-        body = base64.urlsafe_b64decode(body_data).decode("utf-8")
+        predictions = classify_email(
+            subject,
+            cleaned_body
+        )
 
-    elif "parts" in payload:
-        for part in payload["parts"]:
-            if part["mimeType"] == "text/plain":
-                body_data = part["body"].get("data")
+        classified_emails.append({
+            "id": message_id,
+            "subject": subject,
+            "body": cleaned_body,
+            "predictions": predictions
+        })
 
-                if body_data:
-                    body = base64.urlsafe_b64decode(body_data).decode("utf-8")
-                    break
-    predictions = classify_email(subject, body)                
     return {
-        "id": first_message_id,
-        "subject": subject,
-        "body": body,
-        "predictions": predictions
+        "emails": classified_emails
     }
 
 
