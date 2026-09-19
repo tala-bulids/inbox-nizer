@@ -7,6 +7,7 @@ from gmail_auth import create_google_flow
 from gmail_service import get_gmail_service
 from email_utils import extract_email_body
 
+
 router = APIRouter()
 
 
@@ -29,38 +30,81 @@ def get_messages():
     for message in messages:
         message_id = message["id"]
 
-        email = service.users().messages().get(
-            userId="me",
-            id=message_id,
-            format="full"
-        ).execute()
+        try:
+            email = service.users().messages().get(
+                userId="me",
+                id=message_id,
+                format="full"
+            ).execute()
 
-        payload = email.get("payload", {})
+            payload = email.get("payload", {})
+            headers = payload.get("headers", [])
 
-        subject = next(
-            (
-                header["value"]
-                for header in payload.get("headers", [])
-                if header["name"].lower() == "subject"
-            ),
-            ""
-        )
+            subject = next(
+                (
+                    header["value"]
+                    for header in headers
+                    if header["name"].lower() == "subject"
+                ),
+                ""
+            )
 
-        cleaned_body = extract_email_body(payload)
+            sender = next(
+                (
+                    header["value"]
+                    for header in headers
+                    if header["name"].lower() == "from"
+                ),
+                ""
+            )
 
-        predictions = classify_email(
-            subject,
-            cleaned_body
-        )
+            date = next(
+                (
+                    header["value"]
+                    for header in headers
+                    if header["name"].lower() == "date"
+                ),
+                ""
+            )
 
-        classified_emails.append({
-            "id": message_id,
-            "subject": subject,
-            "body": cleaned_body,
-            "predictions": predictions
-        })
+            cleaned_body = extract_email_body(payload)
+
+            predictions = classify_email(
+                subject,
+                cleaned_body
+            )
+
+            classified_emails.append({
+                "id": message_id,
+                "from": sender,
+                "date": date,
+                "subject": subject,
+                "body": cleaned_body,
+                "predictions": predictions
+            })
+
+        except Exception:
+            classified_emails.append({
+                "id": message_id,
+                "error": "Failed to process email"
+            })
+
+    success_count = sum(
+        1
+        for email in classified_emails
+        if "error" not in email
+    )
+
+    failed_count = sum(
+        1
+        for email in classified_emails
+        if "error" in email
+    )
 
     return {
+        "count": len(classified_emails),
+        "success_count": success_count,
+        "failed_count": failed_count,
         "emails": classified_emails
     }
 
@@ -75,7 +119,9 @@ def google_login():
         prompt="consent"
     )
 
-    response = RedirectResponse(authorization_url)
+    response = RedirectResponse(
+        authorization_url
+    )
 
     response.set_cookie(
         key="oauth_state",
@@ -100,7 +146,9 @@ def google_callback(
     state: str,
     request: Request
 ):
-    saved_state = request.cookies.get("oauth_state")
+    saved_state = request.cookies.get(
+        "oauth_state"
+    )
 
     if state != saved_state:
         raise HTTPException(
@@ -108,7 +156,9 @@ def google_callback(
             detail="Invalid OAuth state"
         )
 
-    code_verifier = request.cookies.get("oauth_code_verifier")
+    code_verifier = request.cookies.get(
+        "oauth_code_verifier"
+    )
 
     if not code_verifier:
         raise HTTPException(
@@ -126,14 +176,21 @@ def google_callback(
     credentials = flow.credentials
 
     with open("token.json", "w") as token:
-        token.write(credentials.to_json())
+        token.write(
+            credentials.to_json()
+        )
 
     response = JSONResponse({
         "message": "Google account connected successfully"
     })
 
-    response.delete_cookie("oauth_state")
-    response.delete_cookie("oauth_code_verifier")
+    response.delete_cookie(
+        "oauth_state"
+    )
+
+    response.delete_cookie(
+        "oauth_code_verifier"
+    )
 
     return response
 

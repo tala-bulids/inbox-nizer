@@ -9,3 +9,6 @@ fastapi[standard]
 pytest
 httpx
 google-auth-oauthlib>=1.4.1,<2
+google-api-python-client
+google-auth-httplib2
+beautifulsoup4>=4.12,<5
