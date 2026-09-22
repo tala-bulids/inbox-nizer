@@ -1,18 +1,26 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse
+
+from sqlalchemy.orm import Session
 
 from schemas import EmailRequest
 from predict import classify_email
 from gmail_auth import create_google_flow
 from gmail_service import get_gmail_service
 from email_utils import extract_email_body
+from database import get_db
+from models import Email, EmailPrediction
 
 
 router = APIRouter()
 
 
+# ---------------------------------------------------------
+# Fetch Gmail messages, classify them, and save to database
+# ---------------------------------------------------------
+
 @router.get("/gmail/messages")
-def get_messages():
+def get_messages(db: Session = Depends(get_db)):
     service = get_gmail_service()
 
     results = service.users().messages().list(
@@ -74,6 +82,61 @@ def get_messages():
                 cleaned_body
             )
 
+            # Check if Gmail message already exists
+            existing_email = (
+                db.query(Email)
+                .filter(Email.message_id == message_id)
+                .first()
+            )
+
+            # -------------------------------------------------
+            # New email
+            # -------------------------------------------------
+
+            if existing_email is None:
+                db_email = Email(
+                    message_id=message_id,
+                    sender=sender,
+                    email_date=date,
+                    subject=subject,
+                    body=cleaned_body
+                )
+
+                db.add(db_email)
+
+                # Get the new email ID before commit
+                db.flush()
+
+                # Save ALL model predictions
+                for prediction in predictions:
+                    db_prediction = EmailPrediction(
+                        email_id=db_email.id,
+                        category=prediction["category"],
+                        confidence=prediction["confidence"]
+                    )
+
+                    db.add(db_prediction)
+
+            # -------------------------------------------------
+            # Existing email
+            #
+            # Old emails were saved before email_predictions
+            # existed. If they have no predictions yet,
+            # populate them now.
+            # -------------------------------------------------
+
+            elif not existing_email.predictions:
+                for prediction in predictions:
+                    db_prediction = EmailPrediction(
+                        email_id=existing_email.id,
+                        category=prediction["category"],
+                        confidence=prediction["confidence"]
+                    )
+
+                    db.add(db_prediction)
+
+            db.commit()
+
             classified_emails.append({
                 "id": message_id,
                 "from": sender,
@@ -84,6 +147,8 @@ def get_messages():
             })
 
         except Exception:
+            db.rollback()
+
             classified_emails.append({
                 "id": message_id,
                 "error": "Failed to process email"
@@ -108,6 +173,61 @@ def get_messages():
         "emails": classified_emails
     }
 
+
+# ---------------------------------------------------------
+# Read saved emails from PostgreSQL
+# Optional filter by category
+# ---------------------------------------------------------
+
+@router.get("/emails")
+def get_saved_emails(
+    category: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Email)
+
+    # Filter through email_predictions instead of
+    # the old category column in emails
+    if category:
+        query = query.filter(
+            Email.predictions.any(
+                EmailPrediction.category == category
+            )
+        )
+
+    emails = (
+        query
+        .order_by(Email.id.desc())
+        .all()
+    )
+
+    return {
+        "count": len(emails),
+        "emails": [
+            {
+                "id": email.id,
+                "message_id": email.message_id,
+                "from": email.sender,
+                "date": email.email_date,
+                "subject": email.subject,
+                "body": email.body,
+                "predictions": [
+                    {
+                        "category": prediction.category,
+                        "confidence": prediction.confidence
+                    }
+                    for prediction in email.predictions
+                ],
+                "created_at": email.created_at
+            }
+            for email in emails
+        ]
+    }
+
+
+# ---------------------------------------------------------
+# Google OAuth Login
+# ---------------------------------------------------------
 
 @router.get("/auth/google")
 def google_login():
@@ -139,6 +259,10 @@ def google_login():
 
     return response
 
+
+# ---------------------------------------------------------
+# Google OAuth Callback
+# ---------------------------------------------------------
 
 @router.get("/auth/google/callback")
 def google_callback(
@@ -194,6 +318,10 @@ def google_callback(
 
     return response
 
+
+# ---------------------------------------------------------
+# Manual Email Classification
+# ---------------------------------------------------------
 
 @router.post("/classify-email")
 def classify(request: EmailRequest):
