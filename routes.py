@@ -10,7 +10,8 @@ from gmail_service import get_gmail_service
 from email_utils import extract_email_body
 from database import get_db
 from models import Email, EmailPrediction
-
+from priority import calculate_priority
+from typing import Literal
 
 router = APIRouter()
 
@@ -81,6 +82,7 @@ def get_messages(db: Session = Depends(get_db)):
                 subject,
                 cleaned_body
             )
+            priority = calculate_priority(predictions)
 
             # Check if Gmail message already exists
             existing_email = (
@@ -99,7 +101,9 @@ def get_messages(db: Session = Depends(get_db)):
                     sender=sender,
                     email_date=date,
                     subject=subject,
-                    body=cleaned_body
+                    body=cleaned_body,
+                    priority_score=priority["priority_score"],
+                    priority_level=priority["priority_level"]
                 )
 
                 db.add(db_email)
@@ -182,17 +186,21 @@ def get_messages(db: Session = Depends(get_db)):
 @router.get("/emails")
 def get_saved_emails(
     category: str | None = None,
+    priority_level: Literal["low", "medium", "high"] | None = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Email)
-
-    # Filter through email_predictions instead of
-    # the old category column in emails
+    
     if category:
         query = query.filter(
             Email.predictions.any(
                 EmailPrediction.category == category
             )
+        )
+
+    if priority_level:
+        query = query.filter(
+            Email.priority_level == priority_level
         )
 
     emails = (
@@ -211,6 +219,8 @@ def get_saved_emails(
                 "date": email.email_date,
                 "subject": email.subject,
                 "body": email.body,
+                "priority_score": email.priority_score,
+                "priority_level": email.priority_level,
                 "predictions": [
                     {
                         "category": prediction.category,

@@ -51,6 +51,17 @@ class Email(Base):
     predictions: Mapped[list["EmailPrediction"]] = relationship(
     back_populates="email",
     cascade="all, delete-orphan"
+    )
+    priority_score: Mapped[float | None] = mapped_column(
+     Float,
+     nullable=True,
+     index=True
+    )
+
+    priority_level: Mapped[str | None] = mapped_column(
+     String(20),
+     nullable=True,
+     index=True
     )    
     
 class EmailPrediction(Base):
