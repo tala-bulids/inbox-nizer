@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from schemas import EmailRequest
 from predict import classify_email
@@ -9,7 +10,10 @@ from gmail_auth import create_google_flow
 from gmail_service import get_gmail_service
 from email_utils import extract_email_body
 from database import get_db
-from models import Email, EmailPrediction
+from models import Email, EmailPrediction, EmailTask
+from task_extractor import extract_action_items, _same_task
+from deadline_extractor import parse_email_datetime
+from summarizer import summarize_email
 from priority import calculate_priority
 from typing import Literal
 
@@ -26,7 +30,7 @@ def get_messages(db: Session = Depends(get_db)):
 
     results = service.users().messages().list(
         userId="me",
-        maxResults=5
+        maxResults=30
     ).execute()
 
     messages = results.get("messages", [])
@@ -102,6 +106,7 @@ def get_messages(db: Session = Depends(get_db)):
                     email_date=date,
                     subject=subject,
                     body=cleaned_body,
+                    summary=summarize_email(subject, cleaned_body),
                     priority_score=priority["priority_score"],
                     priority_level=priority["priority_level"]
                 )
@@ -137,7 +142,28 @@ def get_messages(db: Session = Depends(get_db)):
                         confidence=prediction["confidence"]
                     )
 
-                    db.add(db_prediction)
+                    existing_email.predictions.append(db_prediction)
+
+            if existing_email is not None and not existing_email.summary:
+                existing_email.summary = summarize_email(subject, cleaned_body)
+
+            saved_email = existing_email if existing_email is not None else db_email
+            if not saved_email.tasks:
+                for task in extract_action_items(subject, cleaned_body, parse_email_datetime(date)):
+                    saved_email.tasks.append(EmailTask(**task))
+            elif any(task.deadline_confidence is None for task in saved_email.tasks):
+                items = extract_action_items(subject, cleaned_body, parse_email_datetime(date))
+                for task in saved_email.tasks:
+                    matches = [item for item in items if _same_task(task.task, item['task'])]
+                    # Ambiguous matches need a deliberate rebuild, not a guessed date.
+                    if len(matches) == 1:
+                        if any(getattr(task, field) is not None and matches[0][field] is not None
+                               and getattr(task, field) != matches[0][field]
+                               for field in ('deadline_text', 'deadline_date', 'deadline_at')):
+                            continue
+                        for field in ('deadline_text', 'deadline_date', 'deadline_at', 'deadline_confidence'):
+                            if getattr(task, field) is None:
+                                setattr(task, field, matches[0][field])
 
             db.commit()
 
@@ -187,6 +213,8 @@ def get_messages(db: Session = Depends(get_db)):
 def get_saved_emails(
     category: str | None = None,
     priority_level: Literal["low", "medium", "high"] | None = None,
+    has_tasks: bool | None = None,
+    has_deadline: bool | None = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Email)
@@ -202,6 +230,17 @@ def get_saved_emails(
         query = query.filter(
             Email.priority_level == priority_level
         )
+
+    if has_tasks is not None:
+        query = query.filter(Email.tasks.any() if has_tasks else ~Email.tasks.any())
+
+    if has_deadline is not None:
+        deadline_exists = Email.tasks.any(or_(
+            EmailTask.deadline_text != '',
+            EmailTask.deadline_date.is_not(None),
+            EmailTask.deadline_at.is_not(None),
+        ))
+        query = query.filter(deadline_exists if has_deadline else ~deadline_exists)
 
     emails = (
         query
@@ -219,6 +258,13 @@ def get_saved_emails(
                 "date": email.email_date,
                 "subject": email.subject,
                 "body": email.body,
+                "summary": email.summary,
+                "tasks": [
+                    {"task": task.task, "confidence": task.confidence,
+                     "deadline_text": task.deadline_text, "deadline_date": task.deadline_date,
+                     "deadline_at": task.deadline_at, "deadline_confidence": task.deadline_confidence}
+                    for task in email.tasks
+                ],
                 "priority_score": email.priority_score,
                 "priority_level": email.priority_level,
                 "predictions": [

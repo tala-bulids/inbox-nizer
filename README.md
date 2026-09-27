@@ -177,3 +177,53 @@ The backend supports Gmail login, fetching and cleaning multiple messages,
 classification, per-email error handling, and API tests. Classification quality
 still needs evaluation on more real, labeled emails. Image-only emails may have
 little or no body text when no useful image alt text is available.
+
+## Tasks and deadlines
+
+`extract_tasks(subject, body)` keeps the original task/confidence interface.
+`extract_action_items(subject, body, reference_datetime=None)` adds nullable
+deadline fields using the same task pipeline. No model, API, or dateparser is used.
+Arabic/English obligations are filtered before timing is parsed. Deduplication
+uses matching action families and object tokens; different identifiers or
+different explicit constraints remain separate. At most five tasks are returned.
+
+Supported timing includes Gregorian named months, ISO dates, weekdays, tomorrow,
+month-end, explicit clock times, and event constraints such as before arrival.
+Relative dates and missing years are anchored to the email Date header, never
+the system clock. Weekdays mean the next occurrence (including the same day);
+missing years mean the next occurrence of that month/day. Numeric dates such as
+04/05/2026 and Hijri dates are not guessed. When several constraints occur in one
+task, only the first is returned. Unresolved constraints remain readable text.
+Date-only deadlines have no invented time. A timestamp requires an explicit
+timezone or the email header's timezone; otherwise its date/text are retained.
+Confidence is deterministic rule strength, not an ML probability.
+
+`GET /emails` includes `deadline_text`, `deadline_date`, `deadline_at`, and
+`deadline_confidence` for each task. `has_deadline=true/false` combines with
+`category`, `priority_level`, and `has_tasks`. Existing matching tasks can receive
+missing deadline fields during Gmail fetching without replacing saved tasks.
+
+### Manual database update
+
+Stop the app before applying the schema change. From the project directory,
+using a working Python environment with the project's dependencies and the
+intended `DATABASE_URL` configured:
+
+```powershell
+python -m alembic upgrade head
+python rebuild_tasks_and_deadlines.py
+python -m uvicorn main:app --reload
+```
+
+The rebuild replaces only task rows, in one transaction. It preserves email
+bodies, summaries, predictions, priority, sender, and dates. Failure rolls back
+the entire rebuild. It is manual and is never launched by the app.
+The older task backfill and content-reprocessing scripts also use action items
+so that they retain deadline support when explicitly run.
+
+Tests use the separate `TEST_DATABASE_URL`; production connections are blocked
+by the test fixtures. Upgrade only the test database before running tests with
+the new schema. Production migrations and rebuilds are separate manual steps.
+
+Rules can miss unfamiliar paraphrases or ambiguous context. Similar tasks with
+different recipients are kept separate; full semantic understanding is not claimed.

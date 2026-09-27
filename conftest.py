@@ -2,11 +2,11 @@ import os
 
 import pytest
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
-from database import get_db
+from database import get_db, engine as production_engine
 from main import app
 
 
@@ -21,10 +21,18 @@ if not TEST_DATABASE_URL:
 
 database_name = make_url(TEST_DATABASE_URL).database
 
-if not database_name.endswith("_test"):
+production_database_name = make_url(os.environ["DATABASE_URL"]).database
+
+if (not database_name or not database_name.endswith("_test")
+        or database_name == production_database_name):
     raise RuntimeError(
         "Tests must use a test database"
     )
+
+
+@event.listens_for(production_engine, "do_connect")
+def block_production_connection(*args, **kwargs):
+    raise RuntimeError("Production database connections are disabled in tests")
 
 
 test_engine = create_engine(
