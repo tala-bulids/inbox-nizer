@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import Session, defer, selectinload
+from sqlalchemy import or_, func
 
 from schemas import EmailRequest
 from predict import classify_email
 from gmail_auth import create_google_flow
 from gmail_service import get_gmail_service
 from email_utils import extract_email_body
+from email_serialization import serialize_email
 from database import get_db
 from models import Email, EmailPrediction, EmailTask
 from task_extractor import extract_action_items, _same_task
@@ -215,6 +216,10 @@ def get_saved_emails(
     priority_level: Literal["low", "medium", "high"] | None = None,
     has_tasks: bool | None = None,
     has_deadline: bool | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    sort_by: Literal['created_at', 'priority_score', 'id'] = 'created_at',
+    sort_order: Literal['asc', 'desc'] = 'desc',
     db: Session = Depends(get_db)
 ):
     query = db.query(Email)
@@ -242,43 +247,39 @@ def get_saved_emails(
         ))
         query = query.filter(deadline_exists if has_deadline else ~deadline_exists)
 
+    total = query.with_entities(func.count(Email.id)).scalar()
+    sort_columns = {'created_at': Email.created_at, 'priority_score': Email.priority_score, 'id': Email.id}
+    column = sort_columns[sort_by]
+    ordering = column.asc() if sort_order == 'asc' else column.desc()
+    # Keep ties stable and unknown priorities last in either direction.
+    tie_breaker = Email.id.asc() if sort_order == 'asc' else Email.id.desc()
     emails = (
         query
-        .order_by(Email.id.desc())
+        .options(defer(Email.body, raiseload=True), selectinload(Email.predictions), selectinload(Email.tasks))
+        .order_by(ordering.nulls_last(), tie_breaker)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
 
     return {
         "count": len(emails),
-        "emails": [
-            {
-                "id": email.id,
-                "message_id": email.message_id,
-                "from": email.sender,
-                "date": email.email_date,
-                "subject": email.subject,
-                "body": email.body,
-                "summary": email.summary,
-                "tasks": [
-                    {"task": task.task, "confidence": task.confidence,
-                     "deadline_text": task.deadline_text, "deadline_date": task.deadline_date,
-                     "deadline_at": task.deadline_at, "deadline_confidence": task.deadline_confidence}
-                    for task in email.tasks
-                ],
-                "priority_score": email.priority_score,
-                "priority_level": email.priority_level,
-                "predictions": [
-                    {
-                        "category": prediction.category,
-                        "confidence": prediction.confidence
-                    }
-                    for prediction in email.predictions
-                ],
-                "created_at": email.created_at
-            }
-            for email in emails
-        ]
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "emails": [serialize_email(email) for email in emails],
     }
+
+
+@router.get('/emails/{email_id}')
+def get_email_detail(email_id: int, db: Session = Depends(get_db)):
+    email = (db.query(Email)
+             .options(selectinload(Email.predictions), selectinload(Email.tasks))
+             .filter(Email.id == email_id)
+             .first())
+    if email is None:
+        raise HTTPException(status_code=404, detail='Email not found')
+    return serialize_email(email, include_body=True)
 
 
 # ---------------------------------------------------------
