@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 
-from deadline_extractor import _deadline_for_task
+from deadline_extractor import _deadline_for_task, _normalized
 
 
 EN_ACTION = r'(?:pay|reply|respond|attend|complete|issue|submit|confirm|reset|upload|review|sign|send|provide|approve|register|renew|schedule|prepare)'
@@ -11,8 +11,8 @@ AR_ACTION = AR_ACTION.replace('ا', '[اأإآ]')
 ACTION = rf'(?:{EN_ACTION}\b|{AR_ACTION}(?=\s))'
 POLITE = re.compile(
     r'^(?:(?:please|kindly)\s+|(?:can|could|would|will) you\s+(?:please\s+)?|'
-    r'(?:you (?:need to|must|should|are required to)|must|should|needs? to|required to)\s+|we need you to\s+|(?:action required|reminder):\s*|'
-    r'(?:يرجى|يرجي|الرجاء|من فضلك|من فضلكم|نرجو منك|يجب عليك|يجب|مطلوب|عليك ان|عليك)\s+)', re.I
+    r'(?:you (?:need to|must|should|are required to)|must|should|needs? to|required to)\s+|we (?:need|ask) you to\s+|(?:action required|reminder):\s*|'
+    r'(?:يرجى|يرجي|الرجاء|من فضلك|من فضلكم|(?:نرجو|نامل)(?: منك| منكم)?|يجب عليك|يجب|مطلوب|عليك ان|عليك)\s+)', re.I
 )
 START = re.compile(rf'^(?P<action>{ACTION})\s+\S+', re.I)
 # Match whole CTA phrases, not words inside useful instructions.
@@ -23,7 +23,8 @@ OTHER_CTA = OTHER_CTA.replace('ا', '[اأإآ]')
 CTA_START = rf'(?:{APP_CTA}|{OTHER_CTA})(?=\s|$|[,.!?؟؛;،])'
 GENERIC_CTA = re.compile(rf'^{CTA_START}', re.I)
 APP_REQUIRED = re.compile(r'\b(?:to (?:complete|verify|attend|access)|required for)\b|(?:لاكمال|لاتمام|للتحقق|للدخول|لحضور)\b', re.I)
-SPLIT_ACTION = re.compile(rf'(?:[,،]\s*|\s+(?:and(?: then)?|then|و|ثم)\s+|\s+و)(?=(?:(?:please|kindly|يرجى|الرجاء)\s+)?(?:{ACTION}|{CTA_START}))', re.I)
+_POLITE_SPLIT = POLITE.pattern.removeprefix('^').replace('ا', '[اأإآ]')
+SPLIT_ACTION = re.compile(rf'(?:[,،]\s*|\s+(?:and(?: then)?|then|و|ثم)\s+|\s+و)(?=(?:{_POLITE_SPLIT})?(?:{ACTION}|{CTA_START}))', re.I)
 DANGLING_END = re.compile(r'(?:^|\s)(?:من|[اإ]لى|في|على|مع|عن|و|[اأ]و|ثم|for|from|to|with|and|or)[\W_]*$', re.I)
 
 FOOTER = re.compile(r'\b(?:unsubscribe|privacy policy|all rights reserved|view in browser)\b|(?:الغاء الاشتراك|سياسه الخصوصيه|سياسة الخصوصية|جميع الحقوق محفوظة)', re.I)
@@ -63,12 +64,22 @@ _REQUIRED = re.compile(r'\b(?:must|required|mandatory|need to|needs to)\b|(?:ي�
 _REGISTER_CONTEXT = re.compile(r'(?:registration|registering|التسجيل).{0,30}(?:required|mandatory|مطلوب|الزامي)', re.I)
 
 
+def _split_action_clauses(text):
+    # Match normalized Arabic while keeping the original task wording.
+    normalized, offsets = _normalized(text)
+    start = 0
+    for match in SPLIT_ACTION.finditer(normalized):
+        yield text[start:offsets[match.start()]]
+        start = offsets[match.end()]
+    yield text[start:]
+
+
 def _clauses(text):
     # Keep punctuation inside addresses and URLs.
     sentences = []
     for sentence in re.split(r'\n+|(?<=[.!?؟؛;])\s+', text or ''):
-        if (sentences and re.match(r'^(?:deadline\b|due (?:on|by)\b|الموعد النهائي)', _normalize(sentence))
-                and _candidate(sentences[-1]) and len(SPLIT_ACTION.split(sentences[-1])) == 1
+        if (sentences and re.match(r'^(?:تنويه\s*[:،]?\s*)?(?:deadline\b|due (?:on|by)\b|الموعد النهائي|اخر (?:يوم|موعد)|الموعد الاخير)', _normalize(sentence))
+                and sum(_candidate(part) is not None for part in _split_action_clauses(sentences[-1])) == 1
                 and _deadline_for_task(sentence)):
             sentences[-1] = sentences[-1].rstrip(' .!?؟؛;') + '; ' + sentence
         else:
@@ -78,7 +89,7 @@ def _clauses(text):
         context = _normalize(sentence)
         if _REGISTER_CONTEXT.search(_normalize(text)):
             context += ' registration required'
-        for clause in SPLIT_ACTION.split(sentence):
+        for clause in _split_action_clauses(sentence):
             yield clause, context
 
 

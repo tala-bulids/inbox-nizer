@@ -66,7 +66,7 @@ def test_gmail_success(gmail_mocks):
         }
         for number in (1, 2)
     ]
-    messages.list.assert_called_once_with(userId="me", maxResults=30)
+    messages.list.assert_called_once_with(userId="me", maxResults=60)
     assert messages.get.call_args_list == [
         call(userId="me", id=str(number), format="full") for number in (1, 2)
     ]

@@ -15,7 +15,7 @@ def reprocess_email_content():
     try:
         emails = db.scalars(select(Email).order_by(Email.id).execution_options(yield_per=100))
         for email in emails:
-            body = clean_email_text(email.body or '')
+            body = clean_email_text(email.body or '', subject=email.subject or '')
             # Whitespace alone does not require a body update.
             if ' '.join(body.split()) != ' '.join((email.body or '').split()):
                 email.body = body

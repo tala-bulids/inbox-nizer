@@ -31,7 +31,9 @@ def _identity(email):
 
 def test_reprocess_updates_content_and_preserves_metadata(monkeypatch, test_database, capsys):
     main = 'Please submit your application.'
-    email = _email('reprocess-main', main + '\n\nRegards,\nA Person\ninfo@example.com')
+    email = _email('reprocess-main', main + '\n\nRegards,\nA Person\ninfo@example.com\n'
+                   'This e-mail and any attachments contain confidential information. '
+                   'If you are not the intended recipient, delete this message.')
     test_database.add(email)
     test_database.commit()
     before = _identity(email)
@@ -70,6 +72,20 @@ def test_reprocess_whitespace_and_empty_bodies(monkeypatch, test_database, capsy
     assert capsys.readouterr().out == 'Processed 2 emails\nCleaned 0 bodies\nRegenerated 1 tasks\n'
 
 
+def test_reprocess_uses_subject_to_protect_terms_notice(monkeypatch, test_database):
+    main = 'Hello.\nTerms & Conditions\nAvailability varies by location.'
+    email = _email('terms-update', main + '\nUnsubscribe\nOffice address')
+    email.subject = 'Terms update'
+    test_database.add(email)
+    test_database.commit()
+    _session(monkeypatch, test_database)
+    maintenance.reprocess_email_content()
+    test_database.expire_all()
+    assert email.body == main
+    assert 'Availability varies by location.' in email.summary
+    assert len(email.predictions) == 1
+
+
 @pytest.mark.parametrize('stage', ['clean_email_text', 'summarize_email', 'extract_action_items', 'commit'])
 def test_reprocess_failure_is_atomic(monkeypatch, test_database, capsys, stage):
     for number in range(2):
@@ -83,12 +99,12 @@ def test_reprocess_failure_is_atomic(monkeypatch, test_database, capsys, stage):
     else:
         original = getattr(maintenance, stage)
         calls = 0
-        def fail_second(*args):
+        def fail_second(*args, **kwargs):
             nonlocal calls
             calls += 1
             if calls == 2:
                 raise RuntimeError('test failure')
-            return original(*args)
+            return original(*args, **kwargs)
         monkeypatch.setattr(maintenance, stage, fail_second)
     with pytest.raises(RuntimeError, match='test failure'):
         maintenance.reprocess_email_content()

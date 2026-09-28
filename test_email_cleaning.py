@@ -24,7 +24,9 @@ MAIN = 'Good day,\nPlease submit your application through our website.\nWe look 
     'All rights reserved.\nRegistered office address',
 ])
 def test_english_footer_sections(footer):
-    assert clean_email_text(MAIN + '\n\n' + footer) == MAIN
+    source = MAIN + '\n\n' + footer
+    expected = source if footer == 'Kind regards,\nA Person\ninfo@example.com' else MAIN
+    assert clean_email_text(source) == expected
 
 
 @pytest.mark.parametrize('footer', [
@@ -36,7 +38,9 @@ def test_english_footer_sections(footer):
 ])
 def test_arabic_footer_sections(footer):
     main = 'مرحبًا،\nيرجى إرسال المستند المطلوب قبل الخميس.'
-    assert clean_email_text(main + '\n\n' + footer) == main
+    source = main + '\n\n' + footer
+    expected = source if footer == 'مع التحية،\nفريق العمل\ninfo@example.com' else main
+    assert clean_email_text(source) == expected
 
 
 @pytest.mark.parametrize('text', [

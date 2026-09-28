@@ -31,7 +31,7 @@ def get_messages(db: Session = Depends(get_db)):
 
     results = service.users().messages().list(
         userId="me",
-        maxResults=30
+        maxResults=60
     ).execute()
 
     messages = results.get("messages", [])

@@ -28,10 +28,10 @@ _CALENDAR = (rf'(?:\d{{4}}-\d{{1,2}}-\d{{1,2}}|'
              rf'{_MONTH}\s+\d{{1,2}}(?:st|nd|rd|th)?(?:[ ,]+\d{{4}})?|'
              rf'(?:next\s+)?{_WEEKDAY}|tomorrow|today|غدا|اليوم|نهاية الشهر|(?:the )?end of (?:the )?month)')
 _EVENT = r'(?:arriving at the airport|arrival at the airport|arrival|arriving|the meeting|الوصول الى المطار|الوصول|الاجتماع)'
-_PREFIX = r'(?:no later than|deadline(?: is|:)?|due (?:on|by)|by|before|on|بحلول|قبل|الموعد النهائي(?: هو|:)?|مستحق في)'
+_PREFIX = r'(?:no later than|deadline(?: is|:)?|due (?:on|by)|by|before|on|بحلول|قبل|الموعد النهائي(?: هو|:)?|مستحق في|(?:اخر (?:يوم|موعد)|الموعد الاخير)(?:\s+ل\w+)?(?:\s+هو)?)'
 _CLOCK = r'(?:\s+(?:at|الساعة)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|صباحا|مساء|مساءا)?(?:\s*(?:UTC|GMT|[+-]\d{2}:?\d{2}))?)'
 _PHRASE = re.compile(
-    rf'(?<!\w)(?:(?:{_PREFIX})\s+(?P<value>{_CALENDAR}|{_EVENT})|'
+    rf'(?<!\w)(?:(?:{_PREFIX})\s+(?:يوم\s+)?(?:{_WEEKDAY}\s+الموافق\s+)?(?P<value>{_CALENDAR}|{_EVENT})|'
     rf'(?P<relative>tomorrow|today|غدا|اليوم)(?![\x27’]s\b))(?P<clock>{_CLOCK})?(?!\w)', re.I
 )
 _DATE_ORDER = re.compile(rf'^(?P<day>\d{{1,2}})(?:st|nd|rd|th)?[ -]+(?P<month>{_MONTH})(?:[ ,/-]+(?P<year>\d{{4}}))?$', re.I)
