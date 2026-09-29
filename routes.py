@@ -17,8 +17,13 @@ from deadline_extractor import parse_email_datetime
 from summarizer import summarize_email
 from priority import calculate_priority
 from typing import Literal
+import logging
+from semantic_index import index_email
+from semantic_search import semantic_search, SemanticQueryError
+from embedding_service import EmbeddingInputError
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------
@@ -166,7 +171,16 @@ def get_messages(db: Session = Depends(get_db)):
                             if getattr(task, field) is None:
                                 setattr(task, field, matches[0][field])
 
+            saved_id = saved_email.id
             db.commit()
+            # Email ingestion is durable even if the embedding model is unavailable.
+            try:
+                index_email(saved_email, db)
+                db.commit()
+            except Exception as error:
+                db.rollback()
+                logger.warning('Semantic indexing failed for email %s (%s); retry sync or backfill',
+                               saved_id, type(error).__name__)
 
             classified_emails.append({
                 "id": message_id,
@@ -209,6 +223,32 @@ def get_messages(db: Session = Depends(get_db)):
 # Read saved emails from PostgreSQL
 # Optional filter by category
 # ---------------------------------------------------------
+
+@router.get('/search/semantic')
+def search_semantic_emails(
+    q: str = Query(min_length=1, max_length=4000),
+    limit: int = Query(default=10, ge=1, le=50),
+    min_score: float | None = Query(default=None, ge=-1, le=1, allow_inf_nan=False),
+    db: Session = Depends(get_db),
+):
+    if not q.strip():
+        raise HTTPException(status_code=422, detail='Query must not be empty')
+    try:
+        matches = semantic_search(db, q, limit, min_score)
+    except (SemanticQueryError, EmbeddingInputError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        logger.warning('Semantic search unavailable (%s)', type(error).__name__)
+        raise HTTPException(status_code=503, detail='Semantic search is temporarily unavailable') from error
+    return {'query': q.strip(), 'count': len(matches), 'results': [
+        {'email': {'id': item['email'].id, 'from': item['email'].sender,
+                   'subject': item['email'].subject, 'summary': item['email'].summary,
+                   'priority_score': item['email'].priority_score,
+                   'priority_level': item['email'].priority_level},
+         'score': item['score'], 'matched_text': item['matched_text']}
+        for item in matches
+    ]}
+
 
 @router.get("/emails")
 def get_saved_emails(

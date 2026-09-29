@@ -2,12 +2,19 @@ import os
 
 import pytest
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from database import get_db, engine as production_engine
 from main import app
+from pathlib import Path
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+import embedding_service
+from embedding_test_fakes import FakeEncoder
 
 
 load_dotenv()
@@ -41,8 +48,29 @@ test_engine = create_engine(
 )
 
 
+@pytest.fixture(scope='session')
+def semantic_test_schema():
+    # Only the validated _test database receives schema setup.
+    config = Config()
+    config.set_main_option('script_location', str(Path(__file__).parent / 'alembic'))
+    scripts = ScriptDirectory.from_config(config)
+    with test_engine.begin() as connection:
+        with Operations.context(MigrationContext.configure(connection)):
+            scripts.get_revision('e8f3a2b491cd').module.upgrade()
+            if not inspect(connection).has_table('email_embedding_chunks'):
+                scripts.get_revision('f1a6b3c802de').module.upgrade()
+
+
 @pytest.fixture(autouse=True)
-def test_database():
+def fake_embedding_encoder(monkeypatch):
+    fake = FakeEncoder()
+    monkeypatch.setattr(embedding_service, '_encoder', None)
+    monkeypatch.setattr(embedding_service, '_load_encoder', lambda: fake)
+    return fake
+
+
+@pytest.fixture(autouse=True)
+def test_database(semantic_test_schema):
     connection = test_engine.connect()
 
     transaction = connection.begin()

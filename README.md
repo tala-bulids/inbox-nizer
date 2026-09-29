@@ -227,3 +227,87 @@ the new schema. Production migrations and rebuilds are separate manual steps.
 
 Rules can miss unfamiliar paraphrases or ambiguous context. Similar tasks with
 different recipients are kept separate; full semantic understanding is not claimed.
+
+## Semantic search
+
+`GET /search/semantic?q=...&limit=10&min_score=0.7` searches indexed email chunks.
+`q` must contain non-whitespace text (at most 4000 characters and 512 model tokens);
+`limit` is 1–50. Optional `min_score` is -1–1. Results contain one email each,
+the best chunk's score, and up to 2000 characters of matching text. Email bodies
+and vectors are not returned; use `GET /emails/{id}` for the full stored message.
+Scores are cosine similarities (`1 - cosine_distance`), not probabilities.
+
+### Model and content
+
+`embedding_service.py` lazily loads `intfloat/multilingual-e5-small` once per
+process, using CPU unless `EMBEDDING_DEVICE` is set (for example, `cuda`). It adds
+`query: ` / `passage: ` prefixes and validates finite, nonzero, normalized
+384-dimensional vectors. Empty input and overlong inputs are rejected instead
+of silently truncated. Imports and application startup do not load the model.
+The first indexing/search operation that needs it may download weights.
+
+`build_semantic_text` combines subject, cleaned summary, and
+`extract_main_content(subject, body)`, suppressing repeated text and old summaries
+that reintroduce excluded footer/tracking content. Stored email bodies are untouched.
+Chunking uses the model tokenizer's character offsets, targets 300 tokens, prefers
+nearby sentence/paragraph endings, and overlaps up to 40 tokens. Order and original
+wording are preserved; very long sentences can cross chunk boundaries. This stays
+below E5's 512-token limit including its prefix and special tokens.
+
+Model requirements: [E5 model card](https://huggingface.co/intfloat/multilingual-e5-small).
+Index integration: [pgvector SQLAlchemy documentation](https://github.com/pgvector/pgvector-python#sqlalchemy).
+
+### Storage and transactions
+
+Migration `f1a6b3c802de_add_email_embedding_chunks.py` follows pgvector activation
+`e8f3a2b491cd`. It creates `email_embedding_chunks` with `vector(384)`, an email FK
+with cascading deletion, and unique `(email_id, chunk_index, embedding_model)`.
+The cosine HNSW index uses `vector_cosine_ops`, `m=16`, `ef_construction=64`.
+Downgrade removes only the chunk table and its indexes; it keeps the extension.
+
+`index_email` locks the parent email and uses a savepoint. SHA-256 includes chunk
+text, model name, and the content/chunking version. Unchanged chunks skip encoding;
+changed chunks are replaced and stale chunks/old model rows are deleted. It does
+not commit. Bump `CONTENT_VERSION` if preprocessing/chunking behavior changes.
+
+Gmail commits the email first, then indexes finalized **stored** content in a
+separate transaction. Indexing errors are logged without message contents and do
+not turn a saved email into a failed email. A later sync/backfill retries missing
+or outdated vectors. Existing classification, priority and task behavior is unchanged.
+There is no startup backfill, queue, worker, LLM call or answer generation.
+
+Search retrieves nearest chunks through pgvector, expands the candidate pool if
+duplicates consume it, and keeps the highest scoring chunk per email. HNSW is
+approximate; recall is not guaranteed, and thresholds need real-mail evaluation.
+Results include only indexed emails for the current model. Encoding is synchronous
+and CPU latency depends on hardware. Large backfills use a long transaction and
+roll back the whole job on failure; the script prints progress and final counts.
+Repeated syncs still tokenize content to check chunk hashes, but skip unchanged
+embedding calls. There is no multi-user isolation beyond the current email model.
+
+### Manual setup (do not run against production unintentionally)
+
+From the project directory with a working Python environment and the intended
+`DATABASE_URL` in `.env`:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m alembic upgrade f1a6b3c802de
+python -c "from embedding_service import embed_query; v=embed_query('flight to Jeddah'); print('dimensions:',len(v),'norm:',sum(x*x for x in v)**0.5)"
+python backfill_email_embeddings.py
+python -m uvicorn main:app --reload
+```
+
+The model check is the first intentional model download/load. Ensure
+`HF_HUB_OFFLINE` is unset for its first download. Run backfill only after migration
+and model verification; it creates/updates chunks without changing email content.
+
+```powershell
+$q = [uri]::EscapeDataString('متى سفرتي لجدة؟')
+Invoke-RestMethod "http://127.0.0.1:8000/search/semantic?q=$q&limit=10"
+```
+
+Tests replace the lazy model loader with deterministic embeddings and a fake
+tokenizer. They never download/load the real model. The validated `_test` database
+alone receives the extension/table setup; each test rolls back its data. Retrieval
+tests prove wiring/ranking with controlled vectors, not real E5 retrieval quality.

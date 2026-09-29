@@ -8,11 +8,14 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     UniqueConstraint,
+    CheckConstraint,
+    Index,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column,relationship
 
 from database import Base
+from pgvector.sqlalchemy import Vector
 
 
 class Email(Base):
@@ -124,3 +127,23 @@ class EmailTask(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     email: Mapped["Email"] = relationship(back_populates="tasks")
+
+
+class EmailEmbeddingChunk(Base):
+    __tablename__ = 'email_embedding_chunks'
+    __table_args__ = (
+        UniqueConstraint('email_id', 'chunk_index', 'embedding_model', name='uq_email_chunk_model'),
+        CheckConstraint('chunk_index >= 0', name='ck_email_chunk_index'),
+        Index('ix_email_chunks_embedding_cosine', 'embedding', postgresql_using='hnsw',
+              postgresql_ops={'embedding': 'vector_cosine_ops'},
+              postgresql_with={'m': 16, 'ef_construction': 64}),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email_id: Mapped[int] = mapped_column(ForeignKey('emails.id', ondelete='CASCADE'), index=True)
+    chunk_index: Mapped[int] = mapped_column(nullable=False)
+    chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(384), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
