@@ -19,6 +19,7 @@ from priority import calculate_priority
 from typing import Literal
 import logging
 from semantic_index import index_email
+from fact_store import refresh_facts
 from semantic_search import semantic_search, SemanticQueryError
 from embedding_service import EmbeddingInputError
 from rag_api import router as rag_router
@@ -175,6 +176,14 @@ def get_messages(db: Session = Depends(get_db)):
 
             saved_id = saved_email.id
             db.commit()
+            # Facts fail independently after the email is durably stored.
+            try:
+                refresh_facts(saved_email, db)
+                db.commit()
+            except Exception as error:
+                db.rollback()
+                logger.warning('Fact extraction failed for email %s (%s); retry sync or backfill',
+                               saved_id, type(error).__name__)
             # Email ingestion is durable even if the embedding model is unavailable.
             try:
                 index_email(saved_email, db)

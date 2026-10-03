@@ -60,7 +60,8 @@ def build_rag_context(db, chunks, max_chars: int = 12000):
         if current_size + added_size > max_chars:
             continue
 
-        evidence.append({'email_id': email.id, 'subject': (email.subject or '')[:500],
+        evidence.append({'email_id': email.id, 'chunk_id': chunk['chunk_id'],
+                         'chunk_index': chunk['chunk_index'], 'subject': (email.subject or '')[:500],
                          'content': chunk['text'].strip()})
         blocks.append(block)
         current_size += added_size

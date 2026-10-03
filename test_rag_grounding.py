@@ -1,8 +1,5 @@
 """Deterministic grounding tests; no real model or production DB access."""
 
-import json
-import re
-
 import pytest
 
 from rag_grounding import answer_candidate, explicit_fields, has_role_conflict
@@ -26,15 +23,13 @@ def test_explicit_roles_preserved_and_swapped_values_rejected(test_database, mon
     email = saved_email(test_database, subject='Schedule', body=content)
     chunks = [dict(email_id=email.id, chunk_id=1, chunk_index=0, score=.9, text=content)]
     monkeypatch.setattr('rag_service.retrieve_rag_chunks', lambda *a, **k: chunks)
-    class Reader:
-        def generate(self, messages):
-            data = json.loads(re.search(r'\]\n(.*?)\n\[END SOURCE\]', messages[1]['content'], re.S)[1])
-            assert data['content'] == content
-            assert len(explicit_fields(data['content'])) == 2
-            return f'{expected} [email_id={email.id}]'
-    assert answer_email_question(test_database, question, Reader())['status'] == 'answered'
-    with pytest.raises(InvalidGeneration, match='labelled field'):
-        answer_email_question(test_database, question, FakeLLM(f'{wrong} [email_id={email.id}]'))
+    fake = FakeLLM(AssertionError('Explicit facts must bypass generation'))
+    result = answer_email_question(test_database, question, fake)
+    assert expected in result['answer'] and wrong not in result['answer']
+    assert fake.messages is None
+    candidate = answer_candidate(question, [source(content)])
+    assert has_role_conflict(wrong, candidate)
+
 
 
 @pytest.mark.parametrize('question,content', [
@@ -42,15 +37,17 @@ def test_explicit_roles_preserved_and_swapped_values_rejected(test_database, mon
     ('ما موعد التسجيل؟', 'موعد التسجيل: 12-Nov-2028'),
     ('What is the booking PNR?', 'Booking (PNR)\nAB12XY'),
 ])
-def test_explicit_candidate_overrides_model_abstention(test_database, monkeypatch, question, content):
+def test_explicit_candidate_bypasses_model(test_database, monkeypatch, question, content):
     email = saved_email(test_database, subject='Notice', body=content)
     monkeypatch.setattr('rag_service.retrieve_rag_chunks', lambda *a, **k: [dict(email_id=email.id, chunk_id=1, chunk_index=0, score=.9, text=content)])
     result = answer_email_question(test_database, question, FakeLLM('INSUFFICIENT_EVIDENCE.'))
     assert result['status'] == 'answered'
     assert result['citations'] == [{'email_id': email.id}]
     assert explicit_fields(content)[0]['value'] in result['answer']
-    with pytest.raises(InvalidGeneration, match='citation'):
-        answer_email_question(test_database, question, FakeLLM('INSUFFICIENT_EVIDENCE [email_id=999999]'))
+    # Bad model output cannot corrupt an explicit fact because it is never read.
+    fake = FakeLLM('INSUFFICIENT_EVIDENCE [email_id=999999]')
+    assert answer_email_question(test_database, question, fake)['status'] == 'answered'
+    assert fake.messages is None
 
 
 @pytest.mark.parametrize('question,content', [

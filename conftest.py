@@ -59,6 +59,8 @@ def semantic_test_schema():
             scripts.get_revision('e8f3a2b491cd').module.upgrade()
             if not inspect(connection).has_table('email_embedding_chunks'):
                 scripts.get_revision('f1a6b3c802de').module.upgrade()
+            if not inspect(connection).has_table('email_facts'):
+                scripts.get_revision('a2b7c4d913ef').module.upgrade()
 
 
 @pytest.fixture(autouse=True)

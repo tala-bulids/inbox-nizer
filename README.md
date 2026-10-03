@@ -515,3 +515,120 @@ noncanonical insufficient-evidence output rejected by citation validation. Some
 longer four-chunk requests hit ContextTooLarge. These are remaining failures,
 not passing results. An additional prompt instruction was tested and discarded
 because it worsened citation compliance without fixing the time confusion.
+
+### Persisted structured facts (facts-v1)
+
+The Hybrid engine now has a stored facts layer. It still identifies sources through
+semantic retrieval and evidence selection. It then reads current facts for those
+emails, checks that their literal evidence occurs in the selected content, and
+attempts a unique direct lookup. A successful lookup returns literal values and
+citations without loading/calling GGUF. Ambiguous, unsupported, comparative and
+free-form questions use the existing local generation path. Both paths use the
+same citation validation and the `/ask` response fields are unchanged.
+
+`email_facts` stores email ID, normalized role, original label and value, optional
+normalization metadata, exact text and character offsets in the stored body,
+record boundaries, extraction reason/version, and timestamps. Facts are independent
+of embedding chunk lifetimes; a selected chunk is associated at query time. A unique
+email/fact key prevents duplicates and an email/role index supports scoped reads.
+`email_fact_states` records the input hash and extractor version, including emails
+with zero facts. Both tables cascade when their parent email is deleted. This
+normalized design permits individual fact provenance without a new schema for each
+business domain; only heterogeneous normalization details use JSONB.
+
+Extraction reuses main-content selection, the existing labelled-field parser and
+deadline/calendar grammar. Supported structures include short `label: value`
+fields, vertical identifier fields, and explicit deadline/last-day expressions.
+No summary or model-generated scalar is authoritative. No company, sender, city,
+email ID or benchmark-specific parser is used. A time colon cannot start a field.
+Each fact must map uniquely back to exact literal evidence in `Email.body`.
+Cleaning transformations or repeated identical evidence can therefore reduce recall.
+
+Normalization preserves the literal value. Explicit ISO/named-month dates become
+date-only ISO values; ambiguous numeric dates remain unnormalized. A missing year
+is inferred only for a named day/month within 45 days of the message timestamp in
+the same year and with an explicitly matching weekday. That basis is recorded;
+otherwise the year remains unknown. Message timestamps are never copied as event
+dates. Times accept explicit clocks and optional UTC/GMT/offsets; absent timezone
+stays null and no midnight is invented. Simple decimal amounts preserve explicit
+currency text without interpreting ambiguous separators or dollar symbols as USD.
+Identifiers/statuses retain literal spelling. Date answers show the literal date
+with its normalized ISO value where available.
+
+The hash covers subject, stored body and message timestamp. An unchanged hash and
+extractor version skip extraction and rewrites. Changed inputs/version replace or
+remove stale facts atomically under a parent-row lock and savepoint. A failed refresh
+keeps the previous rows, but the read path rejects stale hashes/versions and invalid
+source spans. Bump `EXTRACTOR_VERSION` when extraction semantics change, or use
+`--force` to refresh explicitly. This freshness check covers facts; it does not
+rebuild or certify old embedding chunks.
+
+Gmail ingestion commits the email first, then independently commits fact extraction
+and semantic indexing. A fact failure logs only email ID/error class and cannot
+discard the email or prevent the subsequent indexing attempt. Backfill retries
+failed emails and commits each successful email separately, with bounded ID batches
+and created/updated/skipped/deleted/failed counts. It changes only facts/checkpoints.
+
+#### Activation and backfill
+
+The new migration is `a2b7c4d913ef`, after `f1a6b3c802de`. Historical migrations are
+unchanged. Its downgrade removes only the two new tables. Production migration and
+backfill are manual. From the project directory, with `DATABASE_URL` selecting the
+intended database:
+
+```powershell
+.\env\Scripts\python.exe -m alembic upgrade head
+.\env\Scripts\python.exe backfill_email_facts.py                 # read-only preview
+.\env\Scripts\python.exe backfill_email_facts.py --apply         # persist facts
+.\env\Scripts\python.exe backfill_email_facts.py --apply --force # explicit rebuild
+```
+
+`--batch-size` accepts 1–500 (default 100). Dry run is the default and sets a PostgreSQL
+read-only transaction; it reports discovered counts, not predicted insert/update counts.
+If email bodies are later reprocessed, rerun this backfill. Missing facts tables
+leave existing Hybrid behavior available until migration; ingestion logs failed
+fact writes safely. No new environment variables or dependencies are required.
+
+#### Privacy, evaluation and limits
+
+Facts are local untrusted data, never instructions. Reads are restricted to already
+retrieved email IDs and facts evidenced inside selected SOURCE text. This preserves
+the existing trusted local boundary; future multi-user support must authorize
+retrieval by owner first. No external inference, telemetry, email-body logs, model
+downloads or new prompt tools are introduced.
+
+```powershell
+$env:HF_HUB_OFFLINE = '1'
+$env:HF_HUB_DISABLE_TELEMETRY = '1'
+$env:RAG_MODEL_PATH = 'D:\AI-Models\Qwen3-0.6B-Q4_K_M.gguf'
+.\env\Scripts\python.exe evaluate_rag.py --preview-facts --chunk-limit 1 --question 'متى سفرتي لجدة؟'
+.\env\Scripts\python.exe -m pytest -q
+git diff --check
+```
+
+Evaluation always uses read-only DB access. `--preview-facts` runs the same extractor
+in memory, so real inbox evaluation can precede migration/backfill. Omit it to
+evaluate persisted facts. Reports distinguish discovered facts, resolver output,
+LLM calls, raw/final answers, citations and timings; JSON escapes Unicode for Windows.
+These reports contain private extracted values: keep them local. Selected full
+content is shown only with `--show-evidence`.
+
+Precision is preferred to recall. City/time position alone never establishes
+departure/arrival roles. Unlabelled prose, cross-language aliases, broad paraphrases,
+relative dates, complex amounts and implicit relationships may remain unresolved.
+Clear same-record multi-value lookups are supported, including plural times/dates;
+conflicts or uncertain qualifiers fall back. Retrieval still uses cached E5; the
+deterministic path skips GGUF, not the source-identification step. Generative fallback
+can still confuse roles or abstain incorrectly, and citation membership does not
+prove factual correctness. Stored facts do not make the small model reliable for
+every factual question.
+
+Latest facts-phase check (2026-10-03): 745 tests pass using isolated PostgreSQL.
+Read-only real-inbox preview with Qwen3-0.6B and one retrieved chunk resolved the
+booking reference and Arabic registration deadline without GGUF (about 37 ms and
+117 ms after retrieval warm-up). Trip date, event date and application status still
+used generation successfully; unsupported booking correctly abstained. Departure
+time remained wrong in generation, and arrival-time retrieval selected an unrelated
+email. Therefore this is a useful persistence baseline with important extraction
+and retrieval gaps, not a claim of reliable general factual answering. Production
+migration/backfill were not applied during this evaluation.

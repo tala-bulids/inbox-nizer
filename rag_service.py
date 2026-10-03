@@ -3,10 +3,11 @@
 import re
 from llm_provider import LLMProvider
 from rag_context import build_rag_context
+from fact_store import fact_evidence
 from rag_prompt import build_rag_messages
 from rag_retrieval import retrieve_rag_chunks
 from rag_evidence import select_evidence
-from rag_grounding import answer_candidate, has_role_conflict, is_abstention
+from rag_grounding import resolve_answer, format_facts, has_role_conflict, is_abstention
 
 
 class InvalidGeneration(RuntimeError):
@@ -40,6 +41,7 @@ def prepare_rag_request(
     max_chunks_per_email: int = 2,
     min_score: float | None = None,
     max_context_chars: int = 12000,
+    preview_facts: bool = False,
 ):
     if not isinstance(question, str) or not question.strip():
         raise ValueError("Question must not be empty")
@@ -66,13 +68,17 @@ def prepare_rag_request(
         context_result["context"],
     )
 
+    enriched, fact_audit = fact_evidence(db, context_result.get("evidence", []), preview=preview_facts)
+    facts = resolve_answer(question, enriched)
     return {
         "messages": messages,
         "sources": context_result["sources"],
         "context": context_result["context"],
         "retrieved_chunks": chunks,
         "evidence_audit": evidence_audit,
-        "answer_candidate": answer_candidate(question, context_result.get("evidence", [])),
+        "answer_candidate": facts[0] if len(facts) == 1 else None,
+        "resolved_facts": facts,
+        "structured_facts": fact_audit,
     }
 
 
@@ -85,6 +91,7 @@ def answer_email_question(
     max_chunks_per_email: int = 2,
     min_score: float | None = None,
     max_context_chars: int = 12000,
+    preview_facts: bool = False,
 ):
     prepared = prepare_rag_request(
         db,
@@ -93,31 +100,31 @@ def answer_email_question(
         max_chunks_per_email=max_chunks_per_email,
         min_score=min_score,
         max_context_chars=max_context_chars,
+        preview_facts=preview_facts,
     )
 
     if not prepared['sources']:
         return insufficient_answer(question)
-    answer = llm.generate(prepared["messages"])
-
-    if not isinstance(answer, str) or not answer.strip():
-        raise InvalidGeneration("Generation returned an empty answer")
-
-    answer = answer.strip()
-    candidate = prepared.get('answer_candidate')
-    if is_abstention(answer):
-        if '[email_id' in answer:
-            _validate_citations(answer, prepared['sources'])
-        if candidate is None:
+    facts = prepared['resolved_facts']
+    if facts:
+        answer = format_facts(facts)
+    else:
+        answer = llm.generate(prepared["messages"])
+        if not isinstance(answer, str) or not answer.strip():
+            raise InvalidGeneration("Generation returned an empty answer")
+        answer = answer.strip()
+        if is_abstention(answer):
+            if '[email_id' in answer:
+                _validate_citations(answer, prepared['sources'])
             result = insufficient_answer(question)
             # A model refusal is not proof that the source lacks the answer.
             result['answer'] = ('لم أتمكن من استخراج إجابة موثوقة من المصادر المسترجعة.'
                                 if re.search(r'[\u0600-\u06ff]', question)
                                 else 'I could not verify an answer from the retrieved sources.')
             return result
-        answer = f"{candidate['label']}: {candidate['value']} [email_id={candidate['email_id']}]"
     cited = _validate_citations(answer, prepared['sources'])
 
-    if has_role_conflict(answer, candidate):
+    if has_role_conflict(answer, prepared.get('answer_candidate')):
         raise InvalidGeneration('Generation contradicts the requested labelled field')
 
     return {

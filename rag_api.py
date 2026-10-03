@@ -50,10 +50,15 @@ class AnswerResponse(BaseModel):
     status: Literal['answered', 'insufficient_evidence']
 
 
+class _LazyProvider:
+    def generate(self, messages):
+        return get_llm_provider().generate(messages)
+
+
 @router.post('/ask', response_model=AnswerResponse)
 def ask(request: QuestionRequest, db: Session = Depends(get_db)):
     try:
-        return answer_email_question(db, llm=get_llm_provider(), **request.model_dump())
+        return answer_email_question(db, llm=_LazyProvider(), **request.model_dump())
     except (ContextTooLarge, EmbeddingInputError) as error:
         raise HTTPException(422, str(error)) from None
     except InvalidGeneration:

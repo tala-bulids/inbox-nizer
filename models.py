@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from sqlalchemy.dialects.postgresql import JSONB
 
 from sqlalchemy import (
     String,
@@ -147,3 +148,40 @@ class EmailEmbeddingChunk(Base):
     embedding_model: Mapped[str] = mapped_column(String(255), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# Facts reference the stored body, independently of embedding chunk lifetimes.
+
+
+class EmailFactState(Base):
+    __tablename__ = 'email_fact_states'
+    email_id: Mapped[int] = mapped_column(ForeignKey('emails.id', ondelete='CASCADE'), primary_key=True)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    extractor_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class EmailFact(Base):
+    __tablename__ = 'email_facts'
+    __table_args__ = (
+        UniqueConstraint('email_id', 'fact_key', name='uq_email_fact_key'),
+        CheckConstraint('source_start >= 0 AND source_end > source_start', name='ck_fact_span'),
+        CheckConstraint('record_start >= 0 AND record_start <= source_start AND record_end >= source_end', name='ck_fact_record'),
+        Index('ix_email_facts_email_role', 'email_id', 'role'),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email_id: Mapped[int] = mapped_column(ForeignKey('emails.id', ondelete='CASCADE'), nullable=False)
+    fact_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    role: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_label: Mapped[str] = mapped_column(Text, nullable=False)
+    literal_value: Mapped[str] = mapped_column(Text, nullable=False)
+    normalized_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    source_text: Mapped[str] = mapped_column(Text, nullable=False)
+    source_start: Mapped[int] = mapped_column(nullable=False)
+    source_end: Mapped[int] = mapped_column(nullable=False)
+    record_start: Mapped[int] = mapped_column(nullable=False)
+    record_end: Mapped[int] = mapped_column(nullable=False)
+    extraction_reason: Mapped[str] = mapped_column(String(100), nullable=False)
+    extractor_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
