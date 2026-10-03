@@ -21,8 +21,10 @@ import logging
 from semantic_index import index_email
 from semantic_search import semantic_search, SemanticQueryError
 from embedding_service import EmbeddingInputError
+from rag_api import router as rag_router
 
 router = APIRouter()
+router.include_router(rag_router)
 logger = logging.getLogger(__name__)
 
 

@@ -35,3 +35,6 @@ Thumbs.db
 
 credentials.json
 token.json
+# Local GGUF generation models
+local_models/
+*.gguf
