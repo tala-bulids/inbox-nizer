@@ -145,7 +145,9 @@ def test_persisted_facts_answer_without_llm(test_database, monkeypatch, question
     answer = answer_email_question(test_database, question, fake)
     assert fake.calls == 0 and expected in answer['answer']
     assert answer['citations'] == [{'email_id': email.id}]
-    assert set(answer) == {'answer', 'status', 'sources', 'citations'}
+    assert set(answer) == {'answer', 'status', 'sources', 'citations', 'answer_mode', 'verification'}
+    assert answer['answer_mode'] == 'deterministic_fact'
+    assert answer['verification'] == 'source_supported'
 
 
 def test_arabic_prose_deadline_source_qualifiers_and_year(test_database, monkeypatch):
@@ -165,8 +167,10 @@ def test_arabic_prose_deadline_source_qualifiers_and_year(test_database, monkeyp
 def test_ambiguous_interpretive_or_unsupported_uses_llm_once(test_database, monkeypatch, question, body):
     setup_answer(test_database, monkeypatch, body)
     fake = SpyLLM()
-    assert answer_email_question(test_database, question, fake)['status'] == 'insufficient_evidence'
-    assert fake.calls == 1
+    ambiguous = question == 'What is the status?'
+    assert answer_email_question(test_database, question, fake)['status'] == (
+        'needs_clarification' if ambiguous else 'insufficient_evidence')
+    assert fake.calls == (0 if ambiguous else 1)
 
 
 def test_preview_is_equivalent_and_has_no_writes(test_database, monkeypatch):
@@ -234,9 +238,9 @@ def test_gmail_fact_failure_keeps_email_and_embedding(gmail_mocks, test_database
     from models import EmailEmbeddingChunk
     messages, _, _ = gmail_mocks
     set_messages(messages, 1)
-    with patch('routes.refresh_facts', side_effect=RuntimeError('PRIVATE BODY TOKEN')):
+    with patch('email_pipeline.refresh_facts', side_effect=RuntimeError('PRIVATE BODY TOKEN')):
         with TestClient(app) as client:
-            result = client.get('/gmail/messages').json()
+            result = client.post('/gmail/messages').json()
     assert result['success_count'] == 1
     assert test_database.scalar(select(Email.id)) is not None
     assert test_database.scalar(select(EmailEmbeddingChunk.id)) is not None
@@ -249,7 +253,8 @@ def test_api_shape_unchanged_for_stored_fact(test_database, monkeypatch):
     with TestClient(app) as client:
         result = client.post('/ask', json={'question':'What is the deadline?'})
     assert result.status_code == 200
-    assert set(result.json()) == {'answer','status','sources','citations'}
+    assert set(result.json()) == {'answer','status','sources','citations','answer_mode','verification'}
+    assert result.json()['verification'] == 'source_supported'
     assert 'source_text' not in result.text and 'literal_evidence' not in result.text
 
 

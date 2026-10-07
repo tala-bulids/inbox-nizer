@@ -46,7 +46,8 @@ def test_direct_literal_answers_skip_llm(test_database, monkeypatch, question, c
     assert result['citations'] == [{'email_id': email.id}]
     assert len(result['answer'].splitlines()) == len(values)
     assert all(f'[email_id={email.id}]' in line for line in result['answer'].splitlines())
-    assert set(result) == {'answer', 'sources', 'citations', 'status'}
+    assert set(result) == {'answer', 'sources', 'citations', 'status', 'answer_mode', 'verification'}
+    assert result['verification'] == 'source_supported'
 
 
 @pytest.mark.parametrize('question,content', [
@@ -64,7 +65,8 @@ def test_ambiguity_interpretation_and_partial_answers_call_llm_once(test_databas
     email, _ = setup_evidence(test_database, monkeypatch, content)
     llm = SpyLLM(f'Explanation from the source [email_id={email.id}]')
     result = answer_email_question(test_database, question, llm)
-    assert llm.calls == 1 and result['answer'] == llm.answer
+    assert llm.calls == 1 and result['answer'].split('\n\n', 1)[1] == llm.answer
+    assert result['verification'] == 'not_semantically_verified'
 
 
 def test_provenance_points_to_literal_refined_content(test_database, monkeypatch):
@@ -128,20 +130,20 @@ def test_api_does_not_initialize_provider_for_explicit_fact(test_database, monke
     with TestClient(app) as client:
         result = client.post('/ask', json={'question': 'What is the status?'})
     assert result.status_code == 200
-    assert set(result.json()) == {'answer', 'sources', 'citations', 'status'}
+    assert set(result.json()) == {'answer', 'sources', 'citations', 'status', 'answer_mode', 'verification'}
 
 
 def test_missing_source_identity_never_resolves():
     assert resolve_answer('What is the status?', [dict(content='status: Under review', subject='Notice')]) == []
 
 
-def test_multiple_emails_with_conflicting_values_use_llm(test_database, monkeypatch):
+def test_multiple_emails_with_conflicting_values_request_clarification(test_database, monkeypatch):
     _, chunks = setup_evidence(test_database, monkeypatch, 'status: Under review')
     other = saved_email(test_database, message_id='hybrid-other', subject='Notice', body='status: Approved')
     chunks.append(dict(chunks[0], email_id=other.id, chunk_id=902, text=other.body))
     llm = SpyLLM()
-    assert answer_email_question(test_database, 'What is the status?', llm)['status'] == 'insufficient_evidence'
-    assert llm.calls == 1
+    assert answer_email_question(test_database, 'What is the status?', llm)['status'] == 'needs_clarification'
+    assert llm.calls == 0
 
 
 @pytest.mark.parametrize('content', [

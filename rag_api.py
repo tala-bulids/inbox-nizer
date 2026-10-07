@@ -19,6 +19,7 @@ class QuestionRequest(BaseModel):
     max_chunks_per_email: int = Field(default=2, ge=1, le=5)
     min_score: float | None = Field(default=None, ge=-1, le=1, allow_inf_nan=False)
     max_context_chars: int = Field(default=6000, ge=1000, le=12000)
+    email_id: int | None = Field(default=None, gt=0)
 
     @field_validator('question')
     @classmethod
@@ -43,11 +44,20 @@ class Citation(BaseModel):
     email_id: int
 
 
+class ClarificationOption(BaseModel):
+    email_id: int
+    subject: str
+    date: str
+
+
 class AnswerResponse(BaseModel):
     answer: str
     sources: list[Source]
     citations: list[Citation]
-    status: Literal['answered', 'insufficient_evidence']
+    status: Literal['answered', 'insufficient_evidence', 'needs_clarification']
+    clarification_options: list[ClarificationOption] | None = None
+    answer_mode: Literal['deterministic_fact', 'extractive', 'generated_synthesis'] | None = None
+    verification: Literal['source_supported', 'not_semantically_verified'] | None = None
 
 
 class _LazyProvider:
@@ -55,7 +65,7 @@ class _LazyProvider:
         return get_llm_provider().generate(messages)
 
 
-@router.post('/ask', response_model=AnswerResponse)
+@router.post('/ask', response_model=AnswerResponse, response_model_exclude_none=True)
 def ask(request: QuestionRequest, db: Session = Depends(get_db)):
     try:
         return answer_email_question(db, llm=_LazyProvider(), **request.model_dump())

@@ -524,9 +524,9 @@ The Hybrid engine now has a stored facts layer. It still identifies sources thro
 semantic retrieval and evidence selection. It then reads current facts for those
 emails, checks that their literal evidence occurs in the selected content, and
 attempts a unique direct lookup. A successful lookup returns literal values and
-citations without loading/calling GGUF. Ambiguous, unsupported, comparative and
-free-form questions use the existing local generation path. Both paths use the
-same citation validation and the `/ask` response fields are unchanged.
+citations without loading/calling GGUF. The answer-reliability layer below now
+handles provable ambiguity and literal prose before local generation. All answer
+paths keep citation validation; clarification adds an optional response field.
 
 `email_facts` stores email ID, normalized role, original label and value, optional
 normalization metadata, exact text and character offsets in the stored body,
@@ -719,10 +719,10 @@ start/end, origin/destination, travel dates, and time/date. It supports direct q
 `What is the arrival time?`, `متى المغادرة؟`, and `وش وقت الوصول؟`. Literal direction,
 subject/sender, date and reference qualifiers narrow candidates. Different matching
 emails/records remain ambiguous even when their values coincide: the service returns
-insufficient evidence when the candidate pool reveals a conflict, including when
-`chunk_limit=1` would hide a second candidate. Otherwise an unresolved lookup follows
-the existing generation path. Citations, SOURCE escaping and `/ask` fields remain
-unchanged. Generic explicit old/new fields keep their existing resolver behavior.
+`needs_clarification` when the candidate pool reveals a conflict, including when
+`chunk_limit=1` would hide a second candidate. An exhausted search without a proven
+alternative can still abstain. Citations and SOURCE escaping remain unchanged.
+Generic explicit old/new fields keep their existing resolver behavior.
 
 Upgrade existing facts using the same safe workflow:
 
@@ -975,3 +975,132 @@ References: [Gmail synchronization](https://developers.google.com/workspace/gmai
 [Gmail message timestamp semantics](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages),
 [SQLAlchemy loader criteria](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria),
 [Fernet and key rotation](https://cryptography.io/en/latest/fernet/).
+
+
+### Grounded answer reliability and clarification
+
+`POST /ask` now routes answers through current stored facts, conservative literal
+extraction, deterministic clarification, and finally local generation when useful.
+There is no new schema, migration, backfill, model, embedding or external API.
+
+- **Stored facts:** the existing resolver validates current provenance and returns
+  supported values. Proven competing targets take precedence over choosing a fact.
+- **Extractive:** direct date, application-status and action questions can return
+  literal text. The assertion must occur verbatim in the stored body and permitted
+  context. Internal proof records retain email/chunk IDs, value, body offsets and
+  surrounding assertion. Generated summaries alone cannot supply proof. Calendar
+  checks reject invalid dates; conditional, negated and instruction-like prose is
+  conservatively excluded. Email timestamps never supply event dates.
+- **Clarification:** multiple plausible literal targets produce a controlled
+  question without loading GGUF. The bounded candidate audit happens before the
+  final public chunk limit. Repeated date announcements corroborate one result
+  only for a qualified named event and explicit year with identical literal dates;
+  otherwise duplicate values across emails do not establish identity.
+- **Generation:** synthesis and other unresolved questions retain Qwen3-0.6B,
+  complete-source token packing and strict citation validation. Direct date/status
+  questions without a verified proof safely abstain rather than ask the model to
+  invent one. No application citation is attached to arbitrary generated prose.
+
+Deterministic and extractive citations are constructed from provenance, then run
+through the existing permitted-source citation checks. Extractive spans are checked
+again against the authorized stored body and selected context just before use.
+Metadata, extraction, candidates and clarification options use the authenticated
+owner's scoped SQL session before ordering/limits. A foreign `email_id` produces
+no sources, just like an unknown ID; it cannot contribute an ambiguity witness.
+
+#### Frontend response contract
+
+Existing request defaults and the four original response fields remain. Successful
+answers now add `answer_mode` and `verification`; see the freeze policy below.
+Additions:
+
+- Optional positive request `email_id` narrows retrieval to a user's selected email.
+  This is stateless: resend the original question with the selected ID.
+- Status `answered`: show `answer`, `sources`, and `citations` using the verification
+  label below. This status means a response was produced, not that prose is verified.
+- Status `needs_clarification`: show the controlled question and optional
+  `clarification_options` (at most five `{email_id, subject, date}` items).
+  No full body, raw payload or invented factual citation is included. One source
+  containing conflicting records may offer only one email; ask for a finer qualifier.
+- Status `insufficient_evidence`: safe no-answer state with empty sources/citations.
+- Provider/infrastructure failures remain HTTP 503; malformed model output is a
+  safe HTTP 200 no-answer response. Validation errors remain HTTP 422.
+
+Generic example (IDs and content are fictitious):
+
+```json
+{"question":"What happened with my application?"}
+```
+
+```json
+{
+  "answer":"I found multiple possible answers. Which application or event do you mean? Select an email or specify its organization and date.",
+  "sources":[], "citations":[], "status":"needs_clarification",
+  "clarification_options":[
+    {"email_id":501,"subject":"Cedar application","date":"12 May 2028"},
+    {"email_id":502,"subject":"Birch application","date":"13 May 2028"}
+  ]
+}
+```
+
+Follow-up: `{"question":"What happened with my application?","email_id":501}`.
+A supported answer could be
+`Your application is currently under review. [email_id=501]`.
+Treat all source metadata as untrusted display text in the frontend; do not render
+subjects or answers as raw HTML.
+
+#### Accepted boundaries
+
+The extraction vocabulary is intentionally small, not a general language inference
+engine. It can miss paraphrases, translated organization names, partial dates and
+complex syntax. Arabic questions get controlled Arabic framing; an English source
+status may remain quoted in English to preserve its literal evidence. Candidate
+audits are bounded to 64 chunks and do not prove uniqueness across an entire mailbox.
+Ambiguity is established from supported alternatives, not merely high cosine scores.
+No complete claim-entailment guarantee exists for free-form synthesis: citation
+membership is necessary but insufficient. Safe false abstentions, retrieval misses
+on unfamiliar phrasings and slow CPU generation remain possible. Evidence and
+clarification options are not a complete timeline of an application or event.
+
+#### Freeze policy: generated synthesis is not verified extraction
+
+The application sets these fields from the executed answer path, never from model
+text or source instructions:
+
+| Result | answer_mode | verification | Frontend treatment |
+|---|---|---|---|
+| Stored/labeled fact | deterministic_fact | source_supported | Show as source-supported fact |
+| Literal extraction | extractive | source_supported | Show as source-supported excerpt |
+| Generated prose | generated_synthesis | not_semantically_verified | Show as unverified generated synthesis with source links |
+| Clarification | omitted | omitted | Render clarification options using status |
+| No answer | omitted | omitted | Render insufficient-evidence state using status |
+
+`source_supported` describes the existing literal/provenance checks, not independent
+verification that the email's assertions are true. It does not guarantee complete
+mailbox coverage. A missing or unknown verification value must never be interpreted
+as verified by a client.
+
+Every successful generated answer also starts with an application-owned notice:
+
+> Generated synthesis, not a semantically verified extraction. It may change conditions, negation or exceptions; check the original email before relying on it.
+
+Arabic questions receive the corresponding Arabic notice. This notice remains in
+`answer` so clients that ignore new fields still display the limitation. Frontends
+must preserve it (or render an equally prominent persistent warning) and must not
+label synthesis as verified, turn it into a confirmed task/commitment, or trigger
+actions from it without reviewing the source. No chain-of-thought is exposed.
+
+The notice is added only after the original generated text passes citation and
+role checks. It cannot rescue uncited, malformed or foreign-source output. No
+citations are manufactured for the notice. Existing safe abstention and provider
+HTTP errors remain unchanged. Requests and original field types/status values are
+unchanged; clients asserting an exact response key set must allow additive fields.
+Generated answer text intentionally gains the safety notice; fact/extractive text
+does not change.
+
+This is a universal presentation policy, not a conditional-language detector or a
+claim of NLI/semantic entailment. Even a fluent synthesis with correct citations
+may omit an `if`, negate a fact, or lose an exception. The same unverified label
+applies whether the model preserved or dropped the condition. General synthesis
+accuracy, bounded retrieval/extraction, safe false abstentions and CPU latency are
+accepted limitations of this frontend baseline.
