@@ -1,6 +1,7 @@
 """Chunk-level semantic retrieval for RAG."""
 
 import math
+from time import perf_counter
 from collections import defaultdict
 
 from sqlalchemy import select, text
@@ -85,31 +86,24 @@ def retrieve_rag_chunks(
         if min_score is not None:
             statement = statement.where(distance <= 1.0 - min_score)
 
+        started = perf_counter()
         rows = db.execute(statement).all()
+        vector_seconds = perf_counter() - started
+
+        from rag_candidates import as_chunks, merge_candidates
+        candidates = merge_candidates(db, query, as_chunks(rows), distance, model, min_score)
+        for candidate in candidates:
+            candidate['retrieval']['vector_seconds'] = vector_seconds
 
         results = []
         chunks_per_email = defaultdict(int)
 
-        for row in rows:
-            if chunks_per_email[row.email_id] >= max_chunks_per_email:
+        for candidate in candidates:
+            email_id = candidate['email_id']
+            if chunks_per_email[email_id] >= max_chunks_per_email:
                 continue
-
-            score = max(
-                -1.0,
-                min(1.0, 1.0 - float(row.distance)),
-            )
-
-            results.append(
-                {
-                    "chunk_id": row.chunk_id,
-                    "email_id": row.email_id,
-                    "chunk_index": row.chunk_index,
-                    "score": score,
-                    "text": row.chunk_text,
-                }
-            )
-
-            chunks_per_email[row.email_id] += 1
+            results.append(candidate)
+            chunks_per_email[email_id] += 1
 
             if len(results) >= limit:
                 return results

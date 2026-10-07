@@ -1,12 +1,16 @@
 # AI Smart Inbox
 
+For current setup, see [Production backend architecture](#production-backend-architecture).
+Older AI-phase backfill/evaluation instructions below are operator-only tools; do not
+run them as part of backend migration or expose them through HTTP.
+
 AI Smart Inbox is a student portfolio MVP built with FastAPI. It connects to Gmail,
 cleans email content, and uses a fine-tuned DistilBERT model to classify messages.
 
 ## Features
 
 - Google OAuth login with read-only Gmail access
-- Fetch the latest 5 Gmail messages
+- Account-owned, paginated initial Gmail sync and incremental history sync
 - Extract each email's ID, sender, date, subject, and body
 - Extract and clean plain-text and HTML email content
 - Multi-label email classification using DistilBERT
@@ -57,13 +61,11 @@ text-classification-finetuning/
 
 ## Installation
 
-Use Python 3.11. From the project folder, create and activate a virtual environment.
+Use the existing Python 3.11 project environment. From the project folder:
 For Windows PowerShell:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.\env\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ### Model setup
@@ -85,8 +87,9 @@ $env:EMAIL_MODEL_PATH = "C:\path\to\your\model"
 3. Register this redirect URI exactly:
    `http://localhost:8000/auth/google/callback`.
 4. Save your OAuth client configuration as `credentials.json` in the project folder.
-5. Start the app and open `http://localhost:8000/auth/google` in your browser.
-6. Complete consent. The callback saves the local `token.json` file.
+5. Complete the backend setup below, then authorize Swagger with an application bearer token.
+6. Execute `POST /auth/google/start` in Swagger, then open its `authorization_url` in that same browser.
+7. Complete consent. The callback stores encrypted credentials against the authenticated user/account.
 
 If the OAuth app is in testing mode, your Google account must be an allowed test user.
 Use `localhost` consistently when starting login and returning to the callback.
@@ -96,7 +99,7 @@ Use `localhost` consistently when starting login and returning to the callback.
 Run this command from the project folder:
 
 ```powershell
-fastapi dev main.py
+.\env\Scripts\python.exe -m uvicorn main:app --host localhost --port 8000 --no-access-log
 ```
 
 API documentation: [Swagger UI](http://localhost:8000/docs).
@@ -107,8 +110,12 @@ API documentation: [Swagger UI](http://localhost:8000/docs).
 |---|---|---|
 | GET | `/` | Check that the API is running |
 | GET | `/auth/google` | Start Google login |
-| GET | `/auth/google/callback` | Complete OAuth and save credentials locally |
-| GET | `/gmail/messages` | Fetch and classify up to 5 Gmail messages |
+| GET | `/auth/google/callback` | Complete a one-use user-bound OAuth handshake |
+| POST | `/gmail/messages` | Sync the only connected account; use the account-specific route otherwise |
+| POST | `/gmail/accounts/{id}/sync` | Sync one owned account |
+| GET | `/gmail/accounts` | List owned account metadata |
+| DELETE | `/gmail/accounts/{id}/connection` | Disconnect, remove credentials, retain inbox |
+| POST | `/auth/google/start` | Return consent URL and set browser nonce |
 | POST | `/classify-email` | Classify a supplied subject and body |
 
 Example request for `POST /classify-email`:
@@ -120,30 +127,22 @@ Example request for `POST /classify-email`:
 }
 ```
 
-When messages are found, `GET /gmail/messages` returns `count`, `success_count`,
-`failed_count`, and `emails`. Successful entries include `id`, `from`, `date`,
-`subject`, `body`, and `predictions`. A failed entry includes its `id` and the
-safe message `"Failed to process email"`; remaining messages continue processing.
-
-The current empty-inbox response is:
-
-```json
-{"message": "No emails found"}
-```
+`POST /gmail/messages` and the account-specific sync return `count`,
+`success_count`, `failed_count`, `enrichment_failed`, `deleted`, and `emails`.
+Success counts source storage, even if an enrichment stage fails. Empty syncs
+return the same structure with zero counts. GET no longer triggers sync.
 
 ## Run tests
 
 From the project folder:
 
 ```powershell
-pytest -v
+.\env\Scripts\python.exe -m pytest -q
 ```
 
-Gmail tests mock `routes.get_gmail_service`, extraction, and classification. They
-cover success, per-message failures, and empty responses without contacting Gmail.
-OAuth tests use synthetic credentials and mock the token exchange and token-file
-write. No Google login is required for tests. The existing API tests still load the
-local model, so the model files must be available.
+Gmail tests use fake clients, isolated PostgreSQL transactions and synthetic OAuth
+credentials. No live Gmail requests, real GGUF model or embedding downloads are
+used. The existing classifier tests still require its local model files.
 
 ## Training and evaluation
 
@@ -168,8 +167,8 @@ For offline training, `app.py` also accepts `--dataset-file` and `--base-model`.
 Both are ignored by Git. Do not share these files or paste their contents into logs.
 Virtual environments, Python caches, pytest caches, and training outputs are also ignored.
 
-This is a local development MVP. It uses HTTP on localhost for OAuth and stores a
-single account's token locally; it is not a production multi-user authentication system.
+The backend now has authenticated ownership boundaries and encrypted per-account
+credentials. Deployment and browser login requirements are documented below.
 
 ## Current MVP status
 
@@ -270,8 +269,8 @@ text, model name, and the content/chunking version. Unchanged chunks skip encodi
 changed chunks are replaced and stale chunks/old model rows are deleted. It does
 not commit. Bump `CONTENT_VERSION` if preprocessing/chunking behavior changes.
 
-Gmail commits the email first, then indexes finalized **stored** content in a
-separate transaction. Indexing errors are logged without message contents and do
+Gmail stores the source first, then indexes finalized **stored** content in an
+independent savepoint within the account sync transaction. Indexing errors are logged without message contents and do
 not turn a saved email into a failed email. A later sync/backfill retries missing
 or outdated vectors. Existing classification, priority and task behavior is unchanged.
 There is no startup backfill, queue, worker, LLM call or answer generation.
@@ -353,8 +352,9 @@ single-core machines), n_batch=n_ubatch=64, no GPU layers, mmap on, mlock off.
 Loading and generation are locked; one provider and model per application process.
 Use one uvicorn worker. The model loads only on the first generation request.
 The tokenizer checks the FULL formatted prompt plus reserved output before
-inference: too-large requests return 422, without silently truncating evidence.
-Try chunk_limit=2 and max_context_chars=2500 for constrained Arabic requests.
+inference. RAG packs complete SOURCE blocks into that token budget automatically;
+sources that cannot fit are dropped, without slicing facts or source boundaries.
+If none fits, the application abstains without generation.
 
 ### Configuration
 
@@ -435,12 +435,14 @@ Emails remain untrusted, source fields escaped, and prompts grounded. Each answe
 paragraph must cite an ID in the retrieved set. Citation validation verifies
 membership, NOT sentence-level entailment or perfect injection resistance.
 No context -> fixed Arabic/English insufficient-evidence response without model
-loading; exact INSUFFICIENT_EVIDENCE also maps to that response. Invalid/empty
-answers return 502; context overflow returns 422; sanitized backend failures 503.
+loading; exact INSUFFICIENT_EVIDENCE also maps to that response. Invalid/empty,
+uncited and foreign-citation output is discarded and returns a safe application
+abstention (HTTP 200). Actual backend failures return sanitized 503 responses.
 No question/source logging, tools, actions, hosted generation, billing or telemetry
 are added. Only the manual model download contacts Hugging Face; inbox data never
-leaves the machine through this provider. Keep the API bound to localhost within
-the project's existing trusted access boundary. This is not multi-user isolation.
+leaves the machine through this provider. Keep the API bound to localhost. Bearer
+authentication and OwnedSession enforce ownership in every retrieval query before
+ORDER BY and LIMIT; source/citation checks remain additional safeguards.
 
 ### Tests
 
@@ -563,8 +565,8 @@ source spans. Bump `EXTRACTOR_VERSION` when extraction semantics change, or use
 `--force` to refresh explicitly. This freshness check covers facts; it does not
 rebuild or certify old embedding chunks.
 
-Gmail ingestion commits the email first, then independently commits fact extraction
-and semantic indexing. A fact failure logs only email ID/error class and cannot
+Gmail ingestion stores the source first, then uses independent savepoints for fact
+extraction and semantic indexing before committing the account sync transaction. A fact failure logs only email ID/error class and cannot
 discard the email or prevent the subsequent indexing attempt. Backfill retries
 failed emails and commits each successful email separately, with bounded ID batches
 and created/updated/skipped/deleted/failed counts. It changes only facts/checkpoints.
@@ -632,3 +634,344 @@ time remained wrong in generation, and arrival-time retrieval selected an unrela
 email. Therefore this is a useful persistence baseline with important extraction
 and retrieval gaps, not a claim of reliable general factual answering. Production
 migration/backfill were not applied during this evaluation.
+
+### Relational facts and RAG candidate ranking (facts-v2-relations)
+
+The next version reuses `email_facts` and its checkpoints; no schema migration or
+embedding reindex is needed. Original facts retain their keys and IDs. In addition
+to labelled scalars, extraction recognizes a directed route (`from A to B`, Arabic
+equivalents, separate From/To fields, or `A → B`) with clock rows explicitly naming
+the same endpoints. A directed clock pair can accompany a directed route. Labels
+such as Departure/Arrival or Start/End can also introduce a clock on the following
+line. Two isolated clocks never establish roles. Matching endpoints, not row order,
+decides departure versus arrival; duplicate endpoint clocks, conflicting labels,
+conditional/cancelled groups and incomplete groups are rejected conservatively.
+
+Derived facts contain origin, destination, departure time and arrival time where
+proved. The existing JSONB normalization metadata also carries endpoint names and
+ordered literal proof anchors. Source offsets still point into the stored body;
+the derived source label names the assigned role and the extraction reason explains
+its origin. If main-content selection removes a short heading, a complete directed
+route and its named clock rows can still prove the relationship. Every proof anchor
+must remain in order within one selected record. Records/chunks cannot contribute
+unrelated fragments to manufacture a relationship. The cleaner and stored chunks
+are unchanged. Clock colons no longer create false record boundaries.
+
+RAG now unions E5 candidates with a separate persisted-role candidate query before
+reranking. The vector pool still starts at max(50, 10 × limit), expanding only for
+per-email diversity up to 1000. The role path selects at most 64 chunks (plus one
+overflow sentinel), ordered by semantic distance within emails containing the
+requested role. It uses a correlated EXISTS lookup and the existing email/role
+and chunk/email indexes. Candidate sources are merged by chunk ID using reciprocal
+rank fusion (constant 60); raw cosine is never added to a binary role signal.
+Current, provenance-validated role/qualifier matches form the first ranking tier.
+Unvalidated role nominations receive no authority over semantic nonmatches.
+Stale facts, absent proof anchors and ambiguous records still cannot resolve an
+answer. Saturated role lookups abstain for scalar intents rather than claim
+uniqueness from an incomplete pool. The returned `score` remains cosine similarity.
+Minimum cosine filters and ownership apply inside SQL before sort/LIMIT. Final
+per-email caps and requested limits apply after reranking. No embedding backfill,
+schema change, lexical full-table body search or sender-specific rule is used.
+`/search/semantic` retains its existing purely semantic behavior; this ranking is
+specific to RAG source selection.
+
+### Scaling limits and token packing
+
+`POST /ask` retains its defaults: 4 chunks, at most 2 per email, 6000 context
+characters. Characters remain an additional transport cap, not a token estimate.
+Only the generative path loads the GGUF vocabulary (`vocab_only=True`, no model
+weights) to count the exact escaped ChatML prompt. It reserves the configured
+output budget (256 tokens by default) and 32 safety tokens within the actual
+2048-token context. Once generation loads the model, its tokenizer is reused.
+Deterministic facts bypass both tokenization and generation.
+
+Packing preserves ranked complete sources and skips lower-priority blocks that
+do not fit. A single oversized block may be omitted entirely: this intentionally
+prefers abstention over truncating a negation, relationship or structured record.
+The backend retains its final token guard. Model output failing citation checks,
+empty output, incomplete reasoning tags or overflow are discarded. HTTP 422 is
+still appropriate for invalid request fields or an oversized embedding question;
+ordinary excess retrieved evidence does not cause it. Provider initialization or
+execution failures remain 503. Citation membership is not factual entailment:
+a small model can still produce a wrong answer with a valid citation.
+
+Candidate results expose internal counts, source ranks and stage timings for
+local evaluation, without changing the public response. Work is bounded in Python
+by candidate limits; database work can still grow with the number of matching
+role-bearing emails. Broad role queries may saturate and abstain. Literal place
+qualifiers do not translate place names between languages. No global lexical
+body scan or second email index was added: persisted roles identify candidate
+emails, and their existing chunks supply semantic relevance and proof. More
+indexes should be justified with query plans at the target workload.
+
+On the measured local corpus (~3,900 emails), the role query used existing
+indexes and examined four candidate chunks, taking about 1 ms in a warm SQL
+EXPLAIN ANALYZE. The vector plan instead traversed the owner's chunk rows and
+sorted cosine distances (~28 ms SQL); HNSW existence does not guarantee planner
+use. Do not assume sublinear vector-search scaling from these measurements.
+Three-run end-to-end retrieval medians (including query encoding) were roughly
+0.39–0.70 seconds after the change. A small seven-target check improved Recall@4
+from 6/7 to 7/7, but supported questions still sometimes receive safe false
+abstentions from the 0.6B model. This is not a claim of general answer reliability.
+
+`fact_roles.py` supplies a small bilingual vocabulary for departure/arrival,
+start/end, origin/destination, travel dates, and time/date. It supports direct questions such as
+`What is the arrival time?`, `متى المغادرة؟`, and `وش وقت الوصول؟`. Literal direction,
+subject/sender, date and reference qualifiers narrow candidates. Different matching
+emails/records remain ambiguous even when their values coincide: the service returns
+insufficient evidence when the candidate pool reveals a conflict, including when
+`chunk_limit=1` would hide a second candidate. Otherwise an unresolved lookup follows
+the existing generation path. Citations, SOURCE escaping and `/ask` fields remain
+unchanged. Generic explicit old/new fields keep their existing resolver behavior.
+
+Upgrade existing facts using the same safe workflow:
+
+```powershell
+.\env\Scripts\python.exe backfill_email_facts.py
+.\env\Scripts\python.exe backfill_email_facts.py --apply
+.\env\Scripts\python.exe backfill_email_facts.py --apply
+```
+
+The first command is read-only preview; inspect it before applying. The last command
+should skip unchanged facts. This phase verified all original 34 keys/IDs/values and
+source spans before and after local application: 8 created, 34 version updates,
+0 deleted, 0 failures; final totals 42 facts and 89 checkpoints. Repeat application
+created/updated/deleted zero rows and skipped 42 facts across 89 unchanged emails.
+No email bodies, summaries, tasks, vectors or schema were rewritten.
+
+Current limits: the bounded candidate pool can miss a relevant email; lexical
+qualifiers are not general translation/entity resolution; unusual tables, multi-leg
+routes, timezone conversions, indirect wording and broad paraphrases may remain
+unresolved. Relation groups are bounded to 20 nonempty lines / 1000 characters.
+Main-content filtering can still omit structures. A supported direct lookup bypasses
+GGUF; a free-form/unsupported question can still reach the imperfect generator.
+Authorization now uses mandatory owned request sessions; SQL candidate filtering
+precedes fact-aware ranking. Operator evaluation scripts remain privileged tools.
+
+Validation for this phase: 792 isolated PostgreSQL tests pass, including generic
+relational structures, contradiction/ambiguity, record boundaries, qualifier-aware
+ranking, literal provenance, version refresh, and existing security/API regressions.
+The local 8-case persisted evaluation resolved both departure (11:35) and arrival
+(13:25) deterministically, preserved the booking/deadline successes, and correctly
+abstained on the unsupported question. All 8 expected outcomes passed in this small
+evaluation; it is not a general accuracy guarantee. The Arabic travel-date paraphrase,
+event date and application-status question still used the generator. No model
+benchmarking or prompt tuning was performed.
+
+
+## Production backend architecture
+
+### Ownership and authentication
+
+`AppUser -> GmailAccount -> Email -> predictions/tasks/chunks/facts/checkpoints`
+is the ownership path. One user may connect multiple Gmail accounts. A normalized
+Google mailbox address belongs to one application user; reconnect cannot transfer
+it. Email identity is `(account_id, message_id)`, enforced by PostgreSQL.
+
+Application authentication uses 256-bit random, revocable bearer tokens. Only their
+SHA-256 hashes and UTC expiry are stored. Tokens expire after 7 days by default
+(maximum 30). They are issued through the operator CLI, not a public registration
+endpoint. A numeric user ID/header/query parameter is never authentication.
+Gmail consent grants mailbox access; it does not log a user into the application.
+
+Every data route uses `get_db`, which creates a fresh `OwnedSession` bound to the
+verified principal. Central SQLAlchemy criteria cover accounts, credentials,
+emails and every email child, including aliases, counts and column projections.
+Vector candidates are filtered in SQL before ORDER BY/LIMIT and fact-aware
+ranking. Context construction reloads source IDs through that same boundary;
+existing citation validation permits only the resulting source set. Core/raw SQL
+and bulk request-session writes are rejected, apart from fixed internal catalog,
+vector-settings and advisory-lock statements. Flush checks prohibit cross-owner
+parents and ownership reassignment. New mapped types must join this policy before
+request sessions can use them.
+
+`SessionLocal` is privileged and restricted to authentication/OAuth control-plane
+operations and operator scripts. Never introduce it into data routes. This is an
+application boundary, not PostgreSQL RLS or protection against arbitrary trusted
+server code/DB administrator access. Do not use the current local superuser DB
+role for deployment: use a dedicated limited runtime role and a separate migration
+role. DB role provisioning, TLS, host/backup encryption and OS access controls are
+operational setup, not performed automatically by this migration.
+
+### OAuth and token storage
+
+Only `gmail.readonly` is requested. Start requires application authentication;
+callback uses a server-stored, ten-minute, one-use state plus browser-bound nonce
+and encrypted PKCE verifier. The nonce cookie is HttpOnly, SameSite=Lax, path-bound,
+and Secure with HTTPS. State is consumed before token exchange. Callback reads
+Google's mailbox profile, rejects accounts belonging to another user, and stores
+credentials encrypted in `oauth_credentials`. No token is returned in API JSON.
+
+`OAUTH_TOKEN_KEYS` is a comma-separated Fernet key ring, newest key first. Fernet
+provides authenticated encryption; `v1:` identifies the storage format. Invalid
+keys/ciphertext fail closed. To rotate, add a new key first, run the operator
+`rotate-encryption` command, allow outstanding ten-minute OAuth handshakes to
+expire, then retire the old key only after verifying backups/recovery requirements.
+Refreshes (including automatic mid-sync refreshes) persist encrypted credentials.
+Missing refresh tokens on reconnect retain the existing account token; first-time
+connections without an offline token are rejected. Revoked credentials require
+reconnect. Disconnect deletes local credentials and keeps the inbox; Google-side
+revocation remains available in the user's Google account settings.
+
+`token.json` is not read or written by the application. Keep any legacy copy
+protected until reconnection is verified; delete/revoke it manually afterward.
+No automatic import or identity guessing is performed.
+
+### Configuration and manual activation
+
+New settings:
+
+| Setting | Meaning |
+|---|---|
+| `OAUTH_TOKEN_KEYS` | Required for OAuth/token use; secret Fernet key ring |
+| `GOOGLE_CLIENT_FILE` | OAuth client JSON path; defaults to `credentials.json` |
+| `GOOGLE_REDIRECT_URI` | Registered callback; defaults to loopback development URL |
+| `APP_ENV` | `development` permits loopback HTTP only; use `production` with HTTPS |
+
+Existing `DATABASE_URL`, `TEST_DATABASE_URL`, model/embedding settings remain.
+There is no hardcoded model path. No `.env` or real secret files were modified.
+Configuration errors never return secret values. Wildcard CORS and debug mode are
+not enabled. The ASGI middleware removes query strings from the server access-log
+scope while preserving request parsing. Also disable/sanitize proxy access logs:
+OAuth codes and semantic queries must not be logged outside the application.
+
+**Local database activation is intentionally manual.** Existing mailbox ownership
+has not been verified. Before running these steps, stop the old app, verify that
+`DATABASE_URL` names `ai_smart_inbox`, and explicitly identify who owns its legacy
+mailbox. Do not infer ownership from message senders.
+
+1. Back up the intended database using your configured PostgreSQL credentials:
+
+   ```powershell
+   pg_dump -h localhost -U postgres -d ai_smart_inbox -Fc -f ai_smart_inbox_before_backend_hardening.dump
+   ```
+
+2. Apply the migration (no backfill/reprocessing commands are required):
+
+   ```powershell
+   .\env\Scripts\python.exe -m alembic upgrade b3c8d5e024fa
+   ```
+
+   All existing emails move to a disabled `legacy-quarantine` user/account. IDs,
+   bodies, predictions, tasks, vectors, facts and provenance stay intact. Raw
+   `email_date` stays intact; safely parsed headers populate `sent_at`. Invalid,
+   absent and timezone-less headers receive `invalid`, `missing` or `naive` status;
+   no date/timezone is guessed. `message_at` remains NULL until Google supplies it.
+   Downgrade is allowed only before any account leaves quarantine; once real
+   accounts exist it refuses rather than discard ownership.
+
+3. Generate a key locally and store it in untracked `.env` as `OAUTH_TOKEN_KEYS`:
+
+   ```powershell
+   .\env\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   .\env\Scripts\python.exe backend_admin.py create-user --name local-owner
+   ```
+
+   Store the displayed application bearer token securely. Do not paste it in
+   source, tickets or logs. `issue-token --user-id <id>` issues another token;
+   `revoke-tokens --user-id <id>` revokes all tokens for that user.
+
+4. Start the app using the project interpreter:
+
+   ```powershell
+   .\env\Scripts\python.exe -m uvicorn main:app --host localhost --port 8000 --no-access-log
+   ```
+
+   Open `/docs` on that same hostname, use **Authorize** with the application token,
+   execute `POST /auth/google/start`, and open its returned `authorization_url` in
+   the **same browser**. Consent completes against the matching nonce cookie.
+   Check `/gmail/accounts` for the verified account ID/address.
+
+5. Before the first sync, explicitly attest that this verified mailbox owns the
+   old inbox, then link it (replace the placeholder with the verified account ID):
+
+   ```powershell
+   .\env\Scripts\python.exe backend_admin.py claim-legacy --account-id <verified-account-id> --confirm-ownership
+   ```
+
+   The operator command preserves email IDs and children and rejects duplicate
+   message conflicts. It cannot prove mailbox identity for you. Do not run it if
+   ownership is uncertain. Quarantined data remains invisible to regular users.
+
+6. Call `POST /gmail/accounts/{id}/sync` with the bearer token. Repeat once to
+   verify history-based incremental sync. Inspect status and counts. No message
+   sending or Gmail modification API is used.
+
+Do not run production schema commands from tests. The tests validate a distinct
+`_test` database and block production-engine connections. Migration roundtrips run
+in a transaction-isolated schema of that database. Test rows roll back after each
+test; the test schema itself retains the new migration tables.
+
+### Synchronization, transactions and processing
+
+Bootstrap captures the current Gmail history ID before listing all message pages
+(including spam/trash). That starting point ensures changes during listing are
+replayed next time. Incremental sync consumes every history page, deduplicates
+message IDs and fetches current content/labels. A message GET 404 deletes its local
+copy and FK-cascaded children; successful full recovery also removes messages no
+longer present. History 404 triggers full recovery. Other errors retain the cursor.
+The cursor advances only after all source writes succeed. Successful writes survive
+partial fetch failures; replay is safe because of account/message uniqueness.
+
+A PostgreSQL transaction advisory lock per account rejects overlapping syncs with
+409. A row lock also serializes credential reconnect/disconnect. Network retries
+are bounded (three retries for supported transient API failures, 30-second request
+timeouts). Sync is synchronous and may hold a transaction during a large bootstrap;
+there is no scheduler, worker or queue. This is appropriate for the current local
+size; large-mailbox latency/transaction duration still needs load testing.
+
+Raw Gmail payload, headers, labels and typed timestamps are stored before optional
+enrichment. `email_pipeline.py` runs cleaning, classification/priority, summary,
+tasks/deadlines, facts and embedding stages using savepoints. Each records hash,
+version, status, attempt count and a safe error code. One enrichment failure leaves
+the source and independent stages intact. A later sync retries failed stages even
+when there are no new history events. Changed inputs/version trigger replacement;
+existing pre-checkpoint derived data is adopted initially to preserve legacy work.
+Fact/index stages keep their own provenance and content hashes. Bump the relevant
+stage version when changing derivation logic. Operator maintenance scripts are
+privileged and must not be exposed as HTTP endpoints.
+
+A process crash before transaction commit rolls that sync back; the prior cursor
+ensures replay. No distributed transaction can atomically commit Google's token
+rotation and PostgreSQL: a DB failure immediately after external token rotation
+may require reconnect. Transactions and encrypted refresh persistence cover normal
+success and handled provider failures, not that external-system atomicity gap.
+
+Timestamp fields:
+
+- `email_date` / API `date`: original Date header text retained for compatibility.
+- `sent_at`: safely parsed, aware Date-header timestamp; never an event/deadline.
+- `message_at`: Gmail `internalDate` in epoch milliseconds, stored as timestamptz;
+  Gmail ordering timestamp, not a promise of human sent time or an event date.
+- `created_at`: local database insertion time.
+- `last_synced_at`: completion timestamp of source sync.
+- Existing task/fact date-only values and deadline timestamps keep their semantics.
+
+UTC conversion happens on input. PostgreSQL may display equivalent aware values
+in the session timezone (locally Asia/Riyadh). No event date is synthesized from a
+message timestamp, and RAG grounding/prompt rules were not tuned in this phase.
+
+### API compatibility and remaining deployment work
+
+All data/search/ask/classify/account/start routes require a bearer token. Health and
+API documentation are public; callback uses its one-use handshake instead of a
+bearer header because Google redirects cannot add that header. Unknown/unowned
+email/account IDs return the same 404. Inbox filters, pagination, sorting and
+`/ask` payload remain; detail/list add typed timestamps. Email detail also reports safe per-stage processing status/attempt counts so failed
+or stale enrichment is visible. Inbox listing excludes both
+full body and raw payload from SQL loading. Raw payload/credential fields are never
+serialized. GET `/gmail/messages` was intentionally replaced with POST.
+
+The backend auth mechanism is usable for controlled backend clients. Browser
+login/SSO, account recovery/MFA, managed secret storage, TLS termination, deployment
+rate/concurrency limits, monitoring, retention policy, restore drills and an actual
+least-privilege DB role are still deployment/frontend work. A compromised operator
+or arbitrary server code can access the privileged maintenance connection; ORM
+scoping is not a substitute for DB/host security. The current local DB remains
+unmigrated until its ownership is explicitly confirmed and these manual steps are
+performed. Live Google reconnection and incremental sync must then be verified.
+
+References: [Gmail synchronization](https://developers.google.com/workspace/gmail/api/guides/sync),
+[Gmail message timestamp semantics](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages),
+[SQLAlchemy loader criteria](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria),
+[Fernet and key rotation](https://cryptography.io/en/latest/fernet/).

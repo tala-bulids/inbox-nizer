@@ -61,6 +61,8 @@ def semantic_test_schema():
                 scripts.get_revision('f1a6b3c802de').module.upgrade()
             if not inspect(connection).has_table('email_facts'):
                 scripts.get_revision('a2b7c4d913ef').module.upgrade()
+            if not inspect(connection).has_table('app_users'):
+                scripts.get_revision('b3c8d5e024fa').module.upgrade()
 
 
 @pytest.fixture(autouse=True)
@@ -72,7 +74,18 @@ def fake_embedding_encoder(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def test_database(semantic_test_schema):
+def fake_rag_token_budget(monkeypatch):
+    # Never load a real GGUF in tests.
+    from types import SimpleNamespace
+    from local_llm import _qwen_prompt
+    fake = SimpleNamespace(context_size=2048, max_new_tokens=256,
+        count_tokens=lambda messages: len(_qwen_prompt(messages).encode('utf-8')) // 3 + 1)
+    monkeypatch.setattr('rag_budget.get_budget', lambda: fake)
+    return fake
+
+
+@pytest.fixture(autouse=True)
+def test_database(semantic_test_schema, monkeypatch):
     connection = test_engine.connect()
 
     transaction = connection.begin()
@@ -86,12 +99,35 @@ def test_database(semantic_test_schema):
     )
 
     db = TestingSessionLocal()
+    from backend_models import AppUser, GmailAccount
+    from models import Email
+    from authentication import current_user, auth_session, Principal
+    from ownership import OwnedSession
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv('OAUTH_TOKEN_KEYS', Fernet.generate_key().decode())
+    monkeypatch.setenv('APP_ENV', 'development')
+    monkeypatch.setenv('GOOGLE_REDIRECT_URI', 'http://localhost:8000/auth/google/callback')
+    user = AppUser(name='fixture-user', active=True)
+    db.add(user)
+    db.flush()
+    account = GmailAccount(user_id=user.id, address='fixture@example.invalid', status='connected')
+    db.add(account)
+    db.commit()
+    db.info.update(user_id=user.id, account_id=account.id)
+
+    @event.listens_for(db, 'before_flush')
+    def assign_fixture_account(session, context, instances):
+        for obj in session.new:
+            if isinstance(obj, Email) and obj.account_id is None:
+                obj.account_id = account.id
 
     def override_get_db():
-        try:
-            yield db
-        finally:
-            pass
+        with OwnedSession(bind=connection, user_id=user.id, autoflush=False,
+                          join_transaction_mode='create_savepoint') as owned:
+            yield owned
+
+    app.dependency_overrides[current_user] = lambda: Principal(user.id)
+    app.dependency_overrides[auth_session] = lambda: db
 
     app.dependency_overrides[get_db] = override_get_db
 

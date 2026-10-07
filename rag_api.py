@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from embedding_service import EmbeddingInputError
 from local_llm import get_llm_provider, ContextTooLarge, ProviderUnavailable
-from rag_service import answer_email_question, InvalidGeneration
+from rag_service import answer_email_question, InvalidGeneration, insufficient_answer
 
 router = APIRouter()
 
@@ -59,10 +59,10 @@ class _LazyProvider:
 def ask(request: QuestionRequest, db: Session = Depends(get_db)):
     try:
         return answer_email_question(db, llm=_LazyProvider(), **request.model_dump())
-    except (ContextTooLarge, EmbeddingInputError) as error:
+    except EmbeddingInputError as error:
         raise HTTPException(422, str(error)) from None
-    except InvalidGeneration:
-        raise HTTPException(502, 'Generated answer failed validation; try a more specific question.') from None
+    except (InvalidGeneration, ContextTooLarge):
+        return insufficient_answer(request.question)
     except ProviderUnavailable as error:
         raise HTTPException(503, str(error)) from None
     except Exception:

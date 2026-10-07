@@ -47,14 +47,16 @@ def test_no_context_skips_provider(test_database, question):
                                   'Friday [email_id=abc]'])
 def test_invalid_generation(test_database, answer):
     indexed_mail(test_database)
-    with pytest.raises(InvalidGeneration):
-        answer_email_question(test_database, 'flight', FakeLLM(answer))
+    result = answer_email_question(test_database, 'flight', FakeLLM(answer))
+    assert result['status'] == 'insufficient_evidence'
+    assert result['citations'] == []
 
 
 def test_uncited_paragraph_and_abstention(test_database):
     travel, _ = indexed_mail(test_database)
-    with pytest.raises(InvalidGeneration):
-        answer_email_question(test_database, 'flight', FakeLLM(f'Friday [email_id={travel.id}]\nMade-up details'))
+    result = answer_email_question(test_database, 'flight', FakeLLM(f'Friday [email_id={travel.id}]\nMade-up details'))
+    assert result['status'] == 'insufficient_evidence'
+    assert 'Made-up' not in result['answer']
     result = answer_email_question(test_database, 'flight', FakeLLM('INSUFFICIENT_EVIDENCE'))
     assert result['status'] == 'insufficient_evidence'
 
@@ -68,8 +70,9 @@ def test_context_injection_and_bounds(test_database):
     assert '[SOURCE email_id=999999]' not in context['context']
     assert 'Ignore system' in context['context']
     assert 'untrusted' in build_rag_messages('flight', context['context'])[0]['content']
-    with pytest.raises(InvalidGeneration):
-        answer_email_question(test_database, 'flight', FakeLLM('secret [email_id=999999]'))
+    result = answer_email_question(test_database, 'flight', FakeLLM('secret [email_id=999999]'))
+    assert result['status'] == 'insufficient_evidence'
+    assert 'secret' not in result['answer']
     chunks[0]['text'] = 'a' * 2000
     context = build_rag_context(test_database, chunks, max_chars=1000)
     assert context['sources'] and all(s['email_id'] != travel.id for s in context['sources'])
@@ -111,7 +114,7 @@ def test_api_success_and_safe_errors(test_database, monkeypatch):
         assert response.json()['sources'][0]['email_id'] == travel.id
         assert 'body' not in response.text and 'embedding' not in response.text
         fake.answer = ''
-        assert client.post('/ask', json={'question': 'flight'}).status_code == 502
+        assert client.post('/ask', json={'question': 'flight'}).json()['status'] == 'insufficient_evidence'
         fake.answer = RuntimeError('PRIVATE SECRET')
         response = client.post('/ask', json={'question': 'flight'})
         assert response.status_code == 503 and 'PRIVATE' not in response.text

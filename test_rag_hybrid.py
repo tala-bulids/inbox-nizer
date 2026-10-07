@@ -91,8 +91,10 @@ def test_deterministic_output_still_passes_citation_validation(test_database, mo
     setup_evidence(test_database, monkeypatch, 'status: Under review')
     monkeypatch.setattr('rag_service.format_facts', lambda facts: 'Under review [email_id=99999]')
     llm = SpyLLM()
-    with pytest.raises(InvalidGeneration, match='citation'):
-        answer_email_question(test_database, 'What is the status?', llm)
+    result = answer_email_question(test_database, 'What is the status?', llm)
+    assert result['status'] == 'insufficient_evidence'
+    assert result['citations'] == []
+    assert '99999' not in result['answer']
     assert llm.calls == 0
 
 

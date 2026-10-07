@@ -69,6 +69,11 @@ def resolve_answer(question, evidence):
     Single-field compatibility is exposed through answer_candidate below.
     Facts remain literal and carry provenance in the selected source chunk.
     """
+    from fact_roles import intent, matching_fields
+    request = intent(question)
+    if request:
+        matches = matching_fields(request, evidence)
+        return matches if len(matches) == 1 else []
     normalized = unicodedata.normalize('NFKC', question).casefold().strip()
     if not re.match(r'^(what|when)\b|^(ما|متى)\s', normalized):
         return []
@@ -135,7 +140,7 @@ def answer_candidate(question, evidence):
 
 def format_facts(facts):
     """Application-owned wording; no model may rewrite literal values."""
-    return '\n'.join(f"{f['source_label']}: {f.get('display_value', f['value'])} [email_id={f['email_id']}]" for f in facts)
+    return '\n'.join(f"{f.get('answer_label', f['source_label'])}: {f.get('display_value', f['value'])} [email_id={f['email_id']}]" for f in facts)
 
 
 def has_role_conflict(answer, candidate):
@@ -150,5 +155,7 @@ def has_role_conflict(answer, candidate):
 
 
 def is_abstention(answer):
-    # The service validates any citations before discarding refusal prose.
-    return re.search(r'\bINSUFFICIENT_EVIDENCE\b', answer) is not None
+    # Discard clear refusal prose even when the model adds syntactically valid citations.
+    return bool(re.search(r'\binsufficient[\s_]+evidence\b|'
+                          r'\b(?:cannot|could not|can\'t) (?:find|verify|determine)\b|'
+                          r'لا توجد معلومات كافية|لم أتمكن من (?:العثور|التحقق)', answer, re.I))

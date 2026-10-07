@@ -1,17 +1,15 @@
 """Orchestration for retrieval-augmented email questions."""
 
 import re
-from llm_provider import LLMProvider
+from llm_provider import LLMProvider, InvalidGeneration
 from rag_context import build_rag_context
 from fact_store import fact_evidence
 from rag_prompt import build_rag_messages
 from rag_retrieval import retrieve_rag_chunks
 from rag_evidence import select_evidence
 from rag_grounding import resolve_answer, format_facts, has_role_conflict, is_abstention
-
-
-class InvalidGeneration(RuntimeError):
-    """Generation was empty or failed citation validation."""
+from rag_budget import pack_context
+from local_llm import ContextTooLarge
 
 
 def _validate_citations(answer, sources):
@@ -31,6 +29,14 @@ def insufficient_answer(question):
               if re.search(r'[\u0600-\u06ff]', question)
               else 'The retrieved sources do not contain enough information to answer this question.')
     return {'answer': answer, 'sources': [], 'citations': [], 'status': 'insufficient_evidence'}
+
+
+def unverified_answer(question):
+    result = insufficient_answer(question)
+    result['answer'] = ('لم أتمكن من استخراج إجابة موثوقة من المصادر المسترجعة.'
+                        if re.search(r'[\u0600-\u06ff]', question)
+                        else 'I could not verify an answer from the retrieved sources.')
+    return result
 
 
 def prepare_rag_request(
@@ -70,6 +76,9 @@ def prepare_rag_request(
 
     enriched, fact_audit = fact_evidence(db, context_result.get("evidence", []), preview=preview_facts)
     facts = resolve_answer(question, enriched)
+    ambiguous = any(c.get('ranking', {}).get('ambiguous') for c in chunks)
+    if ambiguous:
+        facts = []
     return {
         "messages": messages,
         "sources": context_result["sources"],
@@ -79,6 +88,7 @@ def prepare_rag_request(
         "answer_candidate": facts[0] if len(facts) == 1 else None,
         "resolved_facts": facts,
         "structured_facts": fact_audit,
+        "ambiguous_facts": ambiguous,
     }
 
 
@@ -103,29 +113,33 @@ def answer_email_question(
         preview_facts=preview_facts,
     )
 
-    if not prepared['sources']:
+    if not prepared['sources'] or prepared.get('ambiguous_facts'):
         return insufficient_answer(question)
     facts = prepared['resolved_facts']
     if facts:
         answer = format_facts(facts)
     else:
-        answer = llm.generate(prepared["messages"])
+        packed = pack_context(question, prepared['context'], prepared['sources'])
+        if not packed['sources']:
+            return insufficient_answer(question)
+        prepared['sources'] = packed['sources']
+        try:
+            answer = llm.generate(packed['messages'])
+        except (InvalidGeneration, ContextTooLarge):
+            return unverified_answer(question)
         if not isinstance(answer, str) or not answer.strip():
-            raise InvalidGeneration("Generation returned an empty answer")
+            return unverified_answer(question)
         answer = answer.strip()
         if is_abstention(answer):
-            if '[email_id' in answer:
-                _validate_citations(answer, prepared['sources'])
-            result = insufficient_answer(question)
             # A model refusal is not proof that the source lacks the answer.
-            result['answer'] = ('لم أتمكن من استخراج إجابة موثوقة من المصادر المسترجعة.'
-                                if re.search(r'[\u0600-\u06ff]', question)
-                                else 'I could not verify an answer from the retrieved sources.')
-            return result
-    cited = _validate_citations(answer, prepared['sources'])
+            return unverified_answer(question)
+    try:
+        cited = _validate_citations(answer, prepared['sources'])
+    except InvalidGeneration:
+        return unverified_answer(question)
 
     if has_role_conflict(answer, prepared.get('answer_candidate')):
-        raise InvalidGeneration('Generation contradicts the requested labelled field')
+        return unverified_answer(question)
 
     return {
         "answer": answer.strip(),

@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 from threading import Lock
+from llm_provider import InvalidGeneration
 
 DEFAULT_MODEL_PATH = Path(__file__).parent / 'local_models' / 'Qwen3-0.6B-Q4_K_M.gguf'
 
@@ -51,7 +52,24 @@ class LocalLLM:
         if self.max_new_tokens >= self.context_size:
             raise ProviderUnavailable('RAG_MAX_NEW_TOKENS must be smaller than RAG_CONTEXT_SIZE.')
         self._model = None
+        self._vocabulary = None
         self._lock = Lock()
+
+    def count_tokens(self, messages):
+        with self._lock:
+            if self._model is not None:
+                tokenizer = self._model
+            else:
+                if self._vocabulary is None:
+                    if not self.model_path.is_file() or not self.model_path.stat().st_size:
+                        raise ProviderUnavailable('GGUF model missing or empty. Set RAG_MODEL_PATH.')
+                    try:
+                        self._vocabulary = _create_backend(model_path=str(self.model_path),
+                            vocab_only=True, n_ctx=self.context_size, verbose=False)
+                    except Exception:
+                        raise ProviderUnavailable('Cannot initialize GGUF vocabulary.') from None
+                tokenizer = self._vocabulary
+            return len(tokenizer.tokenize(_qwen_prompt(messages).encode('utf-8'), add_bos=False, special=True))
 
     def _load(self):
         if self._model is not None:
@@ -59,6 +77,9 @@ class LocalLLM:
         if not self.model_path.is_file() or self.model_path.stat().st_size == 0:
             raise ProviderUnavailable('GGUF model missing or empty. Run download_rag_model.py or set RAG_MODEL_PATH.')
         try:
+            if self._vocabulary is not None:
+                self._vocabulary.close()
+                self._vocabulary = None
             self._model = _create_backend(
                 model_path=str(self.model_path), n_gpu_layers=0,
                 n_ctx=self.context_size, n_batch=64, n_ubatch=64,
@@ -82,13 +103,13 @@ class LocalLLM:
                 )
                 answer = result['choices'][0]['text']
                 if not isinstance(answer, str):
-                    raise ValueError('Invalid backend result')
+                    raise InvalidGeneration('Invalid backend result')
                 # Suppress tagged reasoning, including incomplete output.
                 answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL | re.IGNORECASE)
                 if re.search(r'</?think\b', answer, re.IGNORECASE):
-                    raise ValueError('Incomplete reasoning output')
+                    raise InvalidGeneration('Incomplete reasoning output')
                 return answer.strip()
-            except (ContextTooLarge, ProviderUnavailable):
+            except (ContextTooLarge, ProviderUnavailable, InvalidGeneration):
                 raise
             except Exception:
                 raise ProviderUnavailable('Local generation failed; check model compatibility and available RAM.') from None
