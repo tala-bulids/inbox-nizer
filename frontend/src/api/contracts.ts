@@ -17,6 +17,8 @@ export const emailSchema = z.object({
   message_id: text,
   from: text,
   date: text,
+  sent_at: text,
+  message_at: text,
   subject: text,
   summary: text,
   priority_level: text,
@@ -24,6 +26,7 @@ export const emailSchema = z.object({
   body: text,
   predictions: z.array(z.object({ category: text })).default([]),
   tasks: z.array(taskSchema).default([]),
+  processing: z.array(z.object({ status: text })).default([]),
 });
 export type Email = z.infer<typeof emailSchema>;
 export const inboxSchema = z.object({

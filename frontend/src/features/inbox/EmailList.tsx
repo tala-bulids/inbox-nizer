@@ -1,15 +1,20 @@
-import { Link } from "react-router-dom";
-import { ArrowUpLeft, Paperclip } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ArrowUpLeft, ListChecks } from "lucide-react";
 import type { Email } from "../../api/contracts";
 import { useLocale } from "../../app/locale";
-import { Identifier } from "../../components/ui/Text";
+import { EmailDate } from "../../components/ui/EmailDate";
 export function EmailList({ items }: { items: Email[] }) {
   const { t } = useLocale();
+  const location = useLocation();
   return (
     <ul className="email-list">
       {items.map((email) => (
         <li key={email.id}>
-          <Link to={`/email/${email.id}`} className="email-row">
+          <Link
+            to={`/email/${email.id}`}
+            className="email-row"
+            state={{ inbox: location.pathname + location.search }}
+          >
             <span className="avatar" aria-hidden="true">
               {(email.from || email.subject || "@")
                 .replace(/["<]/g, "")
@@ -21,9 +26,9 @@ export function EmailList({ items }: { items: Email[] }) {
                 <strong dir="auto">
                   {email.from || t("مرسل غير معروف", "Unknown sender")}
                 </strong>
-                <time>
-                  <Identifier>{email.date}</Identifier>
-                </time>
+                <EmailDate
+                  value={email.sent_at || email.message_at || email.date}
+                />
               </div>
               <h2 dir="auto">
                 {email.subject || t("بلا عنوان", "No subject")}
@@ -39,17 +44,38 @@ export function EmailList({ items }: { items: Email[] }) {
                     className={`badge priority-${["high", "medium", "low"].includes(email.priority_level) ? email.priority_level : "low"}`}
                   >
                     {t("الأولوية: ", "Priority: ")}
-                    {email.priority_level}
+                    {email.priority_level === "high"
+                      ? t("عالية", "High")
+                      : email.priority_level === "medium"
+                        ? t("متوسطة", "Medium")
+                        : email.priority_level === "low"
+                          ? t("منخفضة", "Low")
+                          : email.priority_level}
                   </span>
                 )}
-                {email.predictions.map((p, i) => (
-                  <span className="badge" key={i} dir="auto">
-                    {p.category}
+                {email.predictions
+                  .filter((p) => p.category)
+                  .slice(0, 2)
+                  .map((p, i) => (
+                    <span className="badge" key={i} dir="auto">
+                      {p.category}
+                    </span>
+                  ))}
+                {email.predictions.filter((p) => p.category).length > 2 && (
+                  <span
+                    className="badge"
+                    title={email.predictions
+                      .slice(2)
+                      .map((p) => p.category)
+                      .join("، ")}
+                  >
+                    +{email.predictions.filter((p) => p.category).length - 2}{" "}
+                    {t("تصنيفات", "categories")}
                   </span>
-                ))}
+                )}
                 {email.tasks.length > 0 && (
                   <span className="badge">
-                    <Paperclip size={12} />
+                    <ListChecks size={12} aria-hidden="true" />
                     {email.tasks.length} {t("مهام مستخرجة", "extracted tasks")}
                   </span>
                 )}

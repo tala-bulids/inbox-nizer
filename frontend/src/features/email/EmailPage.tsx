@@ -1,14 +1,22 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
 import { keys } from "../../app/query";
 import { emails } from "../../api/emails";
 import { validId } from "../../api/ask";
-import { Loading, Empty, ErrorState } from "../../components/shared/States";
-import { ContentText, Identifier } from "../../components/ui/Text";
+import { Empty, ErrorState } from "../../components/shared/States";
+import { ContentText } from "../../components/ui/Text";
+import { EmailDate } from "../../components/ui/EmailDate";
+import { EmailSkeleton } from "../../components/shared/EmailSkeleton";
+import { EmailTasks } from "./EmailTasks";
+import { inboxReturnPath } from "../inbox/inboxState";
 export function EmailPage() {
   const id = Number(useParams().id);
+  const location = useLocation();
+  const back = inboxReturnPath(
+    (location.state as { inbox?: unknown } | null)?.inbox,
+  );
   const { api } = useAuth();
   const { t } = useLocale();
   const query = useQuery({
@@ -18,26 +26,58 @@ export function EmailPage() {
   });
   if (!validId(id))
     return <Empty title={t("معرّف بريد غير صالح", "Invalid email ID")} />;
-  if (query.isPending) return <Loading />;
-  if (query.isError) return <ErrorState error={query.error} />;
+  const backLink = (
+    <Link to={back} className="back-link">
+      {t("العودة إلى البريد الوارد", "Back to inbox")}
+    </Link>
+  );
+  if (query.isPending)
+    return (
+      <>
+        {backLink}
+        <EmailSkeleton detail />
+      </>
+    );
+  if (query.isError)
+    return (
+      <>
+        {backLink}
+        <ErrorState error={query.error} retry={() => void query.refetch()} />
+      </>
+    );
   const email = query.data;
   return (
     <article className="detail">
-      <Link to="/" className="back-link">
-        ← {t("البريد الوارد", "Inbox")}
-      </Link>
+      {backLink}
       <div className="page-heading">
         <div>
           <p className="eyebrow">EMAIL</p>
           <h1 dir="auto">{email.subject || t("بلا عنوان", "No subject")}</h1>
           <p>
-            <Identifier>{email.from}</Identifier>
+            <bdi dir="auto">
+              {email.from || t("مرسل غير معروف", "Unknown sender")}
+            </bdi>
           </p>
           <small>
-            <Identifier>{email.date}</Identifier>
+            {email.sent_at
+              ? t("تاريخ إرسال البريد: ", "Email sent: ")
+              : t("تاريخ رسالة البريد: ", "Email message date: ")}
+            <EmailDate
+              value={email.sent_at || email.message_at || email.date}
+            />
           </small>
         </div>
       </div>
+      {email.processing.some(
+        (item) => item.status === "failed" || item.status === "pending",
+      ) && (
+        <p className="processing-notice" role="status">
+          {t(
+            "بعض المعلومات المساعدة غير متاحة بعد. يمكنك قراءة نص البريد أدناه.",
+            "Some derived information is not available yet. You can still read the email below.",
+          )}
+        </p>
+      )}
       <section className="derived">
         <h2>
           {t(
@@ -56,7 +96,7 @@ export function EmailPage() {
             {t("الأولوية", "Priority")}: {email.priority_level || "—"}
           </span>
           {email.predictions.map((p, i) => (
-            <span className="badge" key={i}>
+            <span className="badge" key={i} dir="auto">
               {p.category}
             </span>
           ))}
@@ -65,29 +105,7 @@ export function EmailPage() {
         <ContentText>
           {email.summary || t("لا يوجد ملخص", "No summary available")}
         </ContentText>
-        <h3>
-          {t("المهام والمواعيد المستخرجة", "Extracted tasks & deadlines")}
-        </h3>
-        {email.tasks.length ? (
-          <ul className="task-list">
-            {email.tasks.map((task, i) => (
-              <li key={i}>
-                <ContentText>{task.task}</ContentText>
-                <Identifier>
-                  {task.deadline_text || task.deadline_date || task.deadline_at}
-                </Identifier>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>{t("لا توجد مهام مستخرجة", "No extracted tasks")}</p>
-        )}
-        <p className="muted">
-          {t(
-            "عرض الحقائق المنظمة ينتظر API مخصصًا.",
-            "Structured-fact browsing awaits a dedicated API.",
-          )}
-        </p>
+        <EmailTasks tasks={email.tasks} />
       </section>
       <section className="original">
         <div className="section-heading">

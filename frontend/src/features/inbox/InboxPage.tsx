@@ -1,46 +1,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { emails, type InboxFilters } from "../../api/emails";
+import { emails } from "../../api/emails";
 import { keys } from "../../app/query";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
-import { Loading, Empty, ErrorState } from "../../components/shared/States";
+import { Empty, ErrorState } from "../../components/shared/States";
+import { EmailSkeleton } from "../../components/shared/EmailSkeleton";
 import { EmailList } from "./EmailList";
+import { InboxToolbar } from "./InboxToolbar";
+import { Pagination } from "./Pagination";
+import { readInboxState } from "./inboxState";
 export function InboxPage() {
   const { api } = useAuth();
   const { t } = useLocale();
   const [params, setParams] = useSearchParams();
-  const parsed = Number(params.get("offset") || 0);
-  const offset = Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
-  const priority = params.get("priority");
-  const sort = params.get("sort");
-  const filters: InboxFilters = {
-    limit: 20,
-    offset,
-    priority_level:
-      priority === "high" || priority === "medium" || priority === "low"
-        ? priority
-        : undefined,
-    has_tasks: params.get("tasks") === "true" ? true : undefined,
-    has_deadline: params.get("deadline") === "true" ? true : undefined,
-    category: params.get("category") || undefined,
-    sort_by: sort === "priority_score" ? "priority_score" : "created_at",
-    sort_order: params.get("order") === "asc" ? "asc" : "desc",
-  };
+  const filters = readInboxState(params);
   const query = useQuery({
     queryKey: keys.list(filters),
     queryFn: ({ signal }) => emails.list(api, filters, signal),
   });
-  function filter(key: string, value: string) {
+  const filtered =
+    !!filters.category ||
+    !!filters.priority_level ||
+    filters.has_tasks !== undefined ||
+    filters.has_deadline !== undefined;
+  function change(key: string, value: string) {
     const next = new URLSearchParams(params);
     next.delete("offset");
     if (value) next.set(key, value);
     else next.delete(key);
     setParams(next);
   }
-  function page(value: number) {
+  function clear() {
     const next = new URLSearchParams(params);
-    next.set("offset", String(value));
+    for (const key of ["priority", "category", "tasks", "deadline", "offset"])
+      next.delete(key);
+    setParams(next);
+  }
+  function page(offset: number) {
+    const next = new URLSearchParams(params);
+    next.set("offset", String(offset));
     setParams(next);
   }
   return (
@@ -51,8 +50,8 @@ export function InboxPage() {
           <h1>{t("البريد الوارد", "Inbox")}</h1>
           <p>
             {t(
-              "كل ما يهمك، في مكان أوضح.",
-              "Everything that matters, with a little more clarity.",
+              "رسائلك ومهامك، بصورة أوضح.",
+              "Your messages and next steps, at a glance.",
             )}
           </p>
         </div>
@@ -63,96 +62,56 @@ export function InboxPage() {
         )}
       </div>
       <section className="surface" aria-label={t("قائمة البريد", "Email list")}>
-        <div className="filters">
-          <label>
-            {t("الأولوية", "Priority")}
-            <select
-              value={priority || ""}
-              onChange={(e) => filter("priority", e.target.value)}
-            >
-              <option value="">{t("الكل", "All")}</option>
-              <option value="high">{t("عالية", "High")}</option>
-              <option value="medium">{t("متوسطة", "Medium")}</option>
-              <option value="low">{t("منخفضة", "Low")}</option>
-            </select>
-          </label>
-          <label>
-            {t("الترتيب", "Sort")}
-            <select
-              value={sort || "created_at"}
-              onChange={(e) => filter("sort", e.target.value)}
-            >
-              <option value="created_at">
-                {t("تاريخ الإضافة", "Date added")}
-              </option>
-              <option value="priority_score">
-                {t("درجة الأولوية", "Priority score")}
-              </option>
-            </select>
-          </label>
-          <label>
-            {t("الاتجاه", "Order")}
-            <select
-              value={params.get("order") || "desc"}
-              onChange={(e) => filter("order", e.target.value)}
-            >
-              <option value="desc">{t("تنازلي", "Descending")}</option>
-              <option value="asc">{t("تصاعدي", "Ascending")}</option>
-            </select>
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={!!filters.has_tasks}
-              onChange={(e) => filter("tasks", e.target.checked ? "true" : "")}
-            />
-            {t("بمهام", "Has tasks")}
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={!!filters.has_deadline}
-              onChange={(e) =>
-                filter("deadline", e.target.checked ? "true" : "")
-              }
-            />
-            {t("بموعد نهائي", "Has deadline")}
-          </label>
-        </div>
+        <InboxToolbar
+          key={params.toString()}
+          filters={filters}
+          change={change}
+          clear={clear}
+        />
         {query.isPending ? (
-          <Loading />
+          <EmailSkeleton />
         ) : query.isError ? (
           <ErrorState error={query.error} retry={() => void query.refetch()} />
         ) : query.data.emails.length ? (
           <EmailList items={query.data.emails} />
         ) : (
-          <Empty
-            title={t("لا توجد رسائل هنا", "No emails here")}
-            detail={t(
-              "جرّب تغيير عوامل التصفية أو مزامنة حسابك من الإعدادات.",
-              "Try different filters or sync your account in Settings.",
-            )}
+          <>
+            <Empty
+              title={
+                filtered
+                  ? t("لا توجد رسائل تطابق الفلاتر", "No matching emails")
+                  : query.data.total
+                    ? t("هذه الصفحة فارغة", "This page is empty")
+                    : t("لا توجد رسائل هنا", "No emails here")
+              }
+              detail={
+                filtered
+                  ? t("جرّب إزالة بعض الفلاتر.", "Try removing some filters.")
+                  : t(
+                      "يمكنك مزامنة حسابك من الإعدادات.",
+                      "You can sync your account in Settings.",
+                    )
+              }
+            />
+            <div className="center">
+              <button onClick={filtered ? clear : () => page(0)}>
+                {filtered
+                  ? t("مسح الفلاتر", "Clear filters")
+                  : t("الصفحة الأولى", "First page")}
+              </button>
+            </div>
+          </>
+        )}
+        {query.data && !query.isError && (
+          <Pagination
+            offset={filters.offset || 0}
+            limit={query.data.limit}
+            count={query.data.count}
+            total={query.data.total}
+            busy={query.isFetching}
+            change={page}
           />
         )}
-        <div className="pagination">
-          <button
-            disabled={offset === 0 || query.isFetching}
-            onClick={() => page(Math.max(0, offset - 20))}
-          >
-            {t("السابق", "Previous")}
-          </button>
-          <span>
-            {t("صفحة", "Page")} {Math.floor(offset / 20) + 1}
-          </span>
-          <button
-            disabled={
-              !query.data || offset + 20 >= query.data.total || query.isFetching
-            }
-            onClick={() => page(offset + 20)}
-          >
-            {t("التالي", "Next")}
-          </button>
-        </div>
       </section>
     </>
   );

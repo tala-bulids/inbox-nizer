@@ -4,6 +4,19 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import { email, inbox, accountData, generated } from "../src/test/fixtures.ts";
+const longEmail = {
+  ...email,
+  subject:
+    email.subject + " — " + "تفاصيل التسجيل Important information ".repeat(6),
+  from: "فريق التواصل " + "long-sender-".repeat(12) + "@example.invalid",
+  summary: "ملخص عربي مع English context. ".repeat(22),
+  body: "نص أصلي English reference ABC123 <script>not executed</script>\n".repeat(
+    25,
+  ),
+  predictions: ["Events", "Registration", "Updates", "Other"].map(
+    (category) => ({ category }),
+  ),
+};
 const output = resolve(process.env.UI_ARTIFACT_DIR || "test-results");
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
@@ -32,13 +45,14 @@ try {
                   total: 3,
                   count: 3,
                   emails: [
-                    email,
+                    longEmail,
                     {
                       ...email,
                       id: 12,
                       subject: "Your registration is confirmed",
                       from: "events@example.invalid",
                       priority_level: "low",
+                      tasks: [],
                     },
                     {
                       ...email,
@@ -49,7 +63,7 @@ try {
                   ],
                 }
               : path.startsWith("/api/emails/")
-                ? email
+                ? longEmail
                 : path === "/api/ask"
                   ? generated
                   : null;
@@ -63,7 +77,7 @@ try {
     await page.goto(process.env.UI_URL || "http://localhost:5173");
     await page.getByLabel("رمز الوصول التطويري").fill("synthetic-ui-token");
     await page.getByRole("button", { name: "فتح مساحة العمل" }).click();
-    await page.getByRole("heading", { name: email.subject }).waitFor();
+    await page.getByRole("heading", { name: longEmail.subject }).waitFor();
     assert.equal(await page.locator("html").getAttribute("dir"), "rtl");
     async function capture(name) {
       assert.equal(
@@ -79,11 +93,15 @@ try {
       });
     }
     await capture("inbox");
-    await page.getByRole("heading", { name: email.subject }).click();
+    await page.getByRole("heading", { name: longEmail.subject }).click();
     await page.getByText("نص البريد الأصلي المخزن").waitFor();
     await capture("detail");
     await page.goBack();
-    await page.getByRole("heading", { name: email.subject }).waitFor();
+    await page.getByRole("heading", { name: longEmail.subject }).waitFor();
+    await page.goForward();
+    await page.getByText("نص البريد الأصلي المخزن").waitFor();
+    await page.getByRole("link", { name: "العودة إلى البريد الوارد" }).click();
+    await page.getByRole("heading", { name: longEmail.subject }).waitFor();
     if (width < 760) {
       const trigger = page.getByRole("button", { name: "فتح القائمة" });
       await trigger.click();
