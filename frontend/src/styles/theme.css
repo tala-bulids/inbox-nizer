@@ -929,3 +929,149 @@ hr {
   color: var(--color-muted);
   font-size: 0.88rem;
 }
+
+/* Ask and Search are separate, explicit interactions. */
+.search-page {
+  max-width: 960px;
+  margin: auto;
+}
+.search-composer {
+  padding: 24px;
+}
+.search-composer small {
+  display: block;
+  margin-top: 12px;
+}
+.asked-question,
+.submitted-search {
+  padding: 16px 20px;
+  border-inline-start: 3px solid var(--color-line);
+  margin-block: 24px;
+  overflow-wrap: anywhere;
+}
+.asked-question p,
+.submitted-search p {
+  font-weight: 600;
+}
+.source-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-line);
+}
+.source-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.source-cards a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+  height: 100%;
+}
+.source-cards a:hover {
+  background: var(--color-canvas);
+  text-decoration: none;
+}
+.source-cards time,
+.source-cards .muted {
+  font-size: 0.8rem;
+}
+.source-action {
+  display: block;
+  margin-top: 12px;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+}
+.answer-kind {
+  margin-top: 16px;
+  font-size: 0.82rem;
+}
+.clarification-options button {
+  min-height: 64px;
+  text-align: start;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.clarification-options strong {
+  min-width: 0;
+  flex: 1;
+}
+.clarification-options time {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.search-results li {
+  padding: 0;
+  overflow: hidden;
+}
+.search-results a {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.search-results a:hover {
+  background: var(--color-canvas);
+  text-decoration: none;
+}
+.search-results a:focus-visible {
+  outline-offset: -4px;
+}
+.result-rank,
+.snippet-label {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.snippet-label {
+  margin-top: 18px;
+  margin-bottom: 5px;
+}
+.matched-text {
+  white-space: pre-wrap;
+  line-height: 1.85;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.result-count {
+  margin-block: 16px;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 760px) {
+  .search-composer,
+  .search-results a {
+    padding: 18px;
+  }
+  .source-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clarification-options time {
+    display: block;
+    margin-top: 8px;
+  }
+  .search-composer .input-row {
+    align-items: stretch;
+  }
+  .search-composer input {
+    min-width: 0;
+  }
+  .synthesis-warning {
+    padding: 14px;
+  }
+  .asked-question,
+  .submitted-search {
+    padding: 12px;
+  }
+}

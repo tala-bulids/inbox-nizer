@@ -7,8 +7,9 @@ export type AskRequest = components["schemas"]["QuestionRequest"];
 export async function ask(
   api: ApiClient,
   body: AskRequest,
+  signal?: AbortSignal,
 ): Promise<AskAnswer> {
-  const value = await api.request("/ask", { method: "POST", body });
+  const value = await api.request("/ask", { method: "POST", body, signal });
   if (
     !value ||
     typeof value !== "object" ||

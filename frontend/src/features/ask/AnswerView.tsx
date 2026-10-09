@@ -1,11 +1,12 @@
-import { Link } from "react-router-dom";
+import { SourceList, safeText as text } from "./SourceList";
+import { EmailDate } from "../../components/ui/EmailDate";
 import { ShieldCheck, TriangleAlert } from "lucide-react";
 import type { AskAnswer } from "../../api/ask";
 import { validId } from "../../api/ask";
 import { useLocale } from "../../app/locale";
-import { ContentText, Identifier } from "../../components/ui/Text";
+import { ContentText } from "../../components/ui/Text";
 import { Empty } from "../../components/shared/States";
-const text = (value: unknown) => (typeof value === "string" ? value : "");
+
 export function AnswerView({
   answer,
   onClarify,
@@ -29,7 +30,13 @@ export function AnswerView({
         <div className="clarification-options">
           {Array.isArray(answer.clarification_options) &&
             answer.clarification_options
-              .filter((o) => o && validId(o.email_id))
+              .filter(
+                (o, index, all) =>
+                  o &&
+                  validId(o.email_id) &&
+                  all.findIndex((other) => other?.email_id === o.email_id) ===
+                    index,
+              )
               .slice(0, 5)
               .map((option) => (
                 <button
@@ -40,7 +47,7 @@ export function AnswerView({
                     {text(option.subject) ||
                       t("بريد بلا عنوان", "Untitled email")}
                   </strong>
-                  <Identifier>{text(option.date)}</Identifier>
+                  <EmailDate value={text(option.date)} />
                 </button>
               ))}
         </div>
@@ -52,7 +59,7 @@ export function AnswerView({
         </p>
       </section>
     );
-  const supported =
+  const metadataSupported =
     answer.verification === "source_supported" &&
     (answer.answer_mode === "deterministic_fact" ||
       answer.answer_mode === "extractive");
@@ -66,6 +73,19 @@ export function AnswerView({
   );
   const sources = answer.sources.filter(
     (s) => s && validId(s.email_id) && cited.has(s.email_id),
+  );
+  const consistent =
+    answer.citations.length > 0 &&
+    answer.citations.every(
+      (c) =>
+        c &&
+        validId(c.email_id) &&
+        sources.some((s) => s.email_id === c.email_id),
+    );
+  const supported = metadataSupported && consistent;
+  const uniqueSources = sources.filter(
+    (s, index) =>
+      sources.findIndex((other) => other.email_id === s.email_id) === index,
   );
   return (
     <section
@@ -100,8 +120,8 @@ export function AnswerView({
               </strong>
               <p>
                 {t(
-                  "قد يُسقط النص شروطًا أو نفيًا أو استثناءات. راجع البريد الأصلي قبل الاعتماد عليه.",
-                  "May omit conditions, negation or exceptions. Review the original email before relying on it.",
+                  "قد يُسقط النص شروطًا أو نفيًا أو استثناءات، أو يبسّط معنى المصدر. راجع البريد الأصلي قبل الاعتماد عليه.",
+                  "May omit conditions, negation or exceptions, or simplify the source meaning. Review the original email before relying on it.",
                 )}
               </p>
             </div>
@@ -109,31 +129,17 @@ export function AnswerView({
         )}
       </div>
       <ContentText>{answer.answer}</ContentText>
-      <dl className="verification-meta">
-        <dt>{t("المسار", "Mode")}</dt>
-        <dd>
-          <Identifier>{text(answer.answer_mode) || "unknown"}</Identifier>
-        </dd>
-        <dt>{t("التحقق", "Verification")}</dt>
-        <dd>
-          <Identifier>{text(answer.verification) || "unknown"}</Identifier>
-        </dd>
-      </dl>
-      <h3>{t("ارجع إلى المصدر", "Return to the source")}</h3>
-      <ul className="sources">
-        {sources.map((source) => (
-          <li key={`${source.email_id}-${source.chunk_id}`}>
-            <Link to={`/email/${source.email_id}`}>
-              <span dir="auto">
-                {text(source.subject) || t("فتح البريد", "Open email")}
-              </span>
-              <small>
-                <Identifier>{text(source.date)}</Identifier>
-              </small>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {supported && (
+        <p className="answer-kind muted">
+          {answer.answer_mode === "deterministic_fact"
+            ? t(
+                "من معلومات مستخرجة من البريد",
+                "From structured email information",
+              )
+            : t("من مقطع في البريد", "From an email excerpt")}
+        </p>
+      )}
+      <SourceList sources={uniqueSources} />
     </section>
   );
 }

@@ -3,7 +3,14 @@ import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
-import { email, inbox, accountData, generated } from "../src/test/fixtures.ts";
+import {
+  email,
+  inbox,
+  accountData,
+  generated,
+  supported,
+  clarification,
+} from "../src/test/fixtures.ts";
 const longEmail = {
   ...email,
   subject:
@@ -36,6 +43,54 @@ try {
       new URL(process.env.UI_URL || "http://localhost:5173").origin + "/api/**",
       async (route) => {
         const path = new URL(route.request().url()).pathname;
+        const requestBody =
+          path === "/api/ask" ? route.request().postDataJSON() : null;
+        const askResponse =
+          requestBody?.email_id || requestBody?.question === "supported"
+            ? {
+                ...supported,
+                answer:
+                  "يبدأ الموعد يوم الاثنين 12 October. راجع الشروط في المصدر. [email_id=11]\n".repeat(
+                    8,
+                  ),
+                sources: [
+                  {
+                    ...supported.sources[0],
+                    subject: longEmail.subject,
+                    from: longEmail.from,
+                  },
+                ],
+              }
+            : requestBody?.question === "clarify"
+              ? clarification
+              : requestBody?.question === "none"
+                ? {
+                    status: "insufficient_evidence",
+                    answer: "لا توجد معلومات كافية في البريد للإجابة.",
+                    sources: [],
+                    citations: [],
+                  }
+                : generated;
+        const searchResponse = {
+          query: "synthetic",
+          count:
+            new URL(route.request().url()).searchParams.get("q") === "empty"
+              ? 0
+              : 1,
+          results:
+            new URL(route.request().url()).searchParams.get("q") === "empty"
+              ? []
+              : [
+                  {
+                    email: longEmail,
+                    matched_text:
+                      "مقطع مطابق من المصدر Mixed English reference ABC123 <img src=x> ".repeat(
+                        12,
+                      ),
+                    score: 0.82,
+                  },
+                ],
+        };
         const data =
           path === "/api/gmail/accounts"
             ? accountData
@@ -65,8 +120,10 @@ try {
               : path.startsWith("/api/emails/")
                 ? longEmail
                 : path === "/api/ask"
-                  ? generated
-                  : null;
+                  ? askResponse
+                  : path === "/api/search/semantic"
+                    ? searchResponse
+                    : null;
         await route.fulfill({
           status: data ? 200 : 404,
           contentType: "application/json",
@@ -124,6 +181,45 @@ try {
       await page.getByText("مدعوم من البريد", { exact: true }).count(),
       0,
     );
+    async function askCase(question) {
+      await page.getByLabel("سؤالك").fill(question);
+      await page
+        .getByRole("button", { name: "اسأل البريد", exact: true })
+        .click();
+    }
+    await askCase("supported");
+    await page.getByText("مدعوم من البريد", { exact: true }).waitFor();
+    await capture("ask-supported");
+    await askCase("clarify");
+    await page.getByText("لنحدد البريد المقصود").waitFor();
+    await capture("ask-clarification");
+    const option = page.getByRole("button", { name: /طلب الجهة الأولى/ });
+    await option.focus();
+    await page.keyboard.press("Enter");
+    await page.getByText("مدعوم من البريد", { exact: true }).waitFor();
+    await askCase("none");
+    await page.getByText("لا توجد أدلة كافية").waitFor();
+    await capture("ask-insufficient");
+    if (width < 760)
+      await page.getByRole("button", { name: "فتح القائمة" }).click();
+    await page.getByRole("link", { name: "البحث", exact: true }).click();
+    await page.getByLabel("ما الذي تبحث عنه؟").fill("synthetic travel");
+    await page.getByRole("button", { name: "بحث", exact: true }).click();
+    await page.getByRole("heading", { name: longEmail.subject }).waitFor();
+    await capture("search-results");
+    await page.getByRole("heading", { name: longEmail.subject }).click();
+    await page.getByText("نص البريد الأصلي المخزن").waitFor();
+    await page.goBack();
+    await page.getByRole("heading", { name: longEmail.subject }).waitFor();
+    assert.equal(
+      await page.getByLabel("ما الذي تبحث عنه؟").inputValue(),
+      "synthetic travel",
+    );
+    assert.equal(new URL(page.url()).search, "");
+    await page.getByLabel("ما الذي تبحث عنه؟").fill("empty");
+    await page.getByRole("button", { name: "بحث", exact: true }).click();
+    await page.getByText("لا توجد نتائج", { exact: true }).waitFor();
+    await capture("search-empty");
     assert.equal(
       await page.evaluate(() => localStorage.length + sessionStorage.length),
       0,

@@ -39,8 +39,20 @@ export const inboxSchema = z.object({
 export const searchSchema = z.object({
   count: z.number(),
   query: z.string(),
-  results: z.array(z.object({ email: emailSchema, matched_text: text })),
+  results: z.array(
+    z.object({
+      email: emailSchema.pick({
+        id: true,
+        from: true,
+        subject: true,
+        summary: true,
+        priority_level: true,
+      }),
+      matched_text: text,
+    }),
+  ),
 });
+export type SearchResult = z.infer<typeof searchSchema>["results"][number];
 export const accountsSchema = z.object({
   accounts: z.array(
     z.object({
