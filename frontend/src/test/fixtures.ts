@@ -74,3 +74,44 @@ export const clarification: AskAnswer = {
     { email_id: 12, subject: "طلب الجهة الثانية", date: "9 Oct 2026" },
   ],
 };
+
+export const taskPage = {
+  count: 2,
+  total: 2,
+  limit: 20,
+  offset: 0,
+  tasks: [
+    {
+      id: 101,
+      task: "إرسال المستند Submit document",
+      deadline_text: "قبل الموعد",
+      deadline_date: "2026-10-12",
+      deadline_at: null,
+      created_at: "2026-10-01T10:00:00Z",
+      email: {
+        id: 11,
+        subject: "طلب مستندات Documents",
+        sender: "team@example.invalid",
+        date: "8 Oct 2026",
+        sent_at: "2026-10-08T10:00:00Z",
+        message_at: null,
+      },
+    },
+    {
+      id: 102,
+      task: "الرد على الرسالة",
+      deadline_text: null,
+      deadline_date: null,
+      deadline_at: null,
+      created_at: "2026-10-01T10:00:00Z",
+      email: {
+        id: 12,
+        subject: null,
+        sender: null,
+        date: null,
+        sent_at: null,
+        message_at: null,
+      },
+    },
+  ],
+};

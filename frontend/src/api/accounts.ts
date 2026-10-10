@@ -15,7 +15,13 @@ export const accounts = {
       await api.request("/auth/google/start", { method: "POST" }),
     );
     const url = new URL(result.authorization_url);
-    if (url.protocol !== "https:" || url.hostname !== "accounts.google.com")
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "accounts.google.com" ||
+      url.username ||
+      url.password ||
+      url.port
+    )
       throw new ApiError("contract");
     return url.href;
   },

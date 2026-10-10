@@ -10,6 +10,7 @@ import {
   generated,
   supported,
   clarification,
+  taskPage,
 } from "../src/test/fixtures.ts";
 const longEmail = {
   ...email,
@@ -91,39 +92,82 @@ try {
                   },
                 ],
         };
+        if (path === "/api/gmail/accounts/2/sync") {
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              count: 2,
+              success_count: 2,
+              failed_count: 0,
+              enrichment_failed: 0,
+            }),
+          });
+          return;
+        }
         const data =
           path === "/api/gmail/accounts"
-            ? accountData
-            : path === "/api/emails"
+            ? {
+                accounts: [
+                  {
+                    ...accountData.accounts[0],
+                    last_synced_at: "2026-10-08T12:00:00Z",
+                  },
+                ],
+              }
+            : path === "/api/tasks"
               ? {
-                  ...inbox,
-                  total: 3,
-                  count: 3,
-                  emails: [
-                    longEmail,
-                    {
-                      ...email,
-                      id: 12,
-                      subject: "Your registration is confirmed",
-                      from: "events@example.invalid",
-                      priority_level: "low",
-                      tasks: [],
-                    },
-                    {
-                      ...email,
-                      id: 13,
-                      subject: "مستندات مطلوبة لاستكمال الطلب",
-                      priority_level: "medium",
-                    },
-                  ],
+                  ...taskPage,
+                  tasks: taskPage.tasks.map((task, index) =>
+                    index === 0
+                      ? {
+                          ...task,
+                          task:
+                            task.task +
+                            " — " +
+                            "إكمال المستندات المطلوبة Important action ".repeat(
+                              12,
+                            ),
+                        }
+                      : task,
+                  ),
                 }
-              : path.startsWith("/api/emails/")
-                ? longEmail
-                : path === "/api/ask"
-                  ? askResponse
-                  : path === "/api/search/semantic"
-                    ? searchResponse
-                    : null;
+              : path === "/api/auth/google/start"
+                ? {
+                    authorization_url:
+                      "https://accounts.google.com/o/oauth2/auth?state=synthetic",
+                  }
+                : path === "/api/emails"
+                  ? {
+                      ...inbox,
+                      total: 3,
+                      count: 3,
+                      emails: [
+                        longEmail,
+                        {
+                          ...email,
+                          id: 12,
+                          subject: "Your registration is confirmed",
+                          from: "events@example.invalid",
+                          priority_level: "low",
+                          tasks: [],
+                        },
+                        {
+                          ...email,
+                          id: 13,
+                          subject: "مستندات مطلوبة لاستكمال الطلب",
+                          priority_level: "medium",
+                        },
+                      ],
+                    }
+                  : path.startsWith("/api/emails/")
+                    ? longEmail
+                    : path === "/api/ask"
+                      ? askResponse
+                      : path === "/api/search/semantic"
+                        ? searchResponse
+                        : null;
         await route.fulfill({
           status: data ? 200 : 404,
           contentType: "application/json",
@@ -220,6 +264,31 @@ try {
     await page.getByRole("button", { name: "بحث", exact: true }).click();
     await page.getByText("لا توجد نتائج", { exact: true }).waitFor();
     await capture("search-empty");
+    if (width < 760)
+      await page.getByRole("button", { name: "فتح القائمة" }).click();
+    await page.getByRole("link", { name: "المهام", exact: true }).click();
+    await page.getByText("لا يوجد موعد مستخرج", { exact: true }).waitFor();
+    await capture("tasks");
+    if (width < 760)
+      await page.getByRole("button", { name: "فتح القائمة" }).click();
+    await page.getByRole("link", { name: "الإعدادات", exact: true }).click();
+    await page.getByText("متصل", { exact: true }).waitFor();
+    await capture("settings-connected");
+    await page
+      .getByRole("button", { name: "مزامنة الآن", exact: true })
+      .click();
+    await page.getByText(/جارٍ مزامنة البريد/).waitFor();
+    await capture("settings-sync-pending");
+    await page.getByText(/تمت معالجة/).waitFor();
+    await capture("settings-sync-success");
+    const reconnect = page.getByRole("button", {
+      name: "إعادة الاتصال",
+      exact: true,
+    });
+    await reconnect.focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("link", { name: "متابعة إلى Google" }).waitFor();
+    await capture("settings-oauth");
     assert.equal(
       await page.evaluate(() => localStorage.length + sessionStorage.length),
       0,

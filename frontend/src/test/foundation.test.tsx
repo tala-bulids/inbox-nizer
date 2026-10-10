@@ -261,14 +261,14 @@ test("logout clears content; next user cannot see old cache", async () => {
   await screen.findByText("لا توجد رسائل هنا");
   expect(screen.queryByText(email.subject)).not.toBeInTheDocument();
 });
-test("tasks shell reports API gap and links to real filter", async () => {
+test("tasks route renders real read-only tasks", async () => {
   await open("/tasks");
   expect(
-    await screen.findByText("قائمة المهام الموحّدة قيد التجهيز"),
+    await screen.findByText("إرسال المستند Submit document"),
   ).toBeVisible();
   expect(
-    screen.getByRole("link", { name: "عرض الرسائل التي تحتوي مهام" }),
-  ).toHaveAttribute("href", "/?tasks=true");
+    screen.getByText("عرض للقراءة فقط؛ لا تتوفر حالة إنجاز للمهام."),
+  ).toBeVisible();
 });
 test("search submits only explicitly and opens discovery result", async () => {
   const user = await open("/search");

@@ -203,6 +203,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -310,6 +327,53 @@ export interface components {
             from: string;
             /** Date */
             date: string;
+        };
+        /** TaskEmail */
+        TaskEmail: {
+            /** Id */
+            id: number;
+            /** Subject */
+            subject: string | null;
+            /** Sender */
+            sender: string | null;
+            /** Date */
+            date: string | null;
+            /** Sent At */
+            sent_at: string | null;
+            /** Message At */
+            message_at: string | null;
+        };
+        /** TaskItem */
+        TaskItem: {
+            /** Id */
+            id: number;
+            /** Task */
+            task: string;
+            /** Deadline Text */
+            deadline_text: string | null;
+            /** Deadline Date */
+            deadline_date: string | null;
+            /** Deadline At */
+            deadline_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            email: components["schemas"]["TaskEmail"];
+        };
+        /** TaskPage */
+        TaskPage: {
+            /** Count */
+            count: number;
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Tasks */
+            tasks: components["schemas"]["TaskItem"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -662,6 +726,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_tasks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                has_deadline?: boolean | null;
+                sort_order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPage"];
                 };
             };
             /** @description Validation Error */

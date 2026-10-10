@@ -1,46 +1,26 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from predict import classify_email
-from unittest.mock import patch
+from fastapi import FastAPI
+from routes import router
+from task_api import router as task_router
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+from ownership import OwnershipError
+from backend_config import ConfigurationError
+from privacy_middleware import PrivateQueryMiddleware
 
 app = FastAPI()
+app.add_middleware(PrivateQueryMiddleware)
+
+app.include_router(router)
+app.include_router(task_router)
 
 
-class EmailRequest(BaseModel):
-    subject: str = Field(min_length=1, max_length=200)
-    body: str = Field(min_length=1, max_length=10000)
+@app.exception_handler(SQLAlchemyError)
+@app.exception_handler(OwnershipError)
+@app.exception_handler(ConfigurationError)
+async def backend_unavailable(request, error):
+    return JSONResponse(status_code=503, content={'detail': 'Backend temporarily unavailable'})
 
-def test_classification_error():
-    with patch("main.classify_email", side_effect=Exception("test error")):
-        response = client.post(
-            "/classify-email",
-            json={
-                "subject": "Test",
-                "body": "Test email"
-            }
-        )
 
-    assert response.status_code == 500
-    assert response.json() == {
-        "detail": "Email classification failed"
-    }
-    
 @app.get("/")
 def root():
     return {"message": "AI Smart Inbox API is running"}
-
-
-@app.post("/classify-email")
-def classify(request: EmailRequest):
-    try:
-        result = classify_email(request.subject, request.body)
-
-        return {
-            "predictions": result
-        }
-
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="Email classification failed"
-        )

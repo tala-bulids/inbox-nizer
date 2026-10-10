@@ -1,7 +1,10 @@
 import { QueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import type { InboxFilters } from "../api/emails";
+import type { TaskFilters } from "../api/tasks";
 export const keys = {
+  tasks: ["tasks"] as const,
+  taskList: (filters: TaskFilters) => ["tasks", filters] as const,
   emails: ["emails"] as const,
   list: (filters: InboxFilters) => ["emails", "list", filters] as const,
   detail: (id: number) => ["emails", "detail", id] as const,
