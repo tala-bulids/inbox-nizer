@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
 import { ask, validId, type AskRequest } from "../../api/ask";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
 import { Loading, ErrorState, Empty } from "../../components/shared/States";
 import { AnswerView } from "./AnswerView";
 import { AskComposer } from "./AskComposer";
+import { RetroWindow } from "../../components/ui/RetroWindow";
+
 export function AskPage() {
   const { api } = useAuth();
   const { t } = useLocale();
@@ -42,10 +45,9 @@ export function AskPage() {
     mutation.mutate(body);
   }
   return (
-    <div className="ask-page">
+    <div className="ask-page flex flex-col gap-4">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">ASK YOUR INBOX</p>
           <h1>{t("إجابات تبدأ من بريدك", "Answers start with your email")}</h1>
           <p>
             {t(
@@ -55,56 +57,70 @@ export function AskPage() {
           </p>
         </div>
       </div>
-      <AskComposer
-        draft={question}
-        onChange={setQuestion}
-        busy={mutation.isPending}
-        onSubmit={() => submit({ question: question.trim() })}
-      />
-      {mutation.variables && (
-        <div className="asked-question">
-          <small>{t("السؤال المُرسل", "Submitted question")}</small>
-          <p dir="auto">{mutation.variables.question}</p>
-          {mutation.variables.email_id && (
-            <small>
-              {t(
-                "تم اختيار رسالة للإجابة عن هذا السؤال.",
-                "An email was selected for this question.",
-              )}
-            </small>
-          )}
-        </div>
-      )}
-      <div
-        role="region"
-        aria-label={t("نتيجة السؤال", "Question result")}
-        aria-live="polite"
-        aria-busy={mutation.isPending}
+      <RetroWindow
+        title={t("اسأل البريد", "Ask AI")}
+        icon={<Sparkles size={16} className="text-[#E07A5F]" />}
+        subtitle={t("منظّم البريد الذكي", "Smart Mail Organizer")}
       >
-        {mutation.isPending ? (
-          <Loading />
-        ) : mutation.isError ? (
-          <ErrorState
-            error={mutation.error}
-            retry={() => mutation.variables && submit(mutation.variables)}
+        <div className="p-4 sm:p-6 flex flex-col gap-4">
+          <AskComposer
+            draft={question}
+            onChange={setQuestion}
+            busy={mutation.isPending}
+            onSubmit={() => submit({ question: question.trim() })}
           />
-        ) : mutation.data ? (
-          <AnswerView
-            answer={mutation.data}
-            onClarify={(id) =>
-              submit({ question: mutation.variables.question, email_id: id })
-            }
-          />
-        ) : (
-          <Empty
-            title={t("ما الذي تريد معرفته؟", "What would you like to know?")}
-            detail={t(
-              "قد نطلب منك اختيار رسالة عندما توجد عدة إجابات محتملة.",
-              "We may ask you to select an email when several answers are possible.",
+          {mutation.variables && (
+            <div className="asked-question">
+              <small>{t("السؤال المُرسل", "Submitted question")}</small>
+              <p dir="auto">{mutation.variables.question}</p>
+              {mutation.variables.email_id && (
+                <small>
+                  {t(
+                    "تم اختيار رسالة للإجابة عن هذا السؤال.",
+                    "An email was selected for this question.",
+                  )}
+                </small>
+              )}
+            </div>
+          )}
+          <div
+            role="region"
+            aria-label={t("نتيجة السؤال", "Question result")}
+            aria-live="polite"
+            aria-busy={mutation.isPending}
+          >
+            {mutation.isPending ? (
+              <Loading />
+            ) : mutation.isError ? (
+              <ErrorState
+                error={mutation.error}
+                retry={() => mutation.variables && submit(mutation.variables)}
+              />
+            ) : mutation.data ? (
+              <AnswerView
+                answer={mutation.data}
+                onClarify={(id) =>
+                  submit({
+                    question: mutation.variables.question,
+                    email_id: id,
+                  })
+                }
+              />
+            ) : (
+              <Empty
+                title={t(
+                  "ما الذي تريد معرفته؟",
+                  "What would you like to know?",
+                )}
+                detail={t(
+                  "قد نطلب منك اختيار رسالة عندما توجد عدة إجابات محتملة.",
+                  "We may ask you to select an email when several answers are possible.",
+                )}
+              />
             )}
-          />
-        )}
-      </div>
+          </div>
+        </div>
+      </RetroWindow>
     </div>
   );
 }

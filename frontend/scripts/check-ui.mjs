@@ -32,6 +32,8 @@ const browser = await chromium.launch({
   headless: true,
 });
 const results = [];
+const browserAuth = process.env.UI_BROWSER_AUTH === "1";
+const csrf = "a".repeat(64);
 try {
   for (const width of [1440, 820, 390]) {
     const context = await browser.newContext({
@@ -39,11 +41,39 @@ try {
     });
     const page = await context.newPage();
     const errors = [];
+    let signedIn = false;
     page.on("pageerror", (e) => errors.push(e.name));
     await page.route(
       new URL(process.env.UI_URL || "http://localhost:5173").origin + "/api/**",
       async (route) => {
         const path = new URL(route.request().url()).pathname;
+        if (browserAuth) {
+          const request = route.request();
+          if (path === "/api/auth/session") {
+            if (request.method() === "POST") {
+              assert.equal(
+                request.headers().authorization,
+                "Bearer synthetic-ui-token",
+              );
+              signedIn = true;
+            }
+            if (request.method() === "DELETE") {
+              assert.equal(request.headers()["x-csrf-token"], csrf);
+              signedIn = false;
+              await route.fulfill({ status: 204 });
+            } else {
+              await route.fulfill({
+                status: signedIn ? 200 : 401,
+                contentType: "application/json",
+                body: JSON.stringify(signedIn ? { csrf_token: csrf } : {}),
+              });
+            }
+            return;
+          }
+          assert.equal(request.headers().authorization, undefined);
+          if (request.method() !== "GET")
+            assert.equal(request.headers()["x-csrf-token"], csrf);
+        }
         const requestBody =
           path === "/api/ask" ? route.request().postDataJSON() : null;
         const askResponse =
@@ -176,11 +206,14 @@ try {
       },
     );
     await page.goto(process.env.UI_URL || "http://localhost:5173");
-    await page.getByLabel("رمز الوصول التطويري").fill("synthetic-ui-token");
+    await page
+      .getByLabel(browserAuth ? "رمز الدخول" : "رمز الوصول التطويري")
+      .fill("synthetic-ui-token");
     await page.getByRole("button", { name: "فتح مساحة العمل" }).click();
     await page.getByRole("heading", { name: longEmail.subject }).waitFor();
     assert.equal(await page.locator("html").getAttribute("dir"), "rtl");
     async function capture(name) {
+      await page.evaluate(() => window.scrollTo(0, 0));
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -293,6 +326,42 @@ try {
       await page.evaluate(() => localStorage.length + sessionStorage.length),
       0,
     );
+    await page.getByRole("button", { name: "Switch to English" }).click();
+    for (const [label, heading, shot] of [
+      ["Inbox", "Inbox", "inbox"],
+      ["Ask AI", "Answers start with your email", "ask"],
+      ["Search", "Search by meaning", "search"],
+      ["Tasks", "Tasks", "tasks"],
+      ["Settings", "Account & connection", "settings"],
+    ]) {
+      if (width < 760)
+        await page.getByRole("button", { name: "Open menu" }).click();
+      await page.getByRole("link", { name: label, exact: true }).click();
+      await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+      assert.equal(await page.locator("html").getAttribute("dir"), "ltr");
+      await capture("english-" + shot);
+    }
+    await page.getByRole("button", { name: "التبديل للعربية" }).click();
+    if (browserAuth) {
+      await page.reload();
+      await page.getByText("متصل", { exact: true }).waitFor();
+      await page.goto(new URL("/unknown-page", process.env.UI_URL).href);
+      await page.getByRole("heading", { name: "الصفحة غير موجودة" }).waitFor();
+      await capture("not-found");
+      await page.getByRole("button", { name: "خروج", exact: true }).click();
+      await page.getByLabel("رمز الدخول").waitFor();
+      await capture("browser-login");
+      assert.equal(signedIn, false);
+      for (const result of ["success", "denied", "expired", "provider_error"]) {
+        await page.goto(
+          new URL("/oauth/complete?result=" + result, process.env.UI_URL).href,
+        );
+        await page
+          .getByRole("link", { name: "الانتقال إلى الإعدادات" })
+          .waitFor();
+        await capture("oauth-" + result);
+      }
+    }
     assert.deepEqual(errors, []);
     results.push({
       width,

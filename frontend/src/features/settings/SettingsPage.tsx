@@ -5,6 +5,7 @@ import {
   useQueryClient,
   useIsMutating,
 } from "@tanstack/react-query";
+import { Settings } from "lucide-react";
 import { accounts } from "../../api/accounts";
 import { keys } from "../../app/query";
 import { useAuth } from "../../auth/AuthProvider";
@@ -12,8 +13,10 @@ import { useLocale } from "../../app/locale";
 import { Loading, ErrorState, Empty } from "../../components/shared/States";
 import { Identifier } from "../../components/ui/Text";
 import { EmailDate } from "../../components/ui/EmailDate";
+import { RetroWindow } from "../../components/ui/RetroWindow";
+
 export function SettingsPage() {
-  const { api } = useAuth();
+  const { api, getCurrentUser } = useAuth();
   const { t } = useLocale();
   const qc = useQueryClient();
   const syncLock = useRef(false);
@@ -70,10 +73,9 @@ export function SettingsPage() {
           : t("الاتصال غير متاح", "Connection unavailable");
   }
   return (
-    <div className="settings-page">
+    <div className="settings-page flex flex-col gap-4">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">GMAIL SETTINGS</p>
           <h1>{t("الحساب والاتصال", "Account & connection")}</h1>
           <p>
             {t(
@@ -83,142 +85,170 @@ export function SettingsPage() {
           </p>
         </div>
       </div>
-      <section className="surface settings-section">
-        <div className="section-heading">
-          <h2>{t("حسابات Gmail", "Gmail accounts")}</h2>
-          <button
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            {t("تحديث الحالة", "Refresh status")}
-          </button>
-        </div>
-        {query.isPending ? (
-          <Loading />
-        ) : query.isError ? (
-          <ErrorState error={query.error} retry={() => void query.refetch()} />
-        ) : query.data.accounts.length ? (
-          query.data.accounts.map((account) => (
-            <article className="account" key={account.id}>
-              <h3>
-                <Identifier>{account.address}</Identifier>
-              </h3>
-              <p className="account-status">{status(account.status)}</p>
-              <p className="muted">
-                {t("آخر مزامنة: ", "Last sync: ")}
-                {account.last_synced_at ? (
-                  <EmailDate value={account.last_synced_at} />
-                ) : (
-                  t("لم تتم المزامنة بعد", "Not synced yet")
+      <RetroWindow
+        title={t("الإعدادات", "Settings")}
+        icon={<Settings size={16} className="text-[#E07A5F]" />}
+        subtitle={t("إعدادات Gmail والحساب", "Gmail & Account Settings")}
+      >
+        <div className="p-4 sm:p-6 flex flex-col gap-6">
+          <section className="surface settings-section">
+            <div className="section-heading">
+              <h2>{t("حسابات Gmail", "Gmail accounts")}</h2>
+              <button
+                disabled={query.isFetching}
+                onClick={() => void query.refetch()}
+              >
+                {t("تحديث الحالة", "Refresh status")}
+              </button>
+            </div>
+            {query.isPending ? (
+              <Loading />
+            ) : query.isError ? (
+              <ErrorState
+                error={query.error}
+                retry={() => void query.refetch()}
+              />
+            ) : query.data.accounts.length ? (
+              query.data.accounts.map((account) => (
+                <article className="account" key={account.id}>
+                  <h3>
+                    <Identifier>{account.address}</Identifier>
+                  </h3>
+                  <p className="account-status">{status(account.status)}</p>
+                  <p className="muted">
+                    {t("آخر مزامنة: ", "Last sync: ")}
+                    {account.last_synced_at ? (
+                      <EmailDate value={account.last_synced_at} />
+                    ) : (
+                      t("لم تتم المزامنة بعد", "Not synced yet")
+                    )}
+                  </p>
+                  {account.sync_error && (
+                    <p className="muted">
+                      {t(
+                        "لم تكتمل المزامنة الأخيرة. حاول مجددًا أو أعد الاتصال.",
+                        "The last sync did not finish. Retry or reconnect.",
+                      )}
+                    </p>
+                  )}
+                  <div className="account-actions">
+                    <button
+                      disabled={syncing || account.status !== "connected"}
+                      onClick={() => startSync(account.id)}
+                    >
+                      {syncing && sync.variables === account.id
+                        ? t("جارٍ المزامنة…", "Syncing…")
+                        : t("مزامنة الآن", "Sync now")}
+                    </button>
+                    <button
+                      disabled={connecting || syncing}
+                      onClick={startConnect}
+                    >
+                      {t("إعادة الاتصال", "Reconnect")}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <Empty title={t("لا يوجد حساب متصل", "No connected account")} />
+            )}
+            {syncing && (
+              <p role="status">
+                {t(
+                  "جارٍ مزامنة البريد. قد تستغرق العملية بعض الوقت.",
+                  "Syncing email. This may take a little time.",
                 )}
               </p>
-              {account.sync_error && (
-                <p className="muted">
-                  {t(
-                    "لم تكتمل المزامنة الأخيرة. حاول مجددًا أو أعد الاتصال.",
-                    "The last sync did not finish. Retry or reconnect.",
-                  )}
-                </p>
-              )}
-              <div className="account-actions">
-                <button
-                  disabled={syncing || account.status !== "connected"}
-                  onClick={() => startSync(account.id)}
-                >
-                  {syncing && sync.variables === account.id
-                    ? t("جارٍ المزامنة…", "Syncing…")
-                    : t("مزامنة الآن", "Sync now")}
-                </button>
-                <button disabled={connecting || syncing} onClick={startConnect}>
-                  {t("إعادة الاتصال", "Reconnect")}
-                </button>
-              </div>
-            </article>
-          ))
-        ) : (
-          <Empty title={t("لا يوجد حساب متصل", "No connected account")} />
-        )}
-        {syncing && (
-          <p role="status">
-            {t(
-              "جارٍ مزامنة البريد. قد تستغرق العملية بعض الوقت.",
-              "Syncing email. This may take a little time.",
             )}
-          </p>
-        )}
-        {sync.isError && <ErrorState error={sync.error} />}
-        {sync.data && !syncing && (
-          <p role="status" className="sync-result">
-            {t("تمت معالجة", "Processed")} {sync.data.success_count}{" "}
-            {t("رسالة.", "messages.")}{" "}
-            {t(
-              "رسائل تعذرت معالجتها: ",
-              "Messages that could not be processed: ",
+            {sync.isError && <ErrorState error={sync.error} />}
+            {sync.data && !syncing && (
+              <p role="status" className="sync-result">
+                {t("تمت معالجة", "Processed")} {sync.data.success_count}{" "}
+                {t("رسالة.", "messages.")}{" "}
+                {t(
+                  "رسائل تعذرت معالجتها: ",
+                  "Messages that could not be processed: ",
+                )}
+                {sync.data.failed_count}.{" "}
+                {t(
+                  "معلومات مساعدة غير مكتملة: ",
+                  "Incomplete derived information: ",
+                )}
+                {sync.data.enrichment_failed}.
+              </p>
             )}
-            {sync.data.failed_count}.{" "}
-            {t(
-              "معلومات مساعدة غير مكتملة: ",
-              "Incomplete derived information: ",
-            )}
-            {sync.data.enrichment_failed}.
-          </p>
-        )}
-      </section>
-      <section className="surface settings-section">
-        <h2>{t("اتصال Gmail", "Gmail connection")}</h2>
-        <p className="muted">
-          {t(
-            "سيُفتح Google في تبويب جديد. لإعادة الاتصال، اختر عنوان Gmail نفسه هناك.",
-            "Google opens in a new tab. To reconnect, choose the same Gmail address there.",
-          )}
-        </p>
-        <button
-          className="primary"
-          disabled={connecting || syncing}
-          onClick={startConnect}
-        >
-          {t("اتصال Gmail أو إعادة الاتصال", "Connect or reconnect Gmail")}
-        </button>
-        {connecting && (
-          <p role="status">
-            {t("جارٍ تجهيز الاتصال…", "Preparing connection…")}
-          </p>
-        )}
-        {connect.isError && <ErrorState error={connect.error} />}
-        {connect.data && !connecting && (
-          <div className="oauth-ready">
-            <a
-              className="button"
-              href={connect.data}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("متابعة إلى Google", "Continue to Google")}
-            </a>
-            <p>
+          </section>
+          <section className="surface settings-section">
+            <h2>{t("اتصال Gmail", "Gmail connection")}</h2>
+            <p className="muted">
               {t(
-                "بعد الموافقة ستظهر صفحة JSON لتأكيد الاتصال. عد إلى هذا التبويب واضغط تحديث الحالة. رابط الموافقة صالح لعشر دقائق.",
-                "After consent, a JSON confirmation page appears. Return to this tab and refresh status. The consent link is valid for ten minutes.",
+                "سيُفتح Google في تبويب جديد. لإعادة الاتصال، اختر عنوان Gmail نفسه هناك.",
+                "Google opens in a new tab. To reconnect, choose the same Gmail address there.",
               )}
             </p>
-            <small>
-              {t(
-                "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
-                "Use localhost for both frontend and backend during development.",
-              )}
-            </small>
-          </div>
-        )}
-      </section>
-      <section className="development-note">
-        <h2>{t("جلسة تطوير محلية", "Local development session")}</h2>
-        <p>
-          {t(
-            "رمز دخول التطبيق يبقى في الذاكرة ويُحذف عند تحديث الصفحة أو الخروج. اتصال Gmail منفصل عن دخول التطبيق.",
-            "The app access token stays in memory and clears on reload or logout. Gmail consent is separate from app sign-in.",
-          )}
-        </p>
-      </section>
+            <button
+              className="primary"
+              disabled={connecting || syncing}
+              onClick={startConnect}
+            >
+              {t("اتصال Gmail أو إعادة الاتصال", "Connect or reconnect Gmail")}
+            </button>
+            {connecting && (
+              <p role="status">
+                {t("جارٍ تجهيز الاتصال…", "Preparing connection…")}
+              </p>
+            )}
+            {connect.isError && <ErrorState error={connect.error} />}
+            {connect.data && !connecting && (
+              <div className="oauth-ready">
+                <a
+                  className="button"
+                  href={connect.data}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("متابعة إلى Google", "Continue to Google")}
+                </a>
+                <p>
+                  {t(
+                    "بعد الموافقة ستعود إلى صفحة نتيجة الاتصال في التطبيق. افتح الإعدادات للتحقق من الحساب، أو عد إلى هذا التبويب وحدّث الحالة. الرابط صالح لعشر دقائق.",
+                    "After consent, the app shows the connection result. Open Settings to verify the account, or return to this tab and refresh status. The link is valid for ten minutes.",
+                  )}
+                </p>
+                <small>
+                  {t(
+                    "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
+                    "Use localhost for both frontend and backend during development.",
+                  )}
+                </small>
+              </div>
+            )}
+          </section>
+          <section className="development-note">
+            {getCurrentUser().kind === "browser-session" ? (
+              <>
+                <h2>{t("جلسة متصفح آمنة", "Secure browser session")}</h2>
+                <p>
+                  {t(
+                    "جلسة قصيرة تنتهي عند تسجيل الخروج أو انتهاء صلاحيتها. اتصال Gmail منفصل.",
+                    "A short-lived session ends on sign-out or expiry. Gmail consent is separate.",
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>{t("جلسة تطوير محلية", "Local development session")}</h2>
+                <p>
+                  {t(
+                    "رمز دخول التطبيق يبقى في الذاكرة ويُحذف عند تحديث الصفحة أو الخروج. اتصال Gmail منفصل عن دخول التطبيق.",
+                    "The app access token stays in memory and clears on reload or logout. Gmail consent is separate from app sign-in.",
+                  )}
+                </p>
+              </>
+            )}
+          </section>
+        </div>
+      </RetroWindow>
     </div>
   );
 }

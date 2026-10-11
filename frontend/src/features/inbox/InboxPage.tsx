@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { Inbox } from "lucide-react";
 import { emails } from "../../api/emails";
 import { keys } from "../../app/query";
 import { useAuth } from "../../auth/AuthProvider";
@@ -10,6 +11,8 @@ import { EmailList } from "./EmailList";
 import { InboxToolbar } from "./InboxToolbar";
 import { Pagination } from "./Pagination";
 import { readInboxState } from "./inboxState";
+import { RetroWindow } from "../../components/ui/RetroWindow";
+
 export function InboxPage() {
   const { api } = useAuth();
   const { t } = useLocale();
@@ -43,10 +46,9 @@ export function InboxPage() {
     setParams(next);
   }
   return (
-    <>
+    <div className="flex flex-col gap-4">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">INBOX</p>
           <h1>{t("البريد الوارد", "Inbox")}</h1>
           <p>
             {t(
@@ -61,58 +63,69 @@ export function InboxPage() {
           </span>
         )}
       </div>
-      <section className="surface" aria-label={t("قائمة البريد", "Email list")}>
-        <InboxToolbar
-          key={params.toString()}
-          filters={filters}
-          change={change}
-          clear={clear}
-        />
-        {query.isPending ? (
-          <EmailSkeleton />
-        ) : query.isError ? (
-          <ErrorState error={query.error} retry={() => void query.refetch()} />
-        ) : query.data.emails.length ? (
-          <EmailList items={query.data.emails} />
-        ) : (
-          <>
-            <Empty
-              title={
-                filtered
-                  ? t("لا توجد رسائل تطابق الفلاتر", "No matching emails")
-                  : query.data.total
-                    ? t("هذه الصفحة فارغة", "This page is empty")
-                    : t("لا توجد رسائل هنا", "No emails here")
-              }
-              detail={
-                filtered
-                  ? t("جرّب إزالة بعض الفلاتر.", "Try removing some filters.")
-                  : t(
-                      "يمكنك مزامنة حسابك من الإعدادات.",
-                      "You can sync your account in Settings.",
-                    )
-              }
-            />
-            <div className="center">
-              <button onClick={filtered ? clear : () => page(0)}>
-                {filtered
-                  ? t("مسح الفلاتر", "Clear filters")
-                  : t("الصفحة الأولى", "First page")}
-              </button>
-            </div>
-          </>
-        )}
-        {query.data && !query.isError && (
-          <Pagination
-            offset={filters.offset || 0}
-            limit={query.data.limit}
-            count={query.data.count}
-            total={query.data.total}
-            busy={query.isFetching}
-            change={page}
+      <RetroWindow
+        title={t("البريد الوارد", "Inbox")}
+        icon={<Inbox size={16} className="text-[#E07A5F]" />}
+      >
+        <section
+          className="surface border-0 rounded-none shadow-none"
+          aria-label={t("قائمة البريد", "Email list")}
+        >
+          <InboxToolbar
+            key={params.toString()}
+            filters={filters}
+            change={change}
+            clear={clear}
           />
-        )}
-      </section>
-    </>
+          {query.isPending ? (
+            <EmailSkeleton />
+          ) : query.isError ? (
+            <ErrorState
+              error={query.error}
+              retry={() => void query.refetch()}
+            />
+          ) : query.data.emails.length ? (
+            <EmailList items={query.data.emails} />
+          ) : (
+            <>
+              <Empty
+                title={
+                  filtered
+                    ? t("لا توجد رسائل تطابق الفلاتر", "No matching emails")
+                    : query.data.total
+                      ? t("هذه الصفحة فارغة", "This page is empty")
+                      : t("لا توجد رسائل هنا", "No emails here")
+                }
+                detail={
+                  filtered
+                    ? t("جرّب إزالة بعض الفلاتر.", "Try removing some filters.")
+                    : t(
+                        "يمكنك مزامنة حسابك من الإعدادات.",
+                        "You can sync your account in Settings.",
+                      )
+                }
+              />
+              <div className="center p-4">
+                <button onClick={filtered ? clear : () => page(0)}>
+                  {filtered
+                    ? t("مسح الفلاتر", "Clear filters")
+                    : t("الصفحة الأولى", "First page")}
+                </button>
+              </div>
+            </>
+          )}
+          {query.data && !query.isError && (
+            <Pagination
+              offset={filters.offset || 0}
+              limit={query.data.limit}
+              count={query.data.count}
+              total={query.data.total}
+              busy={query.isFetching}
+              change={page}
+            />
+          )}
+        </section>
+      </RetroWindow>
+    </div>
   );
 }
