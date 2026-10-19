@@ -66,6 +66,7 @@ export function TasksPage() {
             <label>
               {t("الموعد النهائي", "Deadline")}
               <select
+                aria-label={t("الموعد النهائي", "Deadline")}
                 value={
                   filters.has_deadline === undefined
                     ? ""
@@ -80,18 +81,21 @@ export function TasksPage() {
                 </option>
               </select>
             </label>
-            <label>
-              {t("ترتيب الإضافة", "Order added")}
-              <select
-                value={order}
-                onChange={(e) => change("order", e.target.value)}
+            <fieldset>
+              <legend>{t("التاريخ", "Date")}</legend>
+              <button
+                aria-pressed={order === "desc"}
+                onClick={() => change("order", "desc")}
               >
-                <option value="desc">
-                  {t("الأحدث إضافة", "Recently added")}
-                </option>
-                <option value="asc">{t("الأقدم إضافة", "Oldest added")}</option>
-              </select>
-            </label>
+                {t("الأحدث", "Newest")}
+              </button>
+              <button
+                aria-pressed={order === "asc"}
+                onClick={() => change("order", "asc")}
+              >
+                {t("الأقدم", "Oldest")}
+              </button>
+            </fieldset>
           </div>
           <div aria-live="polite" aria-busy={query.isFetching}>
             {query.isPending ? (
@@ -133,6 +137,11 @@ export function TasksPage() {
                     <Link
                       className="task-source"
                       to={"/email/" + task.email.id}
+                      state={{
+                        returnTo:
+                          "/tasks" +
+                          (params.size ? "?" + params.toString() : ""),
+                      }}
                     >
                       <span>{t("المصدر:", "Source:")} </span>
                       <strong dir="auto">

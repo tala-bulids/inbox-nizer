@@ -2,9 +2,10 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowUpLeft, ListChecks } from "lucide-react";
 import type { Email } from "../../api/contracts";
 import { useLocale } from "../../app/locale";
+import { categoryLabel } from "../../app/categoryLabels";
 import { EmailDate } from "../../components/ui/EmailDate";
 export function EmailList({ items }: { items: Email[] }) {
-  const { t } = useLocale();
+  const { t, language } = useLocale();
   const location = useLocation();
   return (
     <ul className="email-list">
@@ -13,7 +14,7 @@ export function EmailList({ items }: { items: Email[] }) {
           <Link
             to={`/email/${email.id}`}
             className="email-row"
-            state={{ inbox: location.pathname + location.search }}
+            state={{ returnTo: location.pathname + location.search }}
           >
             <span className="avatar" aria-hidden="true">
               {(email.from || email.subject || "@")
@@ -58,7 +59,7 @@ export function EmailList({ items }: { items: Email[] }) {
                   .slice(0, 2)
                   .map((p, i) => (
                     <span className="badge" key={i} dir="auto">
-                      {p.category}
+                      {categoryLabel(p.category, language)}
                     </span>
                   ))}
                 {email.predictions.filter((p) => p.category).length > 2 && (
@@ -66,8 +67,8 @@ export function EmailList({ items }: { items: Email[] }) {
                     className="badge"
                     title={email.predictions
                       .slice(2)
-                      .map((p) => p.category)
-                      .join("، ")}
+                      .map((p) => categoryLabel(p.category, language))
+                      .join(t("، ", ", "))}
                   >
                     +{email.predictions.filter((p) => p.category).length - 2}{" "}
                     {t("تصنيفات", "categories")}

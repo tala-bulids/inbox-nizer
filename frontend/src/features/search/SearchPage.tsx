@@ -17,7 +17,8 @@ export function SearchPage() {
     queryKey: keys.search(submitted),
     queryFn: ({ signal }) => emails.search(api, submitted, signal),
     enabled: !!submitted,
-    staleTime: 60_000,
+    staleTime: Infinity,
+    gcTime: Infinity,
     refetchOnMount: false,
     refetchOnReconnect: false,
     retry: false,
@@ -26,17 +27,17 @@ export function SearchPage() {
     <div className="search-page flex flex-col gap-4">
       <div className="page-heading">
         <div>
-          <h1>{t("ابحث بالمعنى", "Search by meaning")}</h1>
+          <h1>{t("ابحث عن إيميلك", "Find your email")}</h1>
           <p>
             {t(
-              "اعثر على الرسالة حتى لو لم تتذكر كلماتها. النتائج رسائل ذات صلة، وليست إجابة مولّدة.",
-              "Find emails even without their exact words. Results are relevant messages, not generated answers.",
+              "اعثر على إيميلك بكتابة معنى الإيميل أو الغرض منه.",
+              "Find an email by describing its meaning or purpose.",
             )}
           </p>
         </div>
       </div>
       <RetroWindow
-        title={t("ابحث بالمعنى", "Search by meaning")}
+        title={t("ابحث عن إيميلك", "Find your email")}
         icon={<Search size={16} className="text-[#E07A5F]" />}
       >
         <div className="p-4 sm:p-6 flex flex-col gap-4">

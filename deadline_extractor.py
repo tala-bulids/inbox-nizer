@@ -118,7 +118,36 @@ def _resolve_time(clock, day, reference):
 def _deadline_for_task(text, reference_datetime=None):
     """Parse timing only after the shared task pipeline accepts the request."""
     normalized, offsets = _normalized(text)
-    match = _PHRASE.search(normalized)
+    # 'On' introduces an event date, not a due constraint. Relative timing
+    # belongs to an action only when it is not describing attendance or a noun.
+    from task_context import CONDITION
+    condition_end = 0
+    if CONDITION.match(normalized):
+        separator = re.search(r'[,،]', normalized)
+        condition_end = separator.end() if separator else len(normalized)
+    matches = []
+    for candidate in _PHRASE.finditer(normalized):
+        if candidate.start() < condition_end or candidate[0].startswith('on '):
+            continue
+        if candidate['relative']:
+            prefix = normalized[:candidate.start()]
+            if re.search(r'\b(?:attend|meeting|flight|event|conference)\b|(?:الحضور|حضور|احضر|اجتماع|رحله|رحلة|مؤتمر)', prefix):
+                continue
+        # A temporal phrase modifying an issued/received document or an event
+        # does not establish when the user must complete the governing action.
+        prefix = normalized[:candidate.start()]
+        tail = re.split(r'[;؛.!?\n]',prefix)[-1]
+        if re.search(r'\b(?:issued|dated|received|sent|published|created|departing)\s*$|'
+                     r'(?:الصادر[ةه]|المرسل[ةه]|المستلم[ةه]|بتاريخ)\s*$',tail,re.I):
+            continue
+        if re.search(r'\bfor (?:the |a |an )?(?:meeting|flight|event|conference|workshop)\b[^;.!?]*$|'
+                     r'(?:للاجتماع|للرحلة|للرحله|للمؤتمر)\b[^؛.!؟]*$',tail,re.I):
+            continue
+        matches.append(candidate)
+    # Conflicting constraints in one action are not safely resolved by choosing
+    # whichever happened to be mentioned first. Preserve the task, omit the date.
+    constraints = {(match['value'] or match['relative'],match['clock']) for match in matches}
+    match = matches[0] if matches and len(constraints)==1 else None
     if not match:
         return None
     original = text[offsets[match.start()]:offsets[match.end()]].strip()

@@ -3,12 +3,6 @@ export function readInboxState(params: URLSearchParams): InboxFilters {
   const n = Number(params.get("offset") || 0);
   const priority = params.get("priority");
   const sort = params.get("sort");
-  const boolean = (key: string) =>
-    params.get(key) === "true"
-      ? true
-      : params.get(key) === "false"
-        ? false
-        : undefined;
   return {
     limit: 20,
     offset:
@@ -19,9 +13,7 @@ export function readInboxState(params: URLSearchParams): InboxFilters {
       priority === "high" || priority === "medium" || priority === "low"
         ? priority
         : undefined,
-    category: params.get("category")?.trim() || undefined,
-    has_tasks: boolean("tasks"),
-    has_deadline: boolean("deadline"),
+    categories: params.getAll("category").filter(Boolean),
     sort_by: sort === "priority_score" || sort === "id" ? sort : "created_at",
     sort_order: params.get("order") === "asc" ? "asc" : "desc",
   };
@@ -44,4 +36,18 @@ export function inboxReturnPath(value: unknown): string {
     )
       params.delete(key);
   return params.size ? "/?" + params.toString() : "/";
+}
+
+export function emailReturnPath(value: unknown): string {
+  if (value === "/search" || value === "/ask") return value;
+  if (
+    typeof value === "string" &&
+    (value === "/tasks" || value.startsWith("/tasks?"))
+  ) {
+    const params = new URLSearchParams(value.split("?")[1]);
+    for (const key of [...params.keys()])
+      if (!["offset", "deadline", "order"].includes(key)) params.delete(key);
+    return "/tasks" + (params.size ? "?" + params.toString() : "");
+  }
+  return inboxReturnPath(value);
 }

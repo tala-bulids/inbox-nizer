@@ -5,7 +5,7 @@ function Recovery() {
   const { t } = useLocale();
   return (
     <main className="login public-window" role="alert">
-      <RetroWindow title="Inbox+nizer">
+      <RetroWindow title="inbox-nizer">
         <div className="state">
           <h1>{t("تعذر عرض الصفحة", "Unable to display this page")}</h1>
           <p>

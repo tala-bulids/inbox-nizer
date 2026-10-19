@@ -1,3 +1,5 @@
+import gmail_sync
+import email_pipeline
 import base64
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock
@@ -14,6 +16,8 @@ from models import Email, EmailPrediction, EmailTask
 
 def _gmail(monkeypatch, body, sent='Mon, 21 Sep 2026 14:00:00 +0300'):
     service = Mock()
+    service.users.return_value.getProfile.return_value.execute.return_value = {"historyId": "10"}
+    service.users.return_value.history.return_value.list.return_value.execute.return_value = {"historyId": "11", "history": [{"messages": [{"id": "deadline-message"}]}]}
     messages = service.users.return_value.messages.return_value
     messages.list.return_value.execute.return_value = {'messages': [{'id': 'deadline-message'}]}
     messages.get.return_value.execute.return_value = {'payload': {
@@ -21,15 +25,15 @@ def _gmail(monkeypatch, body, sent='Mon, 21 Sep 2026 14:00:00 +0300'):
         'headers': [{'name': 'Subject', 'value': 'Application'}, {'name': 'Date', 'value': sent}],
         'body': {'data': base64.urlsafe_b64encode(body.encode()).decode()},
     }}
-    monkeypatch.setattr(routes, 'get_gmail_service', lambda: service)
-    monkeypatch.setattr(routes, 'classify_email', Mock(return_value=[{'category': 'Business', 'confidence': 0.8}]))
+    monkeypatch.setattr(gmail_sync, 'get_gmail_service', lambda *args: service)
+    monkeypatch.setattr(email_pipeline, 'classify_email', Mock(return_value=[{'category': 'Business', 'confidence': 0.8}]))
 
 
 def test_gmail_stores_deadlines_and_does_not_duplicate(monkeypatch, test_database):
     _gmail(monkeypatch, 'Please submit your application by Friday.\nReply tomorrow at 10 AM.')
     with TestClient(app) as client:
         for _ in range(2):
-            assert client.get('/gmail/messages').json()['success_count'] == 1
+            assert client.post('/gmail/messages').json()['success_count'] == 1
         saved = client.get('/emails', params={'has_deadline': 'true'}).json()
     assert saved['count'] == 1
     tasks = saved['emails'][0]['tasks']
@@ -56,7 +60,7 @@ def test_existing_task_is_enriched_without_replacing_it(monkeypatch, test_databa
     _gmail(monkeypatch, 'Please submit your application by Friday.')
     with TestClient(app) as client:
         for _ in range(2):
-            assert client.get('/gmail/messages').json()['success_count'] == 1
+            assert client.post('/gmail/messages').json()['success_count'] == 1
     test_database.expire_all()
     assert len(email.tasks) == 1
     assert email.tasks[0].id == task_id
@@ -74,7 +78,7 @@ def test_existing_task_is_enriched_without_replacing_it(monkeypatch, test_databa
 def test_bad_header_keeps_absolute_and_text_deadlines(monkeypatch, test_database, body, expected):
     _gmail(monkeypatch, body, 'bad header')
     with TestClient(app) as client:
-        assert client.get('/gmail/messages').json()['success_count'] == 1
+        assert client.post('/gmail/messages').json()['success_count'] == 1
     task = test_database.scalar(select(EmailTask))
     assert task.deadline_text
     assert task.deadline_date == expected
@@ -112,7 +116,7 @@ def test_deadline_filters_combine_with_existing_filters(test_database):
 def test_gmail_semantic_dedup_is_persisted(monkeypatch, test_database):
     _gmail(monkeypatch, 'يرجى إصدار بطاقة الصعود إلكترونياً قبل الوصول إلى المطار.\nإصدار بطاقة صعود الطائرة.')
     with TestClient(app) as client:
-        assert client.get('/gmail/messages').json()['success_count'] == 1
+        assert client.post('/gmail/messages').json()['success_count'] == 1
     task = test_database.scalars(select(EmailTask)).one()
     assert task.deadline_text == 'قبل الوصول إلى المطار'
     assert task.deadline_date is task.deadline_at is None

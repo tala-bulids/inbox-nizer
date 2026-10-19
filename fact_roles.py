@@ -1,6 +1,7 @@
 """Small bilingual vocabulary for explicit roles, not general intent inference."""
 import re
 import unicodedata
+from question_understanding import normalize as question_words, deadline_tokens
 
 
 def words(text):
@@ -17,15 +18,17 @@ SIDES = {
     'start': {'start', 'بدايه', 'بدء'},
     'end': {'end', 'نهايه'},
 }
-KINDS = {'time': {'time', 'times', 'وقت', 'ساعه'}, 'date': {'date', 'dates', 'تاريخ'}}
+KINDS = {'time': {'time', 'times', 'وقت', 'ساعه'}, 'date': {'date', 'dates', 'تاريخ', 'موعد'}}
 TRAVEL = {'travel', 'trip', 'flight', 'سفر', 'سفري', 'سفرتي', 'رحله', 'رحلتي'}
 LOCATIONS = {'origin': {'origin', 'مبدا'}, 'destination': {'destination', 'وجهه'}}
-STOP = set('what when where is are do does my your the a an in on at for of please tell me ما متي اين وش هو هي في من فضلك بي خاص'.split())
+STOP = set('كم what when where is are do does my your the a an in on at for of please tell me ما متي اين وش هو هي في من فضلك بي خاص'.split())
 UNSAFE = set('why how explain summarize compare difference should not except without or all both لماذا كيف اشرح لخص قارن ينبغي لا ليس غير عدا او جميع كل'.split())
 
 
 def label_role(label):
     tokens = set(words(label))
+    if deadline_tokens(tokens) and tokens <= {'deadline', 'registration', 'payment', 'due', 'date', 'last', 'is', 'on', 'by', 'اخر', 'موعد', 'يوم', 'نهائي', 'اخير', 'للتسجيل', 'للتقديم'}:
+        return 'deadline_date'
     if tokens & TRAVEL and tokens & KINDS['date'] and tokens <= TRAVEL | KINDS['date']:
         return 'travel_date'
     if tokens in ({'from'}, {'من'}):
@@ -45,14 +48,18 @@ def label_role(label):
 def intent(question):
     """One clear role plus literal qualifiers; coordination stays with old resolver."""
     tokens = words(question)
-    if not tokens or tokens[0] not in {'what', 'when', 'where', 'ما', 'متي', 'اين', 'وش'}:
+    tokens = question_words(tokens)
+    if not tokens or tokens[0] not in {'what', 'when', 'where', 'ما', 'متي', 'اين', 'وش', 'كم'}:
         return None
     if set(tokens) & (UNSAFE | {'and', 'و'}) or any(t.startswith('وال') for t in tokens):
         return None
     sides = [side for side, aliases in SIDES.items() if set(tokens) & aliases]
     locations = [role for role, aliases in LOCATIONS.items() if set(tokens) & aliases]
     kinds = [kind for kind, aliases in KINDS.items() if set(tokens) & aliases]
-    if not sides and not locations and set(tokens) & TRAVEL and (
+    if not sides and not locations and deadline_tokens(tokens):
+        role = 'deadline_date'
+        consumed = {'deadline', 'due', 'date', 'اخر', 'نهائي', 'اخير', 'موعد', 'يوم', 'تاريخ'}
+    elif not sides and not locations and set(tokens) & TRAVEL and (
             set(tokens) & KINDS['date'] or tokens[0] in {'when', 'متي'}):
         role = 'travel_date'
         consumed = TRAVEL | KINDS['date']
@@ -71,7 +78,7 @@ def intent(question):
     # Expand the attached Arabic to/for prefix only on remaining qualifiers.
     expanded = []
     for token in tokens:
-        if token not in consumed | STOP and token.startswith('ل') and len(token) > 2:
+        if role != 'deadline_date' and token not in consumed | STOP and token.startswith('ل') and len(token) > 2:
             expanded.extend(['to', token[1:]])
         else:
             expanded.append(token)
@@ -106,12 +113,16 @@ def qualified(request, field, source, siblings):
             if len(values) == 1:
                 locations[name] = next(iter(values))
     for role, wanted in request['relations']:
-        if not set(wanted) <= set(words(locations[role])):
+        from entity_aliases import matches
+        if not matches(wanted, locations[role]):
             return False
     context = source.get('qualifier_text', source.get('subject', ''))
     context += ' ' + ' '.join(s['value'] for s in siblings if s.get('usable', True))
     context += ' ' + ' '.join(locations.values())
-    return set(request['qualifiers']) <= set(words(context))
+    if request['role'] == 'deadline_date':
+        context += ' ' + field['label']
+    from entity_aliases import qualifier_matches
+    return qualifier_matches(request['qualifiers'], context)
 
 
 def matching_fields(request, evidence):
@@ -160,6 +171,8 @@ def display_role(role, language):
         return role.replace('_', ' ')
     if role in LOCATIONS:
         return {'origin': 'مكان المغادرة', 'destination': 'الوجهة'}[role]
+    if role == 'deadline_date':
+        return 'الموعد النهائي'
     if role == 'travel_date':
         return 'تاريخ السفر'
     side, kind = role.split('_')

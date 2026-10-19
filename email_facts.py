@@ -10,7 +10,7 @@ from email_utils import extract_main_content
 from rag_grounding import explicit_fields, _role_tokens
 from rag_evidence import _records
 
-EXTRACTOR_VERSION = 'facts-v1'
+EXTRACTOR_VERSION = 'facts-v2-relations'
 _STRONG_DEADLINE = re.compile(r'^(?:deadline|due (?:on|by)|no later than|اخر (?:يوم|موعد)|الموعد النهائي|الموعد الاخير|مستحق في)\b', re.I)
 _UNCERTAIN = re.compile(r'\b(?:not|never|cancelled|canceled|old|previous|formerly|if|unless|لا|لم|لن|ليس|السابق|القديم|ملغي|اذا)\b', re.I)
 
@@ -103,4 +103,24 @@ def extract_facts(email):
                           normalized_value=normalized_value, source_text=evidence,
                           source_start=start, source_end=end, record_start=record[0], record_end=record[1],
                           extraction_reason=reason, extractor_version=EXTRACTOR_VERSION)
+    from relational_facts import candidates as relational_candidates, supported
+    relations = relational_candidates(body)
+    for candidate in relations:
+        start, end = candidate['start'], candidate['end']
+        role, value = candidate['role'], candidate['value']
+        record = next(([a,b] for a,b in records if a <= start < b), [0,len(body)])
+        if end > record[1]:
+            continue
+        if sum(f['role']=='origin' and record[0] <= f['start'] < record[1] for f in relations) > 1:
+            record = [start,end]
+        normalized = normalize_value(role, value) or dict(kind='literal', value=value)
+        if candidate['relation']:
+            normalized['relation'] = candidate['relation']
+        key = hashlib.sha256(json.dumps([role,value,start,end], ensure_ascii=False).encode()).hexdigest()
+        fact = dict(fact_key=key, role=role, source_label=role, literal_value=value,
+                    normalized_value=normalized, source_text=body[start:end],
+                    source_start=start, source_end=end, record_start=record[0], record_end=record[1],
+                    extraction_reason=candidate['reason'], extractor_version=EXTRACTOR_VERSION)
+        if supported(fact, main):
+            facts[key] = fact
     return list(facts.values())

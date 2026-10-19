@@ -12,7 +12,7 @@ def test_semantic_migration_roundtrip_and_hnsw(test_database):
     config.set_main_option('script_location', str(Path(__file__).parent / 'alembic'))
     scripts = ScriptDirectory.from_config(config)
     migration = scripts.get_revision('f1a6b3c802de')
-    assert scripts.get_heads() == ['a2b7c4d913ef']
+    assert scripts.get_heads() == ['d5ea7f246bc0']
     assert migration.down_revision == 'e8f3a2b491cd'
     conn = test_database.connection()
     assert conn.engine.url.database.endswith('_test')

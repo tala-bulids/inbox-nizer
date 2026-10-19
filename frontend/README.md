@@ -1,10 +1,12 @@
-# AI Smart Inbox — frontend foundation
+# inbox-nizer frontend
 
-Arabic-first authenticated application. The AI/backend baseline remains frozen.
+Arabic/English React application with the existing retro design. The frontend
+provides Inbox, Email Detail, Search, Ask Mail, Tasks and Gmail Settings.
 
 ## Local development
 
-Requires Node 22.12+ and npm (tested with Node 24.11.1). From `frontend/`:
+Requires Node 22.12+ and npm; the browser smoke scripts use Node 24+ for native
+TypeScript fixture imports. From `frontend/`:
 
 ```powershell
 npm ci
@@ -12,207 +14,138 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Open http://localhost:5173. The existing backend must be running at
-http://localhost:8000. From the repository root, if needed:
+Open http://localhost:5173. The development proxy forwards `/api` to
+`API_PROXY_TARGET` (default http://localhost:8000), stripping the `/api` prefix.
+Run the configured backend from the repository root:
 
 ```powershell
 .\env\Scripts\python.exe -m uvicorn main:app --host localhost --port 8000 --no-access-log
 ```
 
-`npm install` is also supported. The lockfile records exact dependency versions.
-`VITE_API_BASE_URL` defaults to `/api`. The development proxy strips `/api` and
-forwards requests to `API_PROXY_TARGET` (default http://localhost:8000). No backend
-CORS changes are needed. `/api/` maps to the backend health route.
+All `VITE_*` values are public browser configuration. Never put credentials or
+encryption keys in them. `VITE_API_BASE_URL` defaults to `/api`; production uses
+the same origin. `npm run preview` serves built assets only and is not the
+production API proxy. Deployment, security and Google review requirements are
+documented in [deploy/README.md](../deploy/README.md).
 
-All `VITE_*` values are public browser configuration. Never put bearer tokens,
-Google client secrets or encryption keys there. A different API origin requires
-an explicitly reviewed CORS setup, which this phase does not implement.
+## Authentication and Gmail consent
 
-The Vite proxy is development-only. Production needs same-origin `/api/` reverse
-proxying, SPA history fallback, TLS, security headers and production browser auth.
-`npm run preview` previews built assets; it is not a production API proxy.
+Production builds expose only **Continue with Google**, with the welcome text
+“أهلاً بك في صندوقك الوارد المرتب” / “Welcome to your organized inbox”.
+`POST /auth/google/login/start` begins application login. The backend validates
+OIDC and establishes an HttpOnly browser session. On reload the frontend restores
+it through `GET /auth/session`; mutating session requests carry `X-CSRF-Token`.
+Signing out clears private React/query state immediately and attempts server
+revocation through `DELETE /auth/session`. An unsuccessful revocation remains
+visible with a retry action.
 
-## Stack and structure
+The optional token form exists only in Vite development mode. The token remains
+in memory. `VITE_AUTH_MODE=browser` enables the development browser-session flow;
+it does not enable a token form in a production build.
 
-React 19, TypeScript 5.9 in strict mode, Vite 7, React Router 7, TanStack Query 5,
-Tailwind 4 semantic tokens, Radix Dialog and Lucide. TypeScript 5.9 matches the
-OpenAPI generator's supported peer range. Actual versions are in package-lock.json.
+Application login and Gmail read consent are separate. A signed-in user with no
+Gmail accounts is sent from Inbox to Settings. An existing connection opens Inbox.
+Connect/reconnect explicitly starts `POST /auth/google/start?browser=true`, then
+offers a Google link in a new tab. Only HTTPS `accounts.google.com` destinations
+are accepted. The bounded `/oauth/complete` page reports the consent outcome;
+refresh Settings to fetch the connection state. Sync requires an explicit click.
 
-```text
-src/
-  app/                    routing, locale, QueryClient and keys
-  api/                    transport and feature adapters
-    generated/            generated OpenAPI declarations; do not edit
-  auth/                   memory-only development authentication
-  components/
-    layout/               responsive application shell
-    shared/               loading, empty and error states
-    ui/                   direction-safe text helpers
-  features/
-    inbox/ email/ search/ ask/ tasks/ settings/
-  styles/                 semantic tokens and responsive CSS
-  test/                   synthetic fixtures, MSW and regression tests
-scripts/                  API generation and browser smoke check
-```
+Use localhost consistently for local frontend, backend and configured redirect
+URIs. Real Google consent, verification and hosted TLS/cookie behavior require
+on-host checks; synthetic UI tests do not establish those outcomes.
 
-Routes: `/`, `/email/:id`, `/search`, `/ask`, `/tasks`, `/settings`, and a 404
-fallback. Detail uses a full routable page at every size; split-pane work is deferred.
-Inbox page/filter parameters live in the URL for back/forward behavior. Private
-search text and AI questions remain component state, not navigation URLs.
+## State, routing and privacy
 
-## API generation and contract gaps
+Routes are `/`, `/email/:id`, `/search`, `/ask`, `/tasks`, `/settings`,
+`/oauth/complete`, and a localized 404. Inbox and Tasks filters/pagination live in
+the URL. Safe return paths restore the originating view when leaving Email Detail.
+Search text/results and Ask drafts/answers/history stay in authenticated-session
+memory, survive detail navigation, and clear on logout, expiry and reload.
+Ask sends at most four prior successful user questions for bounded follow-ups;
+the backend retrieves and validates fresh mailbox evidence for every answer.
 
-`openapi.json` is a snapshot from the running FastAPI backend. The generated
-declarations supply `/ask` types and inbox query parameter types.
+Each authenticated session owns a fresh QueryClient and abort controller.
+Logout/401 aborts requests and clears caches. No private state is written to
+localStorage/sessionStorage, navigation URLs, analytics or console logs.
+Untrusted message and answer content is rendered as text, never HTML.
+
+Transport normalizes authorization, forbidden, missing, conflict, validation,
+service, network and contract failures without showing backend detail strings.
+No raw 422 response, exception payload, or stack trace is shown to users.
+
+## Product behavior
+
+- Inbox exposes Priority and multi-select Category. Category values come from
+  `/email-categories`; category selection is OR, combined with priority by AND.
+- Search is email discovery, not question answering. The server selects relevant
+  matches and displays the result set by normalized message time, newest first.
+- Tasks use `/tasks`, with newest/oldest sorting by normalized persisted task
+  deadline date/time and undated tasks last. Detection accuracy is a backend
+  release gate, not a frontend guarantee.
+- Ask separates the natural answer from collapsed sources showing subject,
+  sender, human date and an Email Detail link. Presentation removes inline
+  citation markers and formats dates without discarding supported conditions,
+  exceptions or negation. The current backend composes natural summaries.
+- Only consistent citations plus `source_supported` and `deterministic_fact` or
+  `extractive` enable the source-supported marker. It explicitly does not claim
+  independently verified truth. Generated synthesis always retains its warning.
+  Unknown verification does not earn the supported marker.
+- Clarification shows up to five valid choices and submits the original question
+  with the selected email ID. Editing the draft cannot change that question.
+
+Arabic uses RTL and English LTR. Email content may remain mixed. Logical CSS,
+direction-aware text, keyboard controls, skip links, error/status regions and a
+Radix mobile drawer preserve the retro identity. Full assistive-technology
+validation remains a manual release check.
+
+## API contracts and source layout
+
+`src/api/generated/schema.d.ts` comes from the checked-in `openapi.json` snapshot.
+Do not hand-edit generated declarations. Runtime Zod adapters cover response
+contracts missing from OpenAPI and discard unknown fields.
 
 ```powershell
-# Reproduce from the reviewed snapshot:
 npm run api:generate
-# Explicitly refresh from the running backend:
+# Explicitly refresh the snapshot from a configured local backend:
 $env:OPENAPI_URL='http://localhost:8000/openapi.json'
 npm run api:generate
 Remove-Item Env:OPENAPI_URL
 ```
 
-Never hand-edit `src/api/generated/schema.d.ts`. Most other backend response
-schemas are currently empty in OpenAPI. Only those gaps use runtime Zod adapters
-in `api/contracts.ts`, based on email_serialization.py, routes.py,
-account_routes.py and gmail_sync.py. Unknown fields are discarded, including bodies
-returned by sync. Invalid response shapes become safe contract errors.
-
-Actual endpoints used:
-
-- `GET /`: public health.
-- `GET /emails`: count/total/limit/offset, body omitted; category, priority,
-  task/deadline flags, sorting and SQL pagination.
-- `GET /emails/{id}`: stored body, metadata, summary, predictions, tasks/deadlines.
-- `GET /search/semantic`: explicit-submit discovery; scores are not shown as confidence.
-- `POST /ask`: frozen answer modes; clarification sends question plus email_id.
-- `GET /gmail/accounts`: scoped Gmail identity, connection state and last sync.
-- `POST /gmail/accounts/{id}/sync`: explicit user action only.
-- `POST /auth/google/start`: user-triggered consent handshake.
-- `GET /auth/google/callback`: existing backend callback returning JSON.
-
-There is no current-user profile endpoint, independent task-list API or
-structured-fact browsing API. Settings does not invent a user identity. Tasks
-links to emails with tasks instead of secretly aggregating a mailbox in JavaScript.
-Email detail does not invent structured facts. No backend files were changed.
-
-## Development authentication
-
-Enter an already authorized operator-issued application bearer token in the password
-field. GET /gmail/accounts validates it. It lives only in the authenticated React
-session and is cleared on reload, logout or 401. No localStorage/sessionStorage,
-token logging, token URLs, token Vite variables or token display in Settings.
-
-AuthProvider owns login/bootstrap/logout. `useAuth()` exposes the API client,
-getAccessToken(), getCurrentUser() and logout(). Current user reports only an
-operator-token session with no profile API. Gmail consent is separate from app
-login. Future browser SSO should replace this adapter rather than feature components.
-
-Each session owns a fresh QueryClient and abort controller. Logout/401 aborts
-requests, clears query/mutation cache and unmounts private state. A subsequent
-user cannot inherit the previous user's inbox or answers.
-
-This is a development flow, even in a production-build preview, not completed
-browser authentication. Memory storage limits persistence but does not defeat XSS.
-
-### Gmail consent
-
-Use localhost consistently for frontend, backend and the backend's configured
-redirect URI; do not mix it with 127.0.0.1. The proxy preserves the HttpOnly nonce
-cookie and callback path. Cookies are host-scoped rather than port-scoped, so the
-localhost callback on port 8000 receives the nonce. No cookie-path rewrite is used.
-
-Click Connect, then Continue to Google in the same browser. A new tab preserves
-the frontend's in-memory session. After the backend JSON callback succeeds, close
-that tab and Refresh status. The backend handshake expires after ten minutes.
-Only HTTPS accounts.google.com authorization destinations are accepted.
-Production proxy/cookie/redirect paths must be configured together. Live consent
-and sync were not executed during this foundation validation.
-
-## Server state and errors
-
-TanStack Query owns inbox, detail, search and accounts, with centralized query keys.
-Default stale time is 30 seconds and garbage collection is five minutes; search
-uses 60 seconds. No window-focus refetch. Only network reads retry once; search
-and mutations do not automatically retry. Ask is an explicit mutation, with no
-inactive mutation retention or automatic expensive generation. Sync invalidates
-accounts/emails and clears stale search results.
-
-Transport adds bearer headers, abort signals and no-store. Error UI normalizes
-401/403/404/409/422/503/network/contract/unknown failures without exposing backend
-detail strings. A 401 ends the session. Owned-resource 404 does not reveal ownership.
-Provider failure remains distinct from insufficient evidence.
-
-## RTL, accessibility and design
-
-Initial `<html lang="ar" dir="rtl">` switches to English/LTR using the language
-button. Logical CSS controls layout. ContentText uses dir=auto for email/answer
-text; Identifier uses bdi dir=ltr for dates, times, addresses and codes.
-
-Desktop uses sidebar plus content. Tablet keeps a narrower sidebar and one content
-region. Mobile below 760px uses a single surface and Radix drawer with focus trap,
-Escape dismissal and focus restoration. No three-column phone view.
-
-Theme tokens define surfaces, borders, text, accent, warning/error and focus colors.
-Typography, spacing, badges and controls are shared. No decorative dashboard,
-tracking scripts, remote fonts or animation dependency. Dark mode is deferred.
-Semantic landmarks, skip link, labeled forms, real buttons/links, visible focus,
-loading statuses and error alerts are included. Full assistive-technology testing
-remains later product work.
-
-## Mandatory AI visual contract
-
-- Original stored text has a separate source section; no untrusted HTML rendering.
-- Summary/classification/tasks are derived assistance, not original text or truth.
-- Only source_supported together with deterministic_fact or extractive earns the
-  Source-supported marker. This is not independent truth verification.
-- Generated synthesis always has a persistent warning about conditions, negation
-  and exceptions. The backend's own prefixed notice remains verbatim too.
-- Missing/conflicting/unknown metadata never implies verified output.
-- Clarification is normal: show up to five valid options; resend the submitted
-  question, not an edited draft, with the selected positive email_id.
-- Insufficient evidence is calm, not a red operational error.
-- Cited, valid sources open email-detail routes. No answer triggers an action or
-  becomes a confirmed obligation automatically.
+`src/app` owns routing/locale/query keys; `src/auth` owns authentication;
+`src/api` owns transport/contracts; `src/features` contains the six product
+surfaces; `src/components` provides shared UI; `src/styles` holds the theme;
+`src/test` contains synthetic fixtures and regressions.
 
 ## Validation
 
 ```powershell
-npm run api:generate
 npm run typecheck
 npm run lint
 npm test
-npm run build
 npm run format:check
+npm run build
 ```
 
-Vitest, Testing Library and MSW use only synthetic messages. No real GGUF, Gmail,
-paid API or production writes are used by tests.
+Vitest/Testing Library/MSW use synthetic messages. For the production-build
+responsive smoke, start a separate `npm run preview -- --port 5189` and run:
 
-Optional small browser smoke check: start npm run dev, then npm run ui:check.
-Use Node 24+ for this script's native TypeScript fixture import. It uses installed
-Microsoft Edge through Playwright and mocks only /api requests. It checks 1440px,
-820px and 390px, overflow, RTL, browser back, mobile focus restoration, generated
-warnings and empty private storage. Screenshots/JSON go to ignored test-results/.
-UI_BROWSER, UI_URL and UI_ARTIFACT_DIR are configurable. This is not a large E2E suite.
+```powershell
+$env:UI_URL='http://localhost:5189'
+$env:UI_BROWSER_AUTH='1'
+npm run ui:check
+```
 
-Windows Codex sandbox execution may need permission for esbuild/browser processes.
-Normal developer terminals need no alternate Python or PYTHONPATH changes.
+The smoke script uses installed Edge via Playwright and synthetic API responses.
+It checks widths 1440, 820 and 390, both languages, overflow, Google-only login,
+session restore/logout, categories, source and task back navigation, generated
+warnings, clarification, settings/sync states and empty browser storage.
+`UI_BROWSER` and `UI_ARTIFACT_DIR` are configurable. Screenshots and the JSON
+summary default to ignored `test-results/`. Production-build browser checks
+verify compiled UI behavior; they do not call live Google, Gmail or the mailbox.
 
-## Security and remaining work
-
-No backend secrets/private samples are shipped. No dangerous HTML rendering,
-token persistence, analytics, email-body logging or raw exception display. VITE
-configuration is public. OAuth/sync require explicit actions. Test mocks are not
-part of the production entry point. Source metadata is always rendered as text.
-
-Remaining: browser production auth/SSO, deployment proxy/security headers, dedicated
-task/fact/profile APIs if desired, detailed user/accessibility testing, optional
-split pane and feature polish. OAuth currently ends at existing backend JSON.
-Historical extraction accuracy and synthesis limitations remain frozen.
-
-References: [Vite proxy](https://vite.dev/config/server-options),
-[OpenAPI TypeScript](https://openapi-ts.dev/cli),
-[TanStack Query](https://tanstack.com/query/latest/docs/framework/react).
+The opt-in repository `test_ask_browser.py` bridges real `/ask` responses from an
+isolated rollback test database to `scripts/check-ask-integration.mjs`; it requires
+the preview above and the test database safeguards in `conftest.py`. Do not point
+this test at a production database. Windows sandbox execution may require
+approval for esbuild and browser child processes.

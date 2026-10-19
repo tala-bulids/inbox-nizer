@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Mail, ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
+import { categoryLabel } from "../../app/categoryLabels";
 import { keys } from "../../app/query";
 import { emails } from "../../api/emails";
 import { validId } from "../../api/ask";
@@ -11,14 +12,16 @@ import { ContentText } from "../../components/ui/Text";
 import { EmailDate } from "../../components/ui/EmailDate";
 import { EmailSkeleton } from "../../components/shared/EmailSkeleton";
 import { EmailTasks } from "./EmailTasks";
-import { inboxReturnPath } from "../inbox/inboxState";
+import { emailReturnPath } from "../inbox/inboxState";
 import { RetroWindow } from "../../components/ui/RetroWindow";
 export function EmailPage() {
   const id = Number(useParams().id);
   const location = useLocation();
-  const back = inboxReturnPath(
-    (location.state as { inbox?: unknown } | null)?.inbox,
-  );
+  const state = location.state as {
+    returnTo?: unknown;
+    inbox?: unknown;
+  } | null;
+  const back = emailReturnPath(state?.returnTo ?? state?.inbox);
   const { api } = useAuth();
   const { t, language } = useLocale();
   const isEn = language === "en";
@@ -35,7 +38,15 @@ export function EmailPage() {
       className="back-link inline-flex items-center gap-1.5 font-mono-code text-xs"
     >
       {isEn ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}
-      <span>{t("العودة إلى البريد الوارد", "Back to inbox")}</span>
+      <span>
+        {back === "/search"
+          ? t("العودة إلى البحث", "Back to search")
+          : back === "/ask"
+            ? t("العودة إلى الإجابة", "Back to answer")
+            : back.startsWith("/tasks")
+              ? t("العودة إلى المهام", "Back to tasks")
+              : t("العودة إلى البريد الوارد", "Back to inbox")}
+      </span>
     </Link>
   );
   if (query.isPending)
@@ -119,7 +130,7 @@ export function EmailPage() {
             </span>
             {email.predictions.map((p, i) => (
               <span className="badge" key={i} dir="auto">
-                {p.category}
+                {categoryLabel(p.category, language)}
               </span>
             ))}
           </div>

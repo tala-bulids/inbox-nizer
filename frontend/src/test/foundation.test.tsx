@@ -22,7 +22,7 @@ async function open(path = "/") {
     </MemoryRouter>,
   );
   await user.type(
-    screen.getByLabelText("رمز الوصول التطويري"),
+    await screen.findByLabelText("رمز الوصول التطويري"),
     "test-session-token",
   );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
@@ -32,21 +32,21 @@ async function open(path = "/") {
 async function question() {
   const user = await open("/ask");
   await user.type(
-    screen.getByLabelText("سؤالك"),
+    await screen.findByLabelText("سؤالك"),
     "What happened with my application?",
   );
   await user.click(screen.getByRole("button", { name: "اسأل البريد" }));
   return user;
 }
 
-test("app renders memory-only development login", () => {
+test("app renders memory-only development login", async () => {
   render(
     <MemoryRouter>
       <App />
     </MemoryRouter>,
   );
-  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-    "مساحة أهدأ",
+  expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
+    "أهلاً بك في صندوقك الوارد المرتب",
   );
   expect(screen.getByLabelText("رمز الوصول التطويري")).toHaveAttribute(
     "type",
@@ -69,12 +69,12 @@ test("navigation switches routes and LTR", async () => {
   const user = await open();
   await user.click(screen.getByRole("link", { name: "البحث" }));
   expect(
-    await screen.findByRole("heading", { name: "ابحث بالمعنى" }),
+    await screen.findByRole("heading", { name: "ابحث عن إيميلك" }),
   ).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Switch to English" }));
   expect(document.documentElement).toHaveAttribute("dir", "ltr");
   expect(
-    screen.getByRole("heading", { name: "Search by meaning" }),
+    screen.getByRole("heading", { name: "Find your email" }),
   ).toBeVisible();
 });
 test("auth header used without logging or persistence", async () => {
@@ -180,7 +180,7 @@ test("generated synthesis warning stays visible and backend notice preserved", a
     screen.getByText(
       /Generated synthesis, not a semantically verified extraction/,
     ).textContent,
-  ).toBe(generated.answer);
+  ).toBe(generated.answer.replace(/\[email_id=\d+\]/g, "").trim());
   expect(screen.queryByText("مدعوم من البريد")).not.toBeInTheDocument();
 });
 test("clarification follows up with ORIGINAL question and selected email_id", async () => {
@@ -256,7 +256,10 @@ test("logout clears content; next user cannot see old cache", async () => {
       HttpResponse.json({ ...inbox, emails: [], count: 0, total: 0 }),
     ),
   );
-  await user.type(screen.getByLabelText("رمز الوصول التطويري"), "other-token");
+  await user.type(
+    await screen.findByLabelText("رمز الوصول التطويري"),
+    "other-token",
+  );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
   await screen.findByText("لا توجد رسائل هنا");
   expect(screen.queryByText(email.subject)).not.toBeInTheDocument();
@@ -285,11 +288,11 @@ test("pagination sends SQL API offset and preserves filters", async () => {
       return HttpResponse.json({ ...inbox, total: 41 });
     }),
   );
-  const user = await open("/?tasks=true");
+  const user = await open("/?priority=high");
   await screen.findByText(email.subject);
   await user.click(screen.getByRole("button", { name: "التالي" }));
   await waitFor(() => expect(offsets).toEqual(["0", "20"]));
-  expect(screen.getByRole("checkbox", { name: "بمهام" })).toBeChecked();
+  expect(screen.getByLabelText("الأولوية")).toHaveValue("high");
 });
 test("malformed responses produce safe contract errors", async () => {
   server.use(

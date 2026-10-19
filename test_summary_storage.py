@@ -20,7 +20,7 @@ def test_gmail_saves_summary_and_all_predictions(gmail_mocks, test_database):
     ]
     classify.return_value = predictions
     with TestClient(app) as client:
-        response = client.get('/gmail/messages')
+        response = client.post('/gmail/messages')
     assert response.json()['success_count'] == 2
     emails = test_database.scalars(select(Email).order_by(Email.message_id)).all()
     assert len(emails) == 2
@@ -43,7 +43,7 @@ def test_existing_email_summary_and_predictions(gmail_mocks, test_database, summ
     for _ in range(2):
         set_messages(messages, 1)
         with TestClient(app) as client:
-            result = client.get('/gmail/messages').json()
+            result = client.post('/gmail/messages').json()
         assert result['success_count'] == 1
     test_database.expire_all()
     saved = test_database.scalar(select(Email).where(Email.message_id == '1'))
@@ -57,16 +57,16 @@ def test_existing_email_summary_and_predictions(gmail_mocks, test_database, summ
 def test_summary_failure_keeps_other_messages(gmail_mocks, test_database):
     messages, _, _ = gmail_mocks
     set_messages(messages, 2)
-    with patch('routes.summarize_email', side_effect=[RuntimeError('private test detail'), 'Saved summary']):
+    with patch('email_pipeline.summarize_email', side_effect=[RuntimeError('private test detail'), 'Saved summary']):
         with TestClient(app) as client:
-            response = client.get('/gmail/messages')
+            response = client.post('/gmail/messages')
     assert response.status_code == 200
-    assert response.json()['failed_count'] == 1
-    assert response.json()['success_count'] == 1
-    assert response.json()['emails'][0] == {'id': '1', 'error': 'Failed to process email'}
+    assert response.json()['failed_count'] == 0
+    assert response.json()['success_count'] == 2
+    assert response.json()['enrichment_failed'] == 1
     emails = test_database.scalars(select(Email)).all()
-    assert [(email.message_id, email.summary) for email in emails] == [('2', 'Saved summary')]
-    assert len(test_database.scalars(select(EmailPrediction)).all()) == 1
+    assert sorted((email.message_id, email.summary) for email in emails) == [('1', None), ('2', 'Saved summary')]
+    assert len(test_database.scalars(select(EmailPrediction)).all()) == 2
 
 
 def test_summary_and_combined_filters(test_database):

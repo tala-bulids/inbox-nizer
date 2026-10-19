@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<LoginSession | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(browserMode);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState<unknown>();
   const [logoutCsrf, setLogoutCsrf] = useState<string>();
   const expire = useCallback(() => {
@@ -110,7 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInput("");
   }, []);
   useEffect(() => {
-    if (!browserMode) return;
     const api = new ApiClient(
       () => undefined,
       () => {},
@@ -133,6 +132,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.dispose();
     };
   }, [browserMode]);
+  async function googleLogin() {
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    const api = new ApiClient(
+      () => undefined,
+      () => {},
+    );
+    try {
+      const url = await accounts.signIn(api);
+      window.location.assign(url);
+    } catch (e) {
+      setError(e);
+      setBusy(false);
+    } finally {
+      api.dispose();
+    }
+  }
   async function login() {
     if (busy || !input.trim()) return;
     setBusy(true);
@@ -220,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <main className="login public-window">
         <RetroWindow
           title={t("تسجيل الدخول", "Sign In")}
-          subtitle="Inbox+nizer"
+          subtitle="inbox-nizer"
           icon={<KeyRound size={16} className="text-[#E07A5F]" />}
         >
           <div className="p-6 flex flex-col gap-4">
@@ -228,52 +245,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               <div className="brand-mark m-0">✦</div>
               <div>
                 <p className="product-name" dir="ltr">
-                  Inbox+nizer
+                  inbox-nizer
                 </p>
                 <h1 className="text-base font-bold m-0">
-                  {t("مساحة أهدأ لبريدك", "A calmer space for your inbox")}
+                  {t(
+                    "أهلاً بك في صندوقك الوارد المرتب",
+                    "Welcome to your organized inbox",
+                  )}
                 </h1>
               </div>
             </div>
-            <p className="text-xs text-[#241E18]/70 m-0">
-              {browserMode
-                ? t(
-                    "استخدم رمز الدخول الذي زوّدك به المسؤول لبدء جلسة متصفح آمنة لمدة تصل إلى 8 ساعات.",
-                    "Use your administrator-issued access code to start a secure browser session for up to 8 hours.",
-                  )
-                : t(
-                    "دخول تطويري محلي. الرمز يبقى في الذاكرة فقط.",
-                    "Local development sign-in. The token stays in memory only.",
-                  )}
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void login();
-              }}
-              className="flex flex-col gap-3 my-1"
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => void googleLogin()}
             >
-              <label htmlFor="token">
-                {browserMode
-                  ? t("رمز الدخول", "Access code")
-                  : t("رمز الوصول التطويري", "Development access token")}
-              </label>
-              <input
-                id="token"
-                type="password"
-                dir="ltr"
-                autoComplete="off"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                required
-                disabled={busy}
-              />
-              <button className="primary" disabled={busy || !input.trim()}>
-                {busy
-                  ? t("جارٍ التحقق…", "Checking…")
-                  : t("فتح مساحة العمل", "Open workspace")}
-              </button>
-            </form>
+              {t("المتابعة باستخدام Google", "Continue with Google")}
+            </button>
+            {new URLSearchParams(window.location.search).has("login") && (
+              <p role="alert">
+                {t(
+                  "لم يكتمل تسجيل الدخول. أعد المحاولة أو تواصل مع المسؤول للتأكد من السماح لحسابك.",
+                  "Sign-in was not completed. Retry or ask your administrator to confirm account access.",
+                )}
+              </p>
+            )}
+            {import.meta.env.DEV && (
+              <details open>
+                <summary>{t("دخول تطويري", "Development sign-in")}</summary>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void login();
+                  }}
+                  className="flex flex-col gap-3 my-1"
+                >
+                  <label htmlFor="token">
+                    {browserMode
+                      ? t("رمز الدخول", "Access code")
+                      : t("رمز الوصول التطويري", "Development access token")}
+                  </label>
+                  <input
+                    id="token"
+                    type="password"
+                    dir="ltr"
+                    autoComplete="off"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    required
+                    disabled={busy}
+                  />
+                  <button className="primary" disabled={busy || !input.trim()}>
+                    {busy
+                      ? t("جارٍ التحقق…", "Checking…")
+                      : t("فتح مساحة العمل", "Open workspace")}
+                  </button>
+                </form>
+              </details>
+            )}
             {logoutCsrf && (
               <div role="alert">
                 <p>
@@ -288,12 +317,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               </div>
             )}
             {error !== undefined && <ErrorState error={error} />}
-            <small className="text-xs text-[#594D42] block">
-              {t(
-                "اتصال Gmail منفصل عن دخول التطبيق. لا يوجد تسجيل عام.",
-                "Gmail consent is separate from app sign-in. Public signup is not available.",
-              )}
-            </small>
           </div>
         </RetroWindow>
       </main>

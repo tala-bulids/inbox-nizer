@@ -59,7 +59,7 @@ def test_generic_fact_ambiguity_before_limit(test_database, vector):
     indexed(test_database, 'Booking reference: REF-88', message_id='two', similarity=.8)
     fake = SpyLLM()
     result = answer_email_question(test_database, 'What is the booking reference?', fake, chunk_limit=1)
-    assert result['status'] == 'insufficient_evidence' and fake.calls == 0
+    assert result['status'] == 'needs_clarification' and fake.calls == 0
 
 
 @pytest.mark.parametrize('text', ['Insufficient evidence is provided.', 'I cannot determine the answer.',
@@ -83,7 +83,7 @@ def test_travel_date_preserves_provenance(test_database, vector):
     right = indexed(test_database, 'Travel date: 09-Nov-2028\n'+route())
     fake = SpyLLM()
     result = answer_email_question(test_database, 'When is my trip to Birch?', fake)
-    assert '09-Nov-2028' in result['answer'] and fake.calls == 0
+    assert '9 November 2028' in result['answer'] and fake.calls == 0
     assert result['citations'] == [{'email_id': right.id}]
 
 
@@ -120,7 +120,7 @@ def test_saturated_fact_pool_cannot_claim_uniqueness(test_database, vector):
     assert chunks[0]['retrieval']['fact_count'] == FACT_LIMIT
     assert chunks[0]['retrieval']['fact_saturated']
     fake = SpyLLM()
-    assert answer_email_question(test_database, 'What is the arrival time?', fake)['status'] == 'insufficient_evidence'
+    assert answer_email_question(test_database, 'What is the arrival time?', fake)['status'] == 'needs_clarification'
     assert fake.calls == 0
 
 

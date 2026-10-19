@@ -199,3 +199,54 @@ test("render failure shows recovery UI without error details", () => {
     log.mockRestore();
   }
 });
+
+test("production login offers Google only and fails safely on provider start error", async () => {
+  vi.stubEnv("DEV", false);
+  server.use(
+    http.post(base + "/auth/google/login/start", () =>
+      HttpResponse.json({ detail: "PRIVATE_SECRET" }, { status: 503 }),
+    ),
+  );
+  open();
+  const button = await screen.findByRole("button", {
+    name: "المتابعة باستخدام Google",
+  });
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+    "أهلاً بك في صندوقك الوارد المرتب",
+  );
+  expect(screen.queryByText(/اتصال Gmail منفصل/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/دخول تطويري/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("رمز الدخول")).not.toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("رمز الوصول التطويري"),
+  ).not.toBeInTheDocument();
+  await userEvent.click(button);
+  expect(await screen.findByRole("alert")).not.toHaveTextContent(
+    "PRIVATE_SECRET",
+  );
+});
+
+test("Google session without Gmail consent opens Settings and connected refresh unlocks Inbox", async () => {
+  restore();
+  let connected = false;
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json(connected ? accountData : { accounts: [] }),
+    ),
+  );
+  open();
+  expect(
+    await screen.findByRole("heading", { name: "الحساب والاتصال" }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("heading", { name: inbox.emails[0]!.subject }),
+  ).not.toBeInTheDocument();
+  connected = true;
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "تحديث الحالة" }));
+  await screen.findByText("متصل");
+  await user.click(screen.getByRole("link", { name: "البريد الوارد" }));
+  expect(
+    await screen.findByRole("heading", { name: inbox.emails[0]!.subject }),
+  ).toBeVisible();
+});

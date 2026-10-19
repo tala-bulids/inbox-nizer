@@ -9,6 +9,7 @@ export class ApiClient {
     private token: () => string | undefined,
     private unauthorized: () => void,
     private base = import.meta.env.VITE_API_BASE_URL || "/api",
+    private csrf: () => string | undefined = () => undefined,
   ) {}
   dispose() {
     this.controller.abort();
@@ -20,6 +21,14 @@ export class ApiClient {
     const headers: Record<string, string> = { Accept: "application/json" };
     const token = this.token();
     if (token) headers.Authorization = `Bearer ${token}`;
+    const csrf = this.csrf();
+    if (
+      !token &&
+      csrf &&
+      options.method &&
+      !["GET", "HEAD", "OPTIONS"].includes(options.method)
+    )
+      headers["X-CSRF-Token"] = csrf;
     if (options.body !== undefined)
       headers["Content-Type"] = "application/json";
     const signal = options.signal
@@ -45,6 +54,7 @@ export class ApiClient {
       if (response.status === 401) this.unauthorized();
       throw new ApiError(response.status);
     }
+    if (response.status === 204) return undefined;
     try {
       return (await response.json()) as unknown;
     } catch {
@@ -53,11 +63,16 @@ export class ApiClient {
   }
 }
 export function params(
-  values: Record<string, string | number | boolean | null | undefined>,
+  values: Record<
+    string,
+    string | string[] | number | boolean | null | undefined
+  >,
 ) {
   return new URLSearchParams(
     Object.entries(values)
       .filter(([, v]) => v != null)
-      .map(([k, v]) => [k, String(v)]),
+      .flatMap(([k, v]) =>
+        Array.isArray(v) ? v.map((item) => [k, item]) : [[k, String(v)]],
+      ),
   ).toString();
 }

@@ -1,3 +1,4 @@
+import gmail_sync
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import Mock
 
@@ -125,13 +126,13 @@ def test_detail_returns_complete_stored_email(monkeypatch, test_database):
     test_database.add(email)
     test_database.commit()
     gmail = Mock(side_effect=AssertionError('Detail must not call Gmail'))
-    monkeypatch.setattr(routes, 'get_gmail_service', gmail)
+    monkeypatch.setattr(gmail_sync, 'get_gmail_service', gmail)
     with TestClient(app) as client:
         listing = client.get('/emails').json()['emails'][0]
         response = client.get(f'/emails/{email.id}')
     assert response.status_code == 200
     detail = response.json()
-    assert detail == {**listing, 'body': 'Full stored body'}
+    assert detail == {**listing, 'body': 'Full stored body', 'processing': []}
     assert detail['message_id'] == 'detail-message'
     assert detail['from'] == 'sender@example.com'
     assert detail['date'] == email.email_date

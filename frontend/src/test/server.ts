@@ -3,6 +3,24 @@ import { setupServer } from "msw/node";
 import { accountData, email, inbox, supported, taskPage } from "./fixtures";
 export const base = "http://localhost:5173/api";
 export const server = setupServer(
+  http.get(
+    base + "/auth/session",
+    () => new HttpResponse(null, { status: 401 }),
+  ),
+  http.get(base + "/email-categories", () =>
+    HttpResponse.json([
+      "Business",
+      "Customer Support",
+      "Events & Invitations",
+      "Finance & Bills",
+      "Job Application",
+      "Newsletters",
+      "Personal",
+      "Promotions",
+      "Reminders",
+      "Travel & Bookings",
+    ]),
+  ),
   http.get(base + "/tasks", () => HttpResponse.json(taskPage)),
   http.get(base + "/gmail/accounts", () => HttpResponse.json(accountData)),
   http.get(base + "/emails", () => HttpResponse.json(inbox)),

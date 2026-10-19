@@ -1,4 +1,10 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useNavigate, useLocation } from "react-router-dom";
 import { http, HttpResponse, delay } from "msw";
@@ -23,9 +29,13 @@ async function open(path = "/ask") {
       <App />
     </MemoryRouter>,
   );
-  await user.type(screen.getByLabelText("رمز الوصول التطويري"), "test-token");
+  await user.type(
+    await screen.findByLabelText("رمز الوصول التطويري"),
+    "test-token",
+  );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
   await screen.findByRole("navigation", { name: "التنقل الرئيسي" });
+  if (path === "/ask") await screen.findByLabelText("سؤالك");
   return user;
 }
 async function submit() {
@@ -92,8 +102,9 @@ test.each(["deterministic_fact", "extractive"])(
         HttpResponse.json({ ...supported, answer_mode: mode }),
       ),
     );
-    await submit();
+    const user = await submit();
     expect(await screen.findByText("مدعوم من البريد")).toBeVisible();
+    await user.click(screen.getByText("المصادر (1)"));
     expect(screen.getByText("ليس تحققًا مستقلًا من الحقيقة")).toBeVisible();
     expect(
       screen.getByRole("link", { name: new RegExp(email.subject) }),
@@ -145,10 +156,16 @@ test("generated text preserves backend notice, safe Arabic and mixed text", asyn
   const rendered = await screen.findByText(
     /Generated synthesis, not a semantically verified extraction/,
   );
-  expect(rendered.textContent).toBe(answer);
+  expect(rendered.textContent).toBe(
+    answer
+      .replace(/\[email_id=\d+\]/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .trim(),
+  );
   expect(rendered).toHaveAttribute("dir", "auto");
   expect(screen.getByRole("note")).toHaveTextContent("استثناءات");
   expect(document.querySelector(".answer-panel script")).toBeNull();
+  await user.click(screen.getByText("المصادر (1)"));
   await user.click(
     screen.getByRole("link", { name: new RegExp(email.subject) }),
   );
@@ -235,13 +252,41 @@ test.each(["network", "contract"])("Ask %s error is safe", async (kind) => {
   await submit();
   expect(await screen.findByRole("alert")).toBeVisible();
 });
+
+test.each(["subject", "from", "date"])(
+  "Ask malformed source %s fails safely before rendering metadata",
+  async (field) => {
+    server.use(
+      http.post(base + "/ask", () =>
+        HttpResponse.json({
+          ...supported,
+          sources: [
+            {
+              ...supported.sources[0],
+              [field]: { private: "PRIVATE_PAYLOAD" },
+            },
+          ],
+        }),
+      ),
+    );
+    await submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "وصل رد غير متوقع",
+    );
+    expect(screen.queryByText(/PRIVATE_PAYLOAD/)).not.toBeInTheDocument();
+    expect(screen.queryByText("مدعوم من البريد")).not.toBeInTheDocument();
+  },
+);
 test("Ask 401 logs out and does not carry question into next session", async () => {
   server.use(
     http.post(base + "/ask", () => new HttpResponse(null, { status: 401 })),
   );
   const user = await submit();
   await screen.findByLabelText("رمز الوصول التطويري");
-  await user.type(screen.getByLabelText("رمز الوصول التطويري"), "next-token");
+  await user.type(
+    await screen.findByLabelText("رمز الوصول التطويري"),
+    "next-token",
+  );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
   expect(await screen.findByLabelText("سؤالك")).toHaveValue("");
   expect(screen.queryByText("السؤال المُرسل")).not.toBeInTheDocument();
@@ -356,29 +401,45 @@ test.each(["network", "backend", "contract"])(
 );
 test("replacement Search aborts old query and late result cannot overwrite new result", async () => {
   let aborted = false;
+  let started = false;
+  let releaseOld!: () => void;
+  const oldPending = new Promise<void>((resolve) => {
+    releaseOld = resolve;
+  });
   server.use(
     http.get(base + "/search/semantic", async ({ request }) => {
       const q = new URL(request.url).searchParams.get("q");
       if (q === "old") {
+        started = true;
         request.signal.addEventListener("abort", () => {
           aborted = true;
         });
-        await delay(300);
+        await oldPending;
         return HttpResponse.json(result("OLD_RESULT"));
       }
       return HttpResponse.json(result("NEW_RESULT"));
     }),
   );
-  const user = await open("/search");
-  await user.type(screen.getByLabelText("ما الذي تبحث عنه؟"), "old");
-  await user.click(screen.getByRole("button", { name: "بحث" }));
-  await screen.findByRole("status");
-  await user.clear(screen.getByLabelText("ما الذي تبحث عنه؟"));
-  await user.type(screen.getByLabelText("ما الذي تبحث عنه؟"), "new");
-  await user.click(screen.getByRole("button", { name: "بحث" }));
-  await screen.findByText("NEW_RESULT");
-  await waitFor(() => expect(aborted).toBe(true));
-  expect(screen.queryByText("OLD_RESULT")).not.toBeInTheDocument();
+  try {
+    const user = await open("/search");
+    await user.type(screen.getByLabelText("ما الذي تبحث عنه؟"), "old");
+    await user.click(screen.getByRole("button", { name: "بحث" }));
+    await screen.findByRole("status");
+    await waitFor(() => expect(started).toBe(true));
+    await user.clear(screen.getByLabelText("ما الذي تبحث عنه؟"));
+    await user.type(screen.getByLabelText("ما الذي تبحث عنه؟"), "new");
+    await user.click(screen.getByRole("button", { name: "بحث" }));
+    await screen.findByText("NEW_RESULT");
+    await waitFor(() => expect(aborted).toBe(true));
+    await act(async () => {
+      releaseOld();
+      await oldPending;
+    });
+    expect(screen.getByText("NEW_RESULT")).toBeVisible();
+    expect(screen.queryByText("OLD_RESULT")).not.toBeInTheDocument();
+  } finally {
+    releaseOld();
+  }
 });
 test.each(["/ask", "/search"])(
   "logout clears private interaction at %s",
@@ -394,7 +455,10 @@ test.each(["/ask", "/search"])(
       await screen.findByText("Original matched source text");
     }
     await user.click(screen.getByRole("button", { name: "خروج" }));
-    await user.type(screen.getByLabelText("رمز الوصول التطويري"), "next-token");
+    await user.type(
+      await screen.findByLabelText("رمز الوصول التطويري"),
+      "next-token",
+    );
     await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
     expect(
       await screen.findByLabelText(
@@ -408,3 +472,68 @@ test.each(["/ask", "/search"])(
     expect(screen.queryByText("مدعوم من البريد")).not.toBeInTheDocument();
   },
 );
+
+test("Ask source back restores the same answer without another request or storage", async () => {
+  let calls = 0;
+  server.use(
+    http.post(base + "/ask", () => {
+      calls++;
+      return HttpResponse.json(supported);
+    }),
+  );
+  const user = await submit();
+  await screen.findByText("مدعوم من البريد");
+  await user.click(screen.getByText("المصادر (1)"));
+  const source = screen
+    .getAllByRole("link")
+    .find((link) => link.getAttribute("href") === "/email/11")!;
+  await user.click(source);
+  await screen.findByText(email.body);
+  await user.click(screen.getByRole("link", { name: "العودة إلى الإجابة" }));
+  await screen.findByText("مدعوم من البريد");
+  expect(screen.getByLabelText("سؤالك")).toHaveValue("متى موعد التسجيل؟");
+  expect(calls).toBe(1);
+  expect(screen.getByTestId("url")).toHaveTextContent("/ask");
+  expect(localStorage.length + sessionStorage.length).toBe(0);
+});
+
+test("Search detail back keeps private query and returned results", async () => {
+  let calls = 0;
+  server.use(
+    http.get(base + "/search/semantic", () => {
+      calls++;
+      return HttpResponse.json(result("RETURN_RESULT"));
+    }),
+  );
+  const user = await open("/search");
+  await user.type(screen.getByLabelText("ما الذي تبحث عنه؟"), "PRIVATE_SEARCH");
+  await user.click(screen.getByRole("button", { name: "بحث" }));
+  await user.click((await screen.findByText("RETURN_RESULT")).closest("a")!);
+  await screen.findByText(email.body);
+  await user.click(screen.getByRole("link", { name: "العودة إلى البحث" }));
+  await screen.findByText("RETURN_RESULT");
+  expect(screen.getByLabelText("ما الذي تبحث عنه؟")).toHaveValue(
+    "PRIVATE_SEARCH",
+  );
+  expect(calls).toBe(1);
+  expect(screen.getByTestId("url")).toHaveTextContent("/search");
+  expect(screen.getByTestId("url")).not.toHaveTextContent("PRIVATE_SEARCH");
+});
+
+test("follow-up carries bounded question context without storing answers", async () => {
+  const requests: Record<string, unknown>[] = [];
+  server.use(
+    http.post(base + "/ask", async ({ request }) => {
+      requests.push((await request.json()) as Record<string, unknown>);
+      return HttpResponse.json(supported);
+    }),
+  );
+  const user = await submit();
+  await screen.findByTestId("conversational-answer");
+  await user.clear(screen.getByLabelText("سؤالك"));
+  await user.type(screen.getByLabelText("سؤالك"), "طيب K&A بس؟");
+  await user.click(screen.getByRole("button", { name: "اسأل البريد" }));
+  await waitFor(() => expect(requests).toHaveLength(2));
+  expect(requests[1]!.history).toEqual(["متى موعد التسجيل؟"]);
+  expect(JSON.stringify(requests[1])).not.toContain(supported.answer);
+});

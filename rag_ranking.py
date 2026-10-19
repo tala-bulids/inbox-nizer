@@ -29,7 +29,8 @@ def rank_candidates(db, question, chunks):
     ambiguous = len(identities) > 1
     output = [dict(c, requested_role=request['role'] if request else None,
                    ranking=dict(persisted_role_match=eligible.get(c['chunk_id'],False),
-                                ambiguous=ambiguous, candidate_count=len(chunks))) for c in chunks]
+                                ambiguous=ambiguous, candidate_count=len(chunks),
+                                ambiguous_email_ids=sorted({item[0] for item in identities}) if ambiguous else [])) for c in chunks]
     return sorted(output, key=lambda c: (not c['ranking']['persisted_role_match'],
         -(c.get('fusion_score', c['score']) if c['ranking']['persisted_role_match'] else c['score']),
         -c['score'], c['chunk_id']))

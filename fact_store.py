@@ -4,6 +4,8 @@ from sqlalchemy import select, text, func
 import email_facts
 from models import Email, EmailFact, EmailFactState
 from rag_grounding import explicit_fields
+from relational_facts import supported
+from fact_roles import label_role
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,7 @@ def fact_evidence(db, evidence, *, preview=False):
                 if (fact['extractor_version'] != email_facts.EXTRACTOR_VERSION
                         or body[start:end] != fact['source_text']
                         or fact['literal_value'] not in fact['source_text']
-                        or _compact(fact['source_text']) not in _compact(source['content'])):
+                        or not supported(fact, source['content'])):
                     continue
                 normalized = fact['normalized_value']
                 display = fact['literal_value']
@@ -101,7 +103,9 @@ def fact_evidence(db, evidence, *, preview=False):
                              literal_evidence=fact['source_text'], span_basis='stored_body',
                              record_index=f"{fact['record_start']}:{fact['record_end']}",
                              normalization=normalized, extraction_reason=fact['extraction_reason'],
-                             extractor_version=fact['extractor_version'])
+                             extractor_version=fact['extractor_version'],
+                             canonical_role=label_role(fact['source_label']),
+                             relation=(normalized or {}).get('relation'))
                 fields.append(field)
                 audit.append(dict(email_id=email.id, chunk_id=source['chunk_id'], **field))
         if fields:

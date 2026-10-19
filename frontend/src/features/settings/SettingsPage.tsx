@@ -138,7 +138,11 @@ export function SettingsPage() {
                     >
                       {syncing && sync.variables === account.id
                         ? t("جارٍ المزامنة…", "Syncing…")
-                        : t("مزامنة الآن", "Sync now")}
+                        : account.sync_pending ||
+                            (sync.variables === account.id &&
+                              sync.data?.has_more)
+                          ? t("متابعة المزامنة", "Continue sync")
+                          : t("مزامنة الآن", "Sync now")}
                     </button>
                     <button
                       disabled={connecting || syncing}
@@ -175,6 +179,11 @@ export function SettingsPage() {
                   "Incomplete derived information: ",
                 )}
                 {sync.data.enrichment_failed}.
+                {sync.data.has_more &&
+                  t(
+                    " تم حفظ التقدم. اضغط متابعة المزامنة لجلب الدفعة التالية.",
+                    " Progress saved. Continue sync to fetch the next batch.",
+                  )}
               </p>
             )}
           </section>
@@ -215,12 +224,14 @@ export function SettingsPage() {
                     "After consent, the app shows the connection result. Open Settings to verify the account, or return to this tab and refresh status. The link is valid for ten minutes.",
                   )}
                 </p>
-                <small>
-                  {t(
-                    "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
-                    "Use localhost for both frontend and backend during development.",
-                  )}
-                </small>
+                {import.meta.env.DEV && (
+                  <small>
+                    {t(
+                      "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
+                      "Use localhost for both frontend and backend during development.",
+                    )}
+                  </small>
+                )}
               </div>
             )}
           </section>

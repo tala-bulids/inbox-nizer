@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, cast, DateTime
 from sqlalchemy.orm import Session
 from authentication import current_user, Principal
 from backend_models import GmailAccount
@@ -61,7 +61,9 @@ def list_tasks(
         query = query.filter(deadline if has_deadline else ~deadline)
     total = query.with_entities(func.count(EmailTask.id)).scalar()
     order = EmailTask.id.asc() if sort_order == 'asc' else EmailTask.id.desc()
-    rows = query.order_by(order).limit(limit).offset(offset).all()
+    task_date = func.coalesce(EmailTask.deadline_at, func.timezone('UTC', cast(EmailTask.deadline_date, DateTime())))
+    date_order = task_date.asc() if sort_order == 'asc' else task_date.desc()
+    rows = query.order_by(date_order.nulls_last(), order).limit(limit).offset(offset).all()
     items = [TaskItem(id=task.id, task=task.task, deadline_text=task.deadline_text,
                      deadline_date=task.deadline_date, deadline_at=task.deadline_at,
                      created_at=task.created_at,

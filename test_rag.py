@@ -214,7 +214,8 @@ def test_service_fake_uses_content_date_not_message_timestamp(test_database, lab
             return f'The date is {match[1]} [email_id={source[1]}]' if match else 'INSUFFICIENT_EVIDENCE'
 
     result = answer_email_question(test_database, f'What is the {label.lower()}?', ContentDateLLM())
-    assert result['answer'] == f'The date is {event_date} [email_id={email.id}]'
+    assert event_date in result['answer']
+    assert result['citations'] == [{'email_id': email.id}]
     assert '03 Mar 2027' not in result['answer']
     assert result['citations'] == [{'email_id': email.id}]
     assert result['sources'][0]['date'] == stamp

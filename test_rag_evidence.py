@@ -113,7 +113,7 @@ def test_service_delivers_scoped_evidence_and_keeps_citation_checks(test_databas
     class InvalidReader:
         def generate(self, messages):
             return '07-May-2028 [email_id=999999]'
-    rejected = answer_email_question(test_database, 'When is the event to Hilltown?', InvalidReader())
+    rejected = answer_email_question(test_database, 'Explain the event to Hilltown', InvalidReader())
     assert rejected['status'] == 'insufficient_evidence'
     assert rejected['citations'] == []
     assert '999999' not in rejected['answer']

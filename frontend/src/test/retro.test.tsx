@@ -11,7 +11,7 @@ test("login has a single language control and translates without changing auth",
       <App />
     </MemoryRouter>,
   );
-  expect(screen.getByLabelText("رمز الوصول التطويري")).toHaveAttribute(
+  expect(await screen.findByLabelText("رمز الوصول التطويري")).toHaveAttribute(
     "type",
     "password",
   );

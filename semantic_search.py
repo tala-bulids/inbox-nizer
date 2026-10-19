@@ -46,5 +46,5 @@ def semantic_search(db, query: str, limit: int = 10, min_score: float | None = N
     ranked = sorted(matches, key=lambda email_id: (-matches[email_id]['score'], email_id))[:limit]
     if not ranked:
         return []
-    emails = {email.id: email for email in db.scalars(select(Email).options(defer(Email.body)).where(Email.id.in_(ranked)))}
+    emails = {email.id: email for email in db.scalars(select(Email).options(defer(Email.body), defer(Email.raw_payload)).where(Email.id.in_(ranked)))}
     return [dict(email=emails[email_id], **matches[email_id]) for email_id in ranked if email_id in emails]

@@ -15,7 +15,7 @@ export function DesktopTopBar({
   return (
     <header className="desktop-bar">
       <span className="desktop-brand" dir="ltr">
-        <span aria-hidden="true">✉</span> Inbox+nizer
+        <span aria-hidden="true">✉</span> inbox-nizer
       </span>
       <div className="desktop-actions">
         {userEmail && <bdi className="desktop-account">{userEmail}</bdi>}

@@ -83,7 +83,7 @@ def test_gmail_indexes_once_and_retries_missing_vectors(gmail_mocks, test_databa
     for _ in range(2):
         set_messages(messages, 1)
         with TestClient(app) as client:
-            assert client.get('/gmail/messages').json()['success_count'] == 1
+            assert client.post('/gmail/messages').json()['success_count'] == 1
     assert test_database.query(EmailEmbeddingChunk).count() == 1
     assert len(fake_embedding_encoder.calls) == 1
 
@@ -93,13 +93,13 @@ def test_gmail_embedding_failure_does_not_lose_email(gmail_mocks, test_database)
     set_messages(messages, 1)
     with patch('embedding_service.embed_passages', side_effect=RuntimeError('private')):
         with TestClient(app) as client:
-            result = client.get('/gmail/messages').json()
+            result = client.post('/gmail/messages').json()
     assert result['success_count'] == 1
     assert test_database.query(Email).count() == 1
     assert test_database.query(EmailEmbeddingChunk).count() == 0
     set_messages(messages, 1)
     with TestClient(app) as client:
-        assert client.get('/gmail/messages').json()['success_count'] == 1
+        assert client.post('/gmail/messages').json()['success_count'] == 1
     assert test_database.query(EmailEmbeddingChunk).count() == 1
 
 
@@ -110,5 +110,5 @@ def test_gmail_reindexes_finalized_missing_summary(gmail_mocks, test_database):
     messages, _, _ = gmail_mocks
     set_messages(messages, 1)
     with TestClient(app) as client:
-        assert client.get('/gmail/messages').json()['success_count'] == 1
+        assert client.post('/gmail/messages').json()['success_count'] == 1
     assert test_database.scalar(select(EmailEmbeddingChunk.content_hash)) != old

@@ -56,6 +56,10 @@ def semantic_test_schema():
     scripts = ScriptDirectory.from_config(config)
     with test_engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
+            if not inspect(connection).has_table('emails'):
+                for revision in reversed(list(scripts.walk_revisions())):
+                    revision.module.upgrade()
+                return
             scripts.get_revision('e8f3a2b491cd').module.upgrade()
             if not inspect(connection).has_table('email_embedding_chunks'):
                 scripts.get_revision('f1a6b3c802de').module.upgrade()
@@ -63,6 +67,10 @@ def semantic_test_schema():
                 scripts.get_revision('a2b7c4d913ef').module.upgrade()
             if not inspect(connection).has_table('app_users'):
                 scripts.get_revision('b3c8d5e024fa').module.upgrade()
+            if not inspect(connection).has_table('google_identities'):
+                scripts.get_revision('c4d9e6f135ab').module.upgrade()
+            if not inspect(connection).has_table('gmail_sync_states'):
+                scripts.get_revision('d5ea7f246bc0').module.upgrade()
 
 
 @pytest.fixture(autouse=True)

@@ -21,9 +21,12 @@ const longEmail = {
   body: "نص أصلي English reference ABC123 <script>not executed</script>\n".repeat(
     25,
   ),
-  predictions: ["Events", "Registration", "Updates", "Other"].map(
-    (category) => ({ category }),
-  ),
+  predictions: [
+    "Events & Invitations",
+    "Reminders",
+    "Personal",
+    "Business",
+  ].map((category) => ({ category })),
 };
 const output = resolve(process.env.UI_ARTIFACT_DIR || "test-results");
 await mkdir(output, { recursive: true });
@@ -41,12 +44,44 @@ try {
     });
     const page = await context.newPage();
     const errors = [];
+    const askRequests = [];
     let signedIn = false;
     page.on("pageerror", (e) => errors.push(e.name));
     await page.route(
       new URL(process.env.UI_URL || "http://localhost:5173").origin + "/api/**",
       async (route) => {
         const path = new URL(route.request().url()).pathname;
+        if (path === "/api/email-categories") {
+          await route.fulfill({
+            json: [
+              "Business",
+              "Customer Support",
+              "Events & Invitations",
+              "Finance & Bills",
+              "Job Application",
+              "Newsletters",
+              "Personal",
+              "Promotions",
+              "Reminders",
+              "Travel & Bookings",
+            ],
+          });
+          return;
+        }
+        if (!browserAuth && path === "/api/auth/session") {
+          await route.fulfill({ status: 401, json: {} });
+          return;
+        }
+        if (path === "/api/auth/google/login/start") {
+          signedIn = true;
+          await route.fulfill({
+            json: {
+              authorization_url:
+                "https://accounts.google.com/o/oauth2/auth?state=synthetic",
+            },
+          });
+          return;
+        }
         if (browserAuth) {
           const request = route.request();
           if (path === "/api/auth/session") {
@@ -76,6 +111,7 @@ try {
         }
         const requestBody =
           path === "/api/ask" ? route.request().postDataJSON() : null;
+        if (requestBody) askRequests.push(requestBody);
         const askResponse =
           requestBody?.email_id || requestBody?.question === "supported"
             ? {
@@ -207,9 +243,34 @@ try {
     );
     await page.goto(process.env.UI_URL || "http://localhost:5173");
     await page
-      .getByLabel(browserAuth ? "رمز الدخول" : "رمز الوصول التطويري")
-      .fill("synthetic-ui-token");
-    await page.getByRole("button", { name: "فتح مساحة العمل" }).click();
+      .getByRole("heading", { name: "أهلاً بك في صندوقك الوارد المرتب" })
+      .waitFor();
+    await capture("login-ar");
+    await page.getByRole("button", { name: "Switch to English" }).click();
+    await page
+      .getByRole("heading", { name: "Welcome to your organized inbox" })
+      .waitFor();
+    await capture("login-en");
+    await page.getByRole("button", { name: "التبديل للعربية" }).click();
+    if (browserAuth) {
+      assert.equal(await page.locator('input[type="password"]').count(), 0);
+      assert.equal(
+        await page.getByText("دخول تطويري", { exact: true }).count(),
+        0,
+      );
+      await page.route("https://accounts.google.com/**", (route) =>
+        route.fulfill({
+          status: 302,
+          headers: { location: process.env.UI_URL || "http://localhost:5173" },
+        }),
+      );
+      await page
+        .getByRole("button", { name: "المتابعة باستخدام Google" })
+        .click();
+    } else {
+      await page.getByLabel("رمز الوصول التطويري").fill("synthetic-ui-token");
+      await page.getByRole("button", { name: "فتح مساحة العمل" }).click();
+    }
     await page.getByRole("heading", { name: longEmail.subject }).waitFor();
     assert.equal(await page.locator("html").getAttribute("dir"), "rtl");
     async function capture(name) {
@@ -227,6 +288,29 @@ try {
       });
     }
     await capture("inbox");
+    const categories = page.getByRole("button", { name: /التصنيف/ });
+    await categories.click();
+    assert.equal(await page.getByRole("checkbox").count(), 10);
+    async function toggleCategory(name, count) {
+      await page.getByRole("checkbox", { name, exact: true }).click();
+      await page.waitForFunction(
+        (expected) =>
+          document.querySelectorAll(".category-option input:checked").length ===
+          expected,
+        count,
+      );
+    }
+    await toggleCategory("شخصي", 1);
+    await toggleCategory("سفر وحجوزات", 2);
+    assert.deepEqual(new URL(page.url()).searchParams.getAll("category"), [
+      "Personal",
+      "Travel & Bookings",
+    ]);
+    await capture("inbox-categories");
+    await toggleCategory("شخصي", 1);
+    await toggleCategory("سفر وحجوزات", 0);
+    await page.keyboard.press("Escape");
+    assert.equal(await categories.getAttribute("aria-expanded"), "false");
     await page.getByRole("heading", { name: longEmail.subject }).click();
     await page.getByText("نص البريد الأصلي المخزن").waitFor();
     await capture("detail");
@@ -267,6 +351,19 @@ try {
     await askCase("supported");
     await page.getByText("مدعوم من البريد", { exact: true }).waitFor();
     await capture("ask-supported");
+    const completedAnswer = await page
+      .getByTestId("conversational-answer")
+      .innerText();
+    assert.doesNotMatch(completedAnswer, /email_id|chunk_id/);
+    await page.getByText("المصادر (1)", { exact: true }).click();
+    await page.locator(".source-cards a").first().click();
+    await page.getByText("نص البريد الأصلي المخزن").waitFor();
+    await page.getByRole("link", { name: "العودة إلى الإجابة" }).click();
+    assert.equal(
+      await page.getByTestId("conversational-answer").innerText(),
+      completedAnswer,
+    );
+    assert.equal(askRequests.length, 2);
     await askCase("clarify");
     await page.getByText("لنحدد البريد المقصود").waitFor();
     await capture("ask-clarification");
@@ -302,6 +399,43 @@ try {
     await page.getByRole("link", { name: "المهام", exact: true }).click();
     await page.getByText("لا يوجد موعد مستخرج", { exact: true }).waitFor();
     await capture("tasks");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "الأحدث", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page.getByRole("button", { name: "الأقدم", exact: true }).click();
+    await page
+      .getByRole("button", { name: "الأقدم", exact: true })
+      .and(page.locator('[aria-pressed="true"]'))
+      .waitFor();
+    await page
+      .getByLabel("الموعد النهائي", { exact: true })
+      .selectOption("true");
+    await page.waitForURL((url) => url.searchParams.get("deadline") === "true");
+    const tasksPath = new URL(page.url()).pathname + new URL(page.url()).search;
+    await page.locator(".task-source").first().click();
+    await page.getByText("نص البريد الأصلي المخزن").waitFor();
+    await page.getByRole("link", { name: "العودة إلى المهام" }).click();
+    await page
+      .getByRole("button", { name: "الأقدم", exact: true })
+      .and(page.locator('[aria-pressed="true"]'))
+      .waitFor();
+    assert.equal(
+      new URL(page.url()).pathname + new URL(page.url()).search,
+      tasksPath,
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "الأقدم", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await page.getByLabel("الموعد النهائي", { exact: true }).inputValue(),
+      "true",
+    );
     if (width < 760)
       await page.getByRole("button", { name: "فتح القائمة" }).click();
     await page.getByRole("link", { name: "الإعدادات", exact: true }).click();
@@ -329,8 +463,8 @@ try {
     await page.getByRole("button", { name: "Switch to English" }).click();
     for (const [label, heading, shot] of [
       ["Inbox", "Inbox", "inbox"],
-      ["Ask AI", "Answers start with your email", "ask"],
-      ["Search", "Search by meaning", "search"],
+      ["Ask Mail", "Ask Mail", "ask"],
+      ["Search", "Find your email", "search"],
       ["Tasks", "Tasks", "tasks"],
       ["Settings", "Account & connection", "settings"],
     ]) {
@@ -345,16 +479,24 @@ try {
     if (browserAuth) {
       await page.reload();
       await page.getByText("متصل", { exact: true }).waitFor();
-      await page.goto(new URL("/unknown-page", process.env.UI_URL).href);
+      await page.goto(
+        new URL("/unknown-page", process.env.UI_URL || "http://localhost:5173")
+          .href,
+      );
       await page.getByRole("heading", { name: "الصفحة غير موجودة" }).waitFor();
       await capture("not-found");
       await page.getByRole("button", { name: "خروج", exact: true }).click();
-      await page.getByLabel("رمز الدخول").waitFor();
+      await page
+        .getByRole("button", { name: "المتابعة باستخدام Google" })
+        .waitFor();
       await capture("browser-login");
       assert.equal(signedIn, false);
       for (const result of ["success", "denied", "expired", "provider_error"]) {
         await page.goto(
-          new URL("/oauth/complete?result=" + result, process.env.UI_URL).href,
+          new URL(
+            "/oauth/complete?result=" + result,
+            process.env.UI_URL || "http://localhost:5173",
+          ).href,
         );
         await page
           .getByRole("link", { name: "الانتقال إلى الإعدادات" })
@@ -369,6 +511,12 @@ try {
       noOverflow: true,
       mobileFocusRestored: width < 760 ? true : null,
       generatedWarning: true,
+      googleOnlyProductionLogin: browserAuth,
+      askSourceBackRestored: true,
+      tasksFilterBackRestored: true,
+      languages: ["ar", "en"],
+      apiTransport:
+        "synthetic mocks; no live Google consent, Gmail sync, or mailbox reads",
       privateStorageEmpty: true,
       pageErrors: errors,
     });

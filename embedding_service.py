@@ -18,7 +18,8 @@ class EmbeddingInputError(ValueError):
 
 def _load_encoder():
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer(MODEL_NAME, device=os.getenv('EMBEDDING_DEVICE', 'cpu'))
+    model = SentenceTransformer(MODEL_NAME, device=os.getenv('EMBEDDING_DEVICE', 'cpu'),
+                                local_files_only=True)
     model.max_seq_length = MAX_TOKENS
     return model
 

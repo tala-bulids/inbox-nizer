@@ -22,16 +22,13 @@ export function InboxPage() {
     queryKey: keys.list(filters),
     queryFn: ({ signal }) => emails.list(api, filters, signal),
   });
-  const filtered =
-    !!filters.category ||
-    !!filters.priority_level ||
-    filters.has_tasks !== undefined ||
-    filters.has_deadline !== undefined;
-  function change(key: string, value: string) {
+  const filtered = !!filters.categories?.length || !!filters.priority_level;
+  function change(key: string, value: string | string[]) {
     const next = new URLSearchParams(params);
     next.delete("offset");
-    if (value) next.set(key, value);
-    else next.delete(key);
+    next.delete(key);
+    if (Array.isArray(value)) value.forEach((item) => next.append(key, item));
+    else if (value) next.set(key, value);
     setParams(next);
   }
   function clear() {
@@ -71,12 +68,7 @@ export function InboxPage() {
           className="surface border-0 rounded-none shadow-none"
           aria-label={t("قائمة البريد", "Email list")}
         >
-          <InboxToolbar
-            key={params.toString()}
-            filters={filters}
-            change={change}
-            clear={clear}
-          />
+          <InboxToolbar filters={filters} change={change} />
           {query.isPending ? (
             <EmailSkeleton />
           ) : query.isError ? (

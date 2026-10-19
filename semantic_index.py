@@ -13,7 +13,13 @@ def content_hash(text, model=None):
     return hashlib.sha256(f'{model}\0{CONTENT_VERSION}\0{text}'.encode('utf-8')).hexdigest()
 
 
-def index_email(email, db):
+def prepare_index(email):
+    """Compute model output without an open transaction; apply checks it again."""
+    texts = chunk_semantic_text(build_semantic_text(email))
+    return texts, embedding_service.embed_passages(texts) if texts else []
+
+
+def index_email(email, db, *, prepared=None):
     counts = dict(created=0, updated=0, skipped=0, deleted=0)
     # Lock the parent so concurrent sync/backfill cannot create competing chunks.
     with db.begin_nested():
@@ -34,7 +40,13 @@ def index_email(email, db):
             else:
                 pending.append((index, chunk, digest, row))
         # Encode before replacing anything. A failure leaves existing chunks intact.
-        vectors = embedding_service.embed_passages([item[1] for item in pending]) if pending else []
+        if prepared is not None:
+            prepared_texts, prepared_vectors = prepared
+            if texts != prepared_texts or len(prepared_vectors) != len(texts):
+                raise ValueError('Email changed during embedding preparation')
+            vectors = [prepared_vectors[item[0]] for item in pending]
+        else:
+            vectors = embedding_service.embed_passages([item[1] for item in pending]) if pending else []
         if len(vectors) != len(pending):
             raise ValueError('Encoder returned the wrong number of embeddings')
         for (index, chunk, digest, row), vector in zip(pending, vectors):

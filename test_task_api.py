@@ -30,14 +30,14 @@ def test_owned_listing_metadata_deadlines_and_stable_pages(test_database):
     assert response.status_code == 200
     data = response.json()
     assert (data['count'], data['total'], data['limit'], data['offset']) == (2, 5, 2, 1)
-    assert [t['id'] for t in data['tasks']] == [tasks[1].id, tasks[2].id]
+    assert [t['id'] for t in data['tasks']] == [tasks[3].id, tasks[0].id]
     row = data['tasks'][0]
     assert row['deadline_date'] == '2026-10-12'
-    assert row['email']['subject'] == 'Source 1'
+    assert row['email']['subject'] == 'Source 3'
     assert row['email']['sender'] == 'sender@example.invalid'
     assert row['email']['sent_at'].startswith('2026-10-01')
     assert 'body' not in row['email'] and 'confidence' not in row
-    assert [t['id'] for t in get().json()['tasks']] == [t.id for t in reversed(tasks)]
+    assert [t['id'] for t in get().json()['tasks']] == [tasks[i].id for i in [3,1,4,2,0]]
     assert get({'offset':99}).json()['count'] == 0
 
 

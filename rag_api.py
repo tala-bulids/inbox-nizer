@@ -20,6 +20,14 @@ class QuestionRequest(BaseModel):
     min_score: float | None = Field(default=None, ge=-1, le=1, allow_inf_nan=False)
     max_context_chars: int = Field(default=6000, ge=1000, le=12000)
     email_id: int | None = Field(default=None, gt=0)
+    history: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("history")
+    @classmethod
+    def bounded_history(cls, values):
+        if any(not value.strip() or len(value)>2000 for value in values):
+            raise ValueError("Invalid conversation turn")
+        return values
 
     @field_validator('question')
     @classmethod

@@ -30,6 +30,10 @@ def insufficient_answer(question):
     answer = ('لا توجد معلومات كافية في المصادر المسترجعة للإجابة عن هذا السؤال.'
               if re.search(r'[\u0600-\u06ff]', question)
               else 'The retrieved sources do not contain enough information to answer this question.')
+    from rag_time import scope, no_evidence
+    window = scope(question)
+    if window:
+        answer = no_evidence(question, window)
     return {'answer': answer, 'sources': [], 'citations': [], 'status': 'insufficient_evidence'}
 
 
@@ -80,6 +84,8 @@ def prepare_rag_request(
 
     enriched, fact_audit = fact_evidence(db, context_result.get("evidence", []), preview=preview_facts)
     facts = resolve_answer(question, enriched)
+    from rag_bundle import bundle
+    facts = bundle(question, facts, enriched, db=db)
     ambiguous = any(c.get('ranking', {}).get('ambiguous') for c in chunks)
     if ambiguous:
         facts = []
@@ -109,6 +115,7 @@ def prepare_rag_request(
         "answer_audit": answer_audit,
         "ambiguity_email_ids": ambiguous_ids,
         "permitted_evidence": context_result.get('evidence', []),
+        "enriched_evidence": enriched,
     }
 
 
@@ -123,7 +130,14 @@ def answer_email_question(
     max_context_chars: int = 12000,
     preview_facts: bool = False,
     email_id: int | None = None,
+    history: list[str] | None = None,
 ):
+    from ask_plan import plan
+    query_plan = plan(question, email_id, history or ())
+    if query_plan.kind in {'recent_digest', 'existence'}:
+        from ask_mailbox import build_answer_plan, render
+        return render(db, question, build_answer_plan(db, query_plan))
+    question = query_plan.question
     prepared = prepare_rag_request(
         db,
         question,
@@ -136,20 +150,46 @@ def answer_email_question(
     )
 
     mode = prepared['answer_mode']
+    # A typed lookup with persisted but non-matching evidence is not synthesis.
+    # Preserve the older unstructured path only when no persisted facts exist.
+    if mode == 'generative' and query_plan.kind in {'fact_lookup', 'record_summary'}:
+        from fact_roles import intent
+        from models import EmailFact
+        from sqlalchemy import select
+        ids = [source['email_id'] for source in prepared['sources']]
+        if intent(question) and ids and db.scalar(select(EmailFact.id).where(EmailFact.email_id.in_(ids)).limit(1)):
+            return insufficient_answer(question)
+    if mode == 'needs_clarification' and query_plan.kind == 'recent_status':
+        from fact_roles import words
+        if set(words(question)) & {'applications', 'طلباتي', 'طلبات'}:
+            from ask_mailbox import AnswerPlan, SupportedItem, render
+            from models import Email
+            from sqlalchemy import select
+            proofs = prepared['answer_audit']['proofs'] if prepared['answer_audit'] else []
+            items = []
+            for proof in proofs[:5]:
+                if verify_proof(db, proof, prepared['permitted_evidence']):
+                    email = db.scalar(select(Email).where(Email.id == proof['email_id']))
+                    items.append(SupportedItem(email, proof['value'], 'body', tuple(proof['span'])))
+            if items:
+                return render(db, question, AnswerPlan('recent_status', query_plan.window['label'] if query_plan.window else None, items))
     if mode == 'needs_clarification':
         ids = prepared['ambiguity_email_ids'] or [p['email_id'] for p in prepared['answer_audit']['proofs']]
-        return clarification(db, question, ids)
+        return clarification(db, question, ids, selected_email_id=email_id)
     if not prepared['sources'] or mode == 'insufficient_evidence':
         return insufficient_answer(question)
     facts = prepared['resolved_facts']
     if mode == 'deterministic_fact':
-        answer = format_facts(facts)
+        from rag_bundle import wanted, format_bundle
+        answer = format_bundle(question, facts) if wanted(question) and len(facts)>1 else format_facts(facts)
     elif mode == 'extractive':
         proof = next((p for p in prepared['answer_audit']['proofs']
                       if verify_proof(db,p,prepared['permitted_evidence'])), None)
         if proof is None:
             return unverified_answer(question)
         answer = format_extractive(proof, question)
+        from rag_bundle import details, append_details
+        answer = append_details(answer, question, details(question, proof, prepared.get('enriched_evidence', [])))
     else:
         packed = pack_context(question, prepared['context'], prepared['sources'])
         if not packed['sources']:
@@ -169,6 +209,11 @@ def answer_email_question(
         # alone cannot turn an inferred date/status into a supported assertion.
         if prepared['answer_audit'] and prepared['answer_audit']['kind'] in {'date','status'}:
             return unverified_answer(question)
+    from rag_time import scope
+    window = scope(question)
+    if window and mode in {'deterministic_fact', 'extractive'}:
+        prefix = 'خلال الفترة ' if re.search(r'[\u0600-\u06ff]', question) else 'For the period '
+        answer = prefix + window['label'] + ': ' + answer
     try:
         cited = _validate_citations(answer, prepared['sources'])
     except InvalidGeneration:

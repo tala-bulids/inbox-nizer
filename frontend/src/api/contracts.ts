@@ -42,6 +42,9 @@ export const searchSchema = z.object({
   results: z.array(
     z.object({
       email: emailSchema.pick({
+        sent_at: true,
+        message_at: true,
+        date: true,
         id: true,
         from: true,
         subject: true,
@@ -61,6 +64,7 @@ export const accountsSchema = z.object({
       status: z.string(),
       last_synced_at: text,
       sync_error: text,
+      sync_pending: z.boolean().optional(),
     }),
   ),
 });
@@ -71,6 +75,7 @@ export const syncSchema = z.object({
   success_count: z.number(),
   failed_count: z.number(),
   enrichment_failed: z.number(),
+  has_more: z.boolean().optional(),
 });
 export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);

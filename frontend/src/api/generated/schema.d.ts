@@ -152,6 +152,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/email-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Email Categories */
+        get: operations["email_categories_email_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/emails": {
         parameters: {
             query?: never;
@@ -220,6 +237,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session */
+        get: operations["session_auth_session_get"];
+        put?: never;
+        /** Login */
+        post: operations["login_auth_session_post"];
+        /** Logout */
+        delete: operations["logout_auth_session_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/login/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Login */
+        post: operations["start_login_auth_google_login_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/login/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finish Login */
+        get: operations["finish_login_auth_google_login_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -260,6 +330,11 @@ export interface components {
             answer_mode?: ("deterministic_fact" | "extractive" | "generated_synthesis") | null;
             /** Verification */
             verification?: ("source_supported" | "not_semantically_verified") | null;
+        };
+        /** BrowserSession */
+        BrowserSession: {
+            /** Csrf Token */
+            csrf_token: string;
         };
         /** Citation */
         Citation: {
@@ -310,6 +385,8 @@ export interface components {
             max_context_chars?: number;
             /** Email Id */
             email_id?: number | null;
+            /** History */
+            history?: string[];
         };
         /** Source */
         Source: {
@@ -534,7 +611,9 @@ export interface operations {
     };
     start_google_auth_google_start_post: {
         parameters: {
-            query?: never;
+            query?: {
+                browser?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -548,13 +627,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     start_google_auth_google_get: {
         parameters: {
-            query?: never;
+            query?: {
+                browser?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -570,13 +660,23 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     finish_google_auth_google_callback_get: {
         parameters: {
-            query: {
-                state: string;
+            query?: {
+                state?: string;
                 code?: string | null;
+                error?: string | null;
             };
             header?: never;
             path?: never;
@@ -637,10 +737,31 @@ export interface operations {
             };
         };
     };
+    email_categories_email_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
     get_saved_emails_emails_get: {
         parameters: {
             query?: {
                 category?: string | null;
+                categories?: string[] | null;
                 priority_level?: ("low" | "medium" | "high") | null;
                 has_tasks?: boolean | null;
                 has_deadline?: boolean | null;
@@ -760,6 +881,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_auth_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserSession"];
+                };
+            };
+        };
+    };
+    login_auth_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserSession"];
+                };
+            };
+        };
+    };
+    logout_auth_session_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    start_login_auth_google_login_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    finish_login_auth_google_login_callback_get: {
+        parameters: {
+            query?: {
+                state?: string;
+                code?: string;
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -1,5 +1,6 @@
 """Deterministic grounding tests; no real model or production DB access."""
 
+import re
 import pytest
 
 from rag_grounding import answer_candidate, explicit_fields, has_role_conflict
@@ -25,7 +26,9 @@ def test_explicit_roles_preserved_and_swapped_values_rejected(test_database, mon
     monkeypatch.setattr('rag_service.retrieve_rag_chunks', lambda *a, **k: chunks)
     fake = FakeLLM(AssertionError('Explicit facts must bypass generation'))
     result = answer_email_question(test_database, question, fake)
-    assert expected in result['answer'] and wrong not in result['answer']
+    factual_text = re.sub(r'\[email_id=\d+\]', '', result['answer'])
+    assert expected in factual_text and wrong not in factual_text
+    assert result['citations'] == [{'email_id': email.id}]
     assert fake.messages is None
     candidate = answer_candidate(question, [source(content)])
     assert has_role_conflict(wrong, candidate)

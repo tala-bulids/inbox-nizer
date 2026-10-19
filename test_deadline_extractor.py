@@ -36,7 +36,7 @@ def test_calendar_dates(text, expected):
     assert result['confidence'] == 0.9
 
 
-@pytest.mark.parametrize('text', ['Reply tomorrow at 10 AM.', 'يرجى الحضور غداً الساعة 10 صباحاً.'])
+@pytest.mark.parametrize('text', ['Reply tomorrow at 10 AM.', 'يرجى إرسال المستند غداً الساعة 10 صباحاً.'])
 def test_real_time_preserves_timezone(text):
     result = extract_deadline(text, REFERENCE)
     assert result['deadline_at'] == REFERENCE.replace(day=22, hour=10)

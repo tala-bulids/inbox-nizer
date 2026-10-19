@@ -1,3 +1,5 @@
+import email_pipeline
+import gmail_sync
 import base64
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -7,6 +9,7 @@ import torch
 from fastapi.testclient import TestClient
 
 import predict
+from classifier_contract import LABELS
 import routes
 from main import app
 from email_utils import clean_email_body, extract_email_body
@@ -52,32 +55,35 @@ def test_email_charset():
     assert extract_email_body(payload) == 'café'
 
 
-@pytest.mark.parametrize('logits', [[1.0, 3.0, 2.0], [-5.0, -3.0, -4.0]])
+@pytest.mark.parametrize('logits', [[1.0, 3.0, 2.0] + [-9.0] * 7, [-5.0, -3.0, -4.0] + [-9.0] * 7])
 def test_returns_only_highest_prediction(monkeypatch, logits):
     tokenizer = Mock(return_value={})
     model = Mock(return_value=SimpleNamespace(logits=torch.tensor([logits])))
-    model.config.id2label = {0: 'First', 1: 'Best', 2: 'Last'}
+    model.config = SimpleNamespace(id2label=dict(enumerate(LABELS)),
+        label2id={label: i for i, label in enumerate(LABELS)},
+        problem_type='multi_label_classification', max_position_embeddings=512)
     monkeypatch.setattr(predict, 'tokenizer', tokenizer)
     monkeypatch.setattr(predict, 'model', model)
     result = predict.classify_email('Subject', '<p>Clean body</p>')
     assert len(result) == 1
-    assert result[0]['category'] == 'Best'
+    assert result[0]['category'] == 'Customer Support'
     assert result[0]['confidence'] == pytest.approx(torch.sigmoid(torch.tensor(logits[1])).item())
     assert tokenizer.call_args.args[0] == 'Subject Clean body'
 
 
 def test_gmail_returns_clean_body_and_one_prediction(monkeypatch):
     service = Mock()
+    service.users.return_value.getProfile.return_value.execute.return_value = {'historyId': '10'}
     messages = service.users.return_value.messages.return_value
     messages.list.return_value.execute.return_value = {'messages': [{'id': 'test-id'}]}
     messages.get.return_value.execute.return_value = {
         'payload': part('text/html', '<p>Hello</p><script>bad()</script>')
     }
     classifier = Mock(return_value=[{'category': 'Personal', 'confidence': 0.8}])
-    monkeypatch.setattr(routes, 'get_gmail_service', lambda: service)
-    monkeypatch.setattr(routes, 'classify_email', classifier)
+    monkeypatch.setattr(gmail_sync, 'get_gmail_service', lambda *args: service)
+    monkeypatch.setattr(email_pipeline, 'classify_email', classifier)
     with TestClient(app) as client:
-        response = client.get('/gmail/messages')
+        response = client.post('/gmail/messages')
     assert response.status_code == 200
     assert response.json()['emails'][0]['body'] == 'Hello'
     assert response.json()['emails'][0]['subject'] == ''
@@ -131,17 +137,18 @@ def test_gmail_passes_clean_content_to_summary_and_tasks(monkeypatch, test_datab
            'If you are not the intended recipient, delete this message.\n'
            'Send email to info@example.com')
     service = Mock()
+    service.users.return_value.getProfile.return_value.execute.return_value = {'historyId': '10'}
     messages = service.users.return_value.messages.return_value
     messages.list.return_value.execute.return_value = {'messages': [{'id': 'clean-content-regression'}]}
     messages.get.return_value.execute.return_value = {'payload': part('text/plain', raw)}
     summary = Mock(wraps=summarize_email)
     tasks = Mock(wraps=extract_action_items)
-    monkeypatch.setattr(routes, 'get_gmail_service', lambda: service)
-    monkeypatch.setattr(routes, 'classify_email', Mock(return_value=[{'category': 'Business', 'confidence': 0.8}]))
-    monkeypatch.setattr(routes, 'summarize_email', summary)
-    monkeypatch.setattr(routes, 'extract_action_items', tasks)
+    monkeypatch.setattr(gmail_sync, 'get_gmail_service', lambda *args: service)
+    monkeypatch.setattr(email_pipeline, 'classify_email', Mock(return_value=[{'category': 'Business', 'confidence': 0.8}]))
+    monkeypatch.setattr(email_pipeline, 'summarize_email', summary)
+    monkeypatch.setattr(email_pipeline, 'extract_action_items', tasks)
     with TestClient(app) as client:
-        response = client.get('/gmail/messages')
+        response = client.post('/gmail/messages')
     assert response.status_code == 200
     assert response.json()['success_count'] == 1
     summary.assert_called_once_with('', 'Please submit your application.')

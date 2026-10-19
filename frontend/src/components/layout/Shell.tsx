@@ -28,7 +28,7 @@ export function Shell() {
   const items = [
     { path: "/", ar: "البريد الوارد", en: "Inbox", icon: Inbox },
     { path: "/search", ar: "البحث", en: "Search", icon: Search },
-    { path: "/ask", ar: "اسأل البريد", en: "Ask AI", icon: Sparkles },
+    { path: "/ask", ar: "اسأل البريد", en: "Ask Mail", icon: Sparkles },
     { path: "/tasks", ar: "المهام", en: "Tasks", icon: ListChecks },
     { path: "/settings", ar: "الإعدادات", en: "Settings", icon: Settings },
   ];
@@ -71,12 +71,6 @@ export function Shell() {
                 {t("مساحة عمل خاصة", "Private workspace")}
               </span>
             </div>
-            <p className="text-xs text-[#241E18]/60 font-arabic">
-              {t(
-                "بريدك أولًا. الذكاء الاصطناعي للمساعدة.",
-                "Your email first. AI to assist.",
-              )}
-            </p>
           </div>
         </aside>
         <div className="workspace">
@@ -96,7 +90,7 @@ export function Shell() {
                   >
                     <div className="flex items-center justify-between border-b border-[#241E18]/20 pb-3 mb-4">
                       <Dialog.Title className="font-bold text-base">
-                        Inbox+nizer
+                        inbox-nizer
                       </Dialog.Title>
                       <Dialog.Close asChild>
                         <button

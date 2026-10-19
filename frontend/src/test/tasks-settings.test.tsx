@@ -24,7 +24,7 @@ async function open(path = "/tasks") {
     </MemoryRouter>,
   );
   await user.type(
-    screen.getByLabelText("رمز الوصول التطويري"),
+    await screen.findByLabelText("رمز الوصول التطويري"),
     "synthetic-token",
   );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
@@ -38,6 +38,28 @@ const syncResult = {
   enrichment_failed: 0,
   emails: [{ body: "PRIVATE_BODY" }],
 };
+
+test("partial batch offers explicit continuation and survives refreshed account state", async () => {
+  let calls = 0;
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({
+        accounts: [{ ...accountData.accounts[0], sync_pending: true }],
+      }),
+    ),
+    http.post(base + "/gmail/accounts/2/sync", () => {
+      calls++;
+      return HttpResponse.json({ ...syncResult, has_more: true });
+    }),
+  );
+  const user = await open("/settings");
+  await user.click(
+    await screen.findByRole("button", { name: "متابعة المزامنة" }),
+  );
+  await screen.findByText(/تم حفظ التقدم/);
+  expect(calls).toBe(1);
+  expect(screen.getByRole("button", { name: "متابعة المزامنة" })).toBeEnabled();
+}, 15000);
 test("task loading skeleton then mixed text/deadline/source metadata", async () => {
   server.use(
     http.get(base + "/tasks", async () => {
@@ -95,17 +117,27 @@ test("tasks pagination/filter and history restore real SQL query params", async 
   await screen.findByText("21–22 من 45");
   await user.click(screen.getByRole("button", { name: "Back test" }));
   await screen.findByText("1–2 من 45");
-  expect(screen.getByLabelText("ترتيب الإضافة")).toHaveValue("asc");
+  expect(screen.getByRole("button", { name: "الأقدم" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 test("task source opens email detail and back restores filter", async () => {
-  const user = await open("/tasks?deadline=true");
+  const user = await open("/tasks?deadline=true&offset=20&order=asc");
   await user.click(
     await screen.findByRole("link", { name: /طلب مستندات Documents/ }),
   );
   await screen.findByText(email.body);
-  await user.click(screen.getByRole("button", { name: "Back test" }));
+  await user.click(screen.getByRole("link", { name: "العودة إلى المهام" }));
   await screen.findByText(taskPage.tasks[0]!.task);
   expect(screen.getByLabelText("الموعد النهائي")).toHaveValue("true");
+  expect(screen.getByTestId("url")).toHaveTextContent(
+    "/tasks?deadline=true&offset=20&order=asc",
+  );
+  expect(screen.getByRole("button", { name: "الأقدم" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 test.each(["network", "contract", 503])("tasks %s error safe", async (kind) => {
   server.use(
@@ -131,7 +163,10 @@ test("task state is not inherited by another user", async () => {
       HttpResponse.json({ ...taskPage, count: 0, total: 0, tasks: [] }),
     ),
   );
-  await user.type(screen.getByLabelText("رمز الوصول التطويري"), "other-token");
+  await user.type(
+    await screen.findByLabelText("رمز الوصول التطويري"),
+    "other-token",
+  );
   await user.click(screen.getByRole("button", { name: "فتح مساحة العمل" }));
   await screen.findByText("لا توجد مهام هنا");
   expect(screen.queryByText(taskPage.tasks[0]!.task)).not.toBeInTheDocument();
@@ -269,7 +304,7 @@ test("connect and reconnect use secure POST handshake and honest JSON-return gui
   const link = await screen.findByRole("link", { name: "متابعة إلى Google" });
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
-  expect(screen.getByText(/صفحة JSON/)).toBeVisible();
+  expect(screen.getByText(/صفحة نتيجة الاتصال/)).toBeVisible();
   expect(calls).toBe(1);
 });
 test.each([

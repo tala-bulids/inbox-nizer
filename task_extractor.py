@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 
 from deadline_extractor import _deadline_for_task, _normalized
+from task_context import CONDITION, unsafe_scope, completed_subject
 
 
 EN_ACTION = r'(?:pay|reply|respond|attend|complete|issue|submit|confirm|reset|upload|review|sign|send|provide|approve|register|renew|schedule|prepare)'
@@ -39,8 +40,8 @@ def _normalize(text):
 
 # These signals describe wording, not the sender or brand.
 _SHOPPING = re.compile(
-    r"\b(?:shop|shopping|buy|browse|discounts?|offers?|sale|promo|products?|shipping|installments?)\b|"
-    r"(?:تسوق|اشتر|خصومات|عروض|تخفيضات|منتجات|شحن|اقساط)", re.I
+    r"\b(?:shop|shopping|buy|browse|purchase|cart|collection|discounts?|offers?|sale|promo|products?|shipping|installments?)\b|"
+    r"(?:تسوق|اشتر|شراء|تشكيلتنا|خصومات|عروض|تخفيضات|منتجات|شحن|اقساط)", re.I
 )
 _PAY_LATER = re.compile(
     r"^(?:pay\s+(?:later|in installments)|(?:ادفع|دفع|سدد)\s+(?:بعدين|لاحقا|بالتقسيط))(?=\W|$)", re.I
@@ -62,6 +63,8 @@ _BENEFIT = re.compile(r'^(?:رفع|زيادة|تحسين|تعزيز)\s+(?:معد
 _REGISTER_CTA = re.compile(r'^(?:register|sign up|سجل|التسجيل)\s+(?:now|الان)\b', re.I)
 _REQUIRED = re.compile(r'\b(?:must|required|mandatory|need to|needs to)\b|(?:يجب|مطلوب|الزامي|عليك)', re.I)
 _REGISTER_CONTEXT = re.compile(r'(?:registration|registering|التسجيل).{0,30}(?:required|mandatory|مطلوب|الزامي)', re.I)
+_OPEN_INVITATION = re.compile(r'\b(?:free|public|optional|open to everyone)\b|مجاني|اختياري|للجميع',re.I)
+_JOIN_ACTION = re.compile(r'^(?:register|attend|sign up|سجل|التسجيل|احضر|حضور|الحضور)\b',re.I)
 
 
 def _split_action_clauses(text):
@@ -84,18 +87,30 @@ def _clauses(text):
             sentences[-1] = sentences[-1].rstrip(' .!?؟؛;') + '; ' + sentence
         else:
             sentences.append(sentence)
-    for sentence in sentences:
+    for sentence_index, sentence in enumerate(sentences):
         sentence = re.sub(r'\s+', ' ', sentence).strip(' \t-*•')
         context = _normalize(sentence)
-        if _REGISTER_CONTEXT.search(_normalize(text)):
+        previous = sentences[sentence_index - 1] if sentence_index else ''
+        if _REGISTER_CONTEXT.search(_normalize(previous)):
             context += ' registration required'
-        for clause in _split_action_clauses(sentence):
-            yield clause, context
+        # A conditional request stays one source sentence, including its condition.
+        if CONDITION.match(context):
+            yield sentence, context
+        else:
+            for clause in _split_action_clauses(sentence):
+                yield clause, context
 
 
 def _candidate(clause):
     original = clause.strip(' \t,.!?؟؛;،')
     request = _normalize(original)
+    condition = CONDITION.match(request)
+    if condition:
+        parts = re.split(r'[,،]\s*', original, maxsplit=1)
+        if len(parts) != 2 or _candidate(parts[1]) is None:
+            return None
+        _, action, polite = _candidate(parts[1])
+        return original, action, polite
     polite = POLITE.match(request)
     if polite:
         original = ' '.join(original.split()[len(polite.group().split()):])
@@ -112,13 +127,16 @@ def _incomplete(original):
 
 
 def _intent(request, context):
-    if FOOTER.search(request) or NEGATIVE.search(request):
+    if FOOTER.search(request) or re.match(r'^(?:do not|don.t|no need to|never|already)\b|^(?:لا داعي|لا تقم|لا ترسل|لا تدفع|تم بالفعل|تم الغاء)', request, re.I):
         return 'boilerplate'
     if GENERIC_CTA.match(request):
         if not (re.match(APP_CTA, request, re.I) and APP_REQUIRED.search(request)):
             return 'navigation'
     if _BENEFIT.match(request):
         return 'benefit'
+    if (_JOIN_ACTION.match(request) and _OPEN_INVITATION.search(context)
+            and not _REQUIRED.search(context)):
+        return 'invitation'
     if _REGISTER_CTA.match(request) and not (_REQUIRED.search(context) or
                                            (_WORK_OBJECT.search(request) and _STRONG.search(request))):
         return 'marketing'
@@ -163,6 +181,9 @@ def _task_identity(text):
 
 
 def _same_task(first, second):
+    # Different conditions describe different obligations.
+    if CONDITION.match(_normalize(first)) or CONDITION.match(_normalize(second)):
+        return _normalize(first) == _normalize(second)
     action_a, words_a, timing_a = _task_identity(first)
     action_b, words_b, timing_b = _task_identity(second)
     if action_a != action_b or not words_a or not words_b:
@@ -200,13 +221,21 @@ class RuleTaskExtractor:
     def extract(self, subject, body):
         candidates = []
         # Body first so details survive subject duplicates.
-        for text in (body, subject):
+        heading = _candidate(subject)
+        action = _task_identity(heading[0])[0] if heading else ''
+        texts = (body,) if completed_subject(_normalize(subject), _normalize(body), action) else (body, subject)
+        for text in texts:
             for clause, context in _clauses(text):
                 candidate = _candidate(clause)
                 if candidate is None:
                     continue
                 original, request, polite = candidate
-                if _incomplete(original) or _intent(request, context) != 'obligation':
+                # A registration heading or closing notice is not a request.
+                if (request.startswith('التسجيل ') and not polite
+                        and not _REQUIRED.search(context)):
+                    continue
+                if (unsafe_scope(context, request, polite) or _incomplete(original)
+                        or _intent(request, context) != 'obligation'):
                     continue
                 candidates.append({
                     'task': original[0].upper() + original[1:],

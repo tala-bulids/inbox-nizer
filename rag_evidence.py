@@ -51,6 +51,8 @@ def _has_relation(words, relation, target):
 def _records(text):
     labels = defaultdict(list)
     for match in re.finditer(r'(?m)^([^\n:|]{2,50}):[ \t]*([^\n]+)', text):
+        if re.search(r'\d$',match[1]) and re.match(r'\d{2}\b',match[2]):
+            continue
         if len(match[2]) <= 120 and '|' not in match[2]:
             labels[' '.join(_words(match[1]))].append(match)
     candidates = [matches for matches in labels.values()

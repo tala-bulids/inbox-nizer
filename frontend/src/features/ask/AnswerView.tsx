@@ -1,3 +1,4 @@
+import { conversationalAnswer, readableAnswer } from "./presentation";
 import { SourceList, safeText as text } from "./SourceList";
 import { EmailDate } from "../../components/ui/EmailDate";
 import { ShieldCheck, TriangleAlert } from "lucide-react";
@@ -10,23 +11,25 @@ import { Empty } from "../../components/shared/States";
 export function AnswerView({
   answer,
   onClarify,
+  question,
 }: {
   answer: AskAnswer;
+  question?: string;
   onClarify: (id: number) => void;
 }) {
-  const { t } = useLocale();
+  const { t, language } = useLocale();
   if (answer.status === "insufficient_evidence")
     return (
       <Empty
         title={t("لا توجد أدلة كافية", "Insufficient evidence")}
-        detail={answer.answer}
+        detail={readableAnswer(answer.answer, language)}
       />
     );
   if (answer.status === "needs_clarification")
     return (
       <section className="answer-panel">
         <h2>{t("لنحدد البريد المقصود", "Which email do you mean?")}</h2>
-        <ContentText>{answer.answer}</ContentText>
+        <ContentText>{readableAnswer(answer.answer, language)}</ContentText>
         <div className="clarification-options">
           {Array.isArray(answer.clarification_options) &&
             answer.clarification_options
@@ -128,17 +131,17 @@ export function AnswerView({
           </>
         )}
       </div>
-      <ContentText>{answer.answer}</ContentText>
-      {supported && (
-        <p className="answer-kind muted">
-          {answer.answer_mode === "deterministic_fact"
-            ? t(
-                "من معلومات مستخرجة من البريد",
-                "From structured email information",
-              )
-            : t("من مقطع في البريد", "From an email excerpt")}
-        </p>
-      )}
+      <div data-testid="conversational-answer">
+        <ContentText>
+          {conversationalAnswer(
+            answer,
+            uniqueSources,
+            language,
+            supported && !generated,
+            question,
+          )}
+        </ContentText>
+      </div>
       <SourceList sources={uniqueSources} />
     </section>
   );

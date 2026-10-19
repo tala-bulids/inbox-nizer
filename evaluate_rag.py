@@ -27,7 +27,7 @@ def main():
             prepared = prepare_rag_request(db, question, chunk_limit=args.chunk_limit,
                                            max_context_chars=args.max_context_chars, preview_facts=args.preview_facts)
             report = {'question': question,
-                      'retrieved': [{k: c[k] for k in ('email_id', 'chunk_index', 'score')}
+                      'retrieved': [{k: c[k] for k in ('email_id', 'chunk_index', 'score', 'requested_role', 'ranking') if k in c}
                                     for c in prepared['retrieved_chunks']],
                       'evidence_selection': prepared['evidence_audit'],
                       'explicit_answer_candidate': prepared['answer_candidate'],

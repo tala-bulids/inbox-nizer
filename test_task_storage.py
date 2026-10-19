@@ -17,7 +17,7 @@ def test_gmail_saves_tasks(gmail_mocks, test_database):
     extract_body.side_effect = lambda payload: 'Please review the document and upload the signed copy.'
     classify.return_value = [{'category': 'Business', 'confidence': 0.8}, {'category': 'Reminders', 'confidence': 0.7}]
     with TestClient(app) as client:
-        result = client.get('/gmail/messages').json()
+        result = client.post('/gmail/messages').json()
     assert result['success_count'] == 2
     emails = test_database.scalars(select(Email)).all()
     assert len(emails) == 2
@@ -44,7 +44,7 @@ def test_existing_email_is_not_duplicated(gmail_mocks, test_database, has_tasks,
     for _ in range(2):
         set_messages(messages, 1)
         with TestClient(app) as client:
-            assert client.get('/gmail/messages').json()['success_count'] == 1
+            assert client.post('/gmail/messages').json()['success_count'] == 1
     test_database.expire_all()
     assert test_database.query(Email).count() == 1
     assert test_database.query(EmailPrediction).count() == 1
@@ -54,18 +54,19 @@ def test_existing_email_is_not_duplicated(gmail_mocks, test_database, has_tasks,
     assert email.priority_score == 0.9
 
 
-def test_task_failure_rolls_back_one_message(gmail_mocks, test_database):
+def test_task_failure_preserves_source(gmail_mocks, test_database):
     messages, _, _ = gmail_mocks
     set_messages(messages, 2)
-    with patch('routes.extract_action_items', side_effect=[RuntimeError('private'), [{'task': 'Review document', 'confidence': 0.8}]]):
+    with patch('email_pipeline.extract_action_items', side_effect=[RuntimeError('private'), [{'task': 'Review document', 'confidence': 0.8}]]):
         with TestClient(app) as client:
-            result = client.get('/gmail/messages').json()
-    assert result['success_count'] == result['failed_count'] == 1
-    assert result['emails'][0] == {'id': '1', 'error': 'Failed to process email'}
-    assert test_database.query(Email).count() == 1
-    assert test_database.query(EmailPrediction).count() == 1
+            result = client.post('/gmail/messages').json()
+    assert result['success_count'] == 2
+    assert result['failed_count'] == 0
+    assert result['enrichment_failed'] == 1
+    assert test_database.query(Email).count() == 2
+    assert test_database.query(EmailPrediction).count() == 2
     assert test_database.query(EmailTask).count() == 1
-    assert test_database.scalar(select(Email)).message_id == '2'
+    assert {e.message_id for e in test_database.scalars(select(Email))} == {'1', '2'}
 
 
 def test_tasks_and_combined_filters(test_database):

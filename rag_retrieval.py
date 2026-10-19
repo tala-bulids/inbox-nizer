@@ -20,6 +20,7 @@ def retrieve_rag_chunks(
     limit: int = 8,
     min_score: float | None = None,
     max_chunks_per_email: int = 2,
+    email_id: int | None = None,
 ):
     if not isinstance(query, str) or not query.strip():
         raise RagQueryError("Query must not be empty")
@@ -38,11 +39,11 @@ def retrieve_rag_chunks(
     query = query.strip()
     model = embedding_service.MODEL_NAME
 
-    has_embeddings = db.scalar(
-        select(EmailEmbeddingChunk.id)
-        .where(EmailEmbeddingChunk.embedding_model == model)
-        .limit(1)
-    )
+    from rag_time import constrain
+    base = select(EmailEmbeddingChunk.id).where(EmailEmbeddingChunk.embedding_model == model)
+    if email_id is not None:
+        base = base.where(EmailEmbeddingChunk.email_id == email_id)
+    has_embeddings = db.scalar(constrain(base, query).limit(1))
 
     if has_embeddings is None:
         return []
@@ -85,13 +86,15 @@ def retrieve_rag_chunks(
 
         if min_score is not None:
             statement = statement.where(distance <= 1.0 - min_score)
+        if email_id is not None:
+            statement = statement.where(EmailEmbeddingChunk.email_id == email_id)
 
         started = perf_counter()
-        rows = db.execute(statement).all()
+        rows = db.execute(constrain(statement, query)).all()
         vector_seconds = perf_counter() - started
 
         from rag_candidates import as_chunks, merge_candidates
-        candidates = merge_candidates(db, query, as_chunks(rows), distance, model, min_score)
+        candidates = merge_candidates(db, query, as_chunks(rows), distance, model, min_score, email_id=email_id)
         for candidate in candidates:
             candidate['retrieval']['vector_seconds'] = vector_seconds
 
@@ -99,11 +102,11 @@ def retrieve_rag_chunks(
         chunks_per_email = defaultdict(int)
 
         for candidate in candidates:
-            email_id = candidate['email_id']
-            if chunks_per_email[email_id] >= max_chunks_per_email:
+            candidate_email_id = candidate['email_id']
+            if chunks_per_email[candidate_email_id] >= max_chunks_per_email:
                 continue
             results.append(candidate)
-            chunks_per_email[email_id] += 1
+            chunks_per_email[candidate_email_id] += 1
 
             if len(results) >= limit:
                 return results

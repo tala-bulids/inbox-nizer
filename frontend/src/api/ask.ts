@@ -22,10 +22,22 @@ export async function ask(
     !("sources" in value) ||
     !Array.isArray(value.sources) ||
     !("citations" in value) ||
-    !Array.isArray(value.citations)
+    !Array.isArray(value.citations) ||
+    !value.sources.every(
+      (source) =>
+        !source ||
+        !validId(source.email_id) ||
+        (typeof source.subject === "string" &&
+          typeof source.from === "string" &&
+          typeof source.date === "string"),
+    ) ||
+    ("clarification_options" in value &&
+      value.clarification_options != null &&
+      !Array.isArray(value.clarification_options))
   )
     throw new ApiError("contract");
-  // Boundary checked below before any source IDs become links or follow-up requests.
+  // IDs are checked again before links or follow-up requests. Valid source IDs
+  // require textual metadata so malformed responses cannot break presentation.
   return value as AskAnswer;
 }
 export function validId(value: unknown): value is number {

@@ -1,3 +1,4 @@
+import { EmailDate } from "../../components/ui/EmailDate";
 import { Link } from "react-router-dom";
 import type { SearchResult } from "../../api/contracts";
 import { useLocale } from "../../app/locale";
@@ -7,7 +8,7 @@ export function SearchResults({ items }: { items: SearchResult[] }) {
     <ol className="result-list search-results">
       {items.map((item, index) => (
         <li key={item.email.id}>
-          <Link to={"/email/" + item.email.id}>
+          <Link to={"/email/" + item.email.id} state={{ returnTo: "/search" }}>
             <span className="result-rank">
               {t("نتيجة", "Result")} {index + 1}
             </span>
@@ -17,6 +18,11 @@ export function SearchResults({ items }: { items: SearchResult[] }) {
             <p className="muted" dir="auto">
               {item.email.from || t("مرسل غير معروف", "Unknown sender")}
             </p>
+            <EmailDate
+              value={
+                item.email.sent_at || item.email.message_at || item.email.date
+              }
+            />
             <p className="snippet-label">
               {t("مقطع مطابق من البريد", "Matching email excerpt")}
             </p>

@@ -21,14 +21,23 @@ from pgvector.sqlalchemy import Vector
 
 class Email(Base):
     __tablename__ = "emails"
+    __table_args__ = (
+        UniqueConstraint('account_id', 'message_id', name='uq_email_account_message'),
+        Index('ix_email_account_created', 'account_id', 'created_at', 'id'),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey('gmail_accounts.id', ondelete='CASCADE'), nullable=False)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    date_status: Mapped[str] = mapped_column(String(20), default='missing', server_default='missing')
+    raw_payload: Mapped[dict | None] = mapped_column(JSONB)
+    gmail_labels: Mapped[list | None] = mapped_column(JSONB)
+    sync_generation: Mapped[str | None] = mapped_column(String(36), deferred=True)
 
     message_id: Mapped[str] = mapped_column(
         String(255),
-        unique=True,
         nullable=False,
-        index=True
     )
 
     sender: Mapped[str] = mapped_column(
@@ -159,6 +168,9 @@ class EmailFactState(Base):
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     extractor_version: Mapped[str] = mapped_column(String(100), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+import backend_models  # Register ownership tables in Alembic metadata.
 
 
 class EmailFact(Base):

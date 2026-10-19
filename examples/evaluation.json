@@ -1,0 +1,7 @@
+{
+  "note": "Synthetic illustrations only; not an accuracy benchmark.",
+  "emails": [
+    {"subject": "Interview invitation", "body": "Please confirm your availability for an interview next Monday.", "expected_labels": ["Job Application"]},
+    {"subject": "Your monthly invoice", "body": "The invoice for your subscription is ready for review.", "expected_labels": ["Finance & Bills"]}
+  ]
+}
