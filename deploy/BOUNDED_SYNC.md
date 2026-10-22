@@ -6,7 +6,39 @@ Deploy with traffic/sync stopped, a verified backup and the separate migration-o
 
 Each authenticated sync POST processes at most five pending message IDs and two Gmail listing pages (`maxResults=50`), then at most five full-scan reconciliation deletions and one older enrichment retry. Counts refer to that batch. `has_more=true` means more work remains; Settings exposes Continue sync and reads persisted account progress after reload. An operator/API client may invoke the same endpoint again serially. Do not run overlapping requests or an unbounded tight retry loop. There is no installed background scheduler.
 
-The 20-second budget is soft: checks happen between operations, not by interrupting model/native code or an atomic provider request. Provider transport timeouts remain 30 seconds; application retries happen in later batches. One local model call may exceed the budget. Target-host wall time, CPU/RAM and mixed-workload capacity remain unverified.
+The 20-second budget is soft: checks happen between operations, including after listing a page, not by interrupting an atomic provider request. Provider transport timeouts remain 30 seconds; application retries happen in later batches. In the full runtime, one local model call may exceed the budget. The Render Free profile below excludes those calls. Target-host wall time, CPU/RAM and mixed-workload capacity remain unverified.
+
+## Render Free runtime
+
+Set `INBOX_RUNTIME_PROFILE=render-free` on the Render backend and redeploy the
+release branch. No schema migration or OAuth configuration change is needed for
+this profile. The default, including an absent environment variable, is `full`.
+
+Render Free sync runs `clean`, the existing model-free extractive `summary`,
+`tasks`, and `facts`. It never calls the classifier, embedding preparation, or
+SentenceTransformer during sync. `classify` and `embedding` receive terminal
+`skipped` states with `runtime_disabled` as the reason, without incrementing
+attempts or deleting original mail or existing derived data. These markers are
+saved before deadline checks, so interrupted heavy stages also become terminal
+when that email is retried. Older interrupted emails are still handled at the
+existing bounded rate of one enrichment retry per batch; they are not bulk-reprocessed.
+Only genuine pending/failed work keeps `has_more` true. New category predictions
+and semantic vectors are unavailable for emails synced under this profile.
+
+Switching back to `full` restores all stages when an email is next processed;
+skipped states are not treated as completed inference. No automatic backfill,
+threads, workers, or scheduler is added. This profile limits Gmail sync only;
+other explicit AI endpoints are outside its memory guarantee.
+
+An overlapping sync can still correctly return 409. Wait for the active bounded
+request before retrying. Redeployment stops any old process still running model
+inference; do not delete checkpoints or attempt to unlock another live session.
+Use a direct PostgreSQL connection (or session pooling), not transaction pooling,
+because the account lock must remain on the same PostgreSQL session across commits.
+Acquisition errors and unsuccessful/interrupted unlocks invalidate the pinned
+connection so a possibly locked session is never returned to the pool.
+
+## Durability and recovery
 
 The full-sync anchor is captured before listing. Page tokens, current-page pending IDs and the final candidate history ID are committed before body retrieval. Each original source and its pending enrichment marker commit before optional enrichment. Stage results are independently committed; model computation for classification, summary and embeddings holds no database transaction. The published History cursor changes only after every source ID and full-scan reconciliation are acknowledged. Source uniqueness and stage hashes make replay idempotent. Derived-stage failure can remain retryable after the source cursor advances.
 

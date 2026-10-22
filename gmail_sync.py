@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 MESSAGE_LIMIT = 5
 PAGE_LIMIT = 2
 PAGE_SIZE = 50
-TIME_BUDGET = 20  # Soft: never interrupt an atomic provider/model operation.
+TIME_BUDGET = 20  # Soft: checked between operations; render-free never runs models.
 
 
 def execute(request):
@@ -106,6 +106,8 @@ def _batch(db, account_id):
                 db.commit()  # Persist page IDs before fetching any bodies.
                 if not state.pending:
                     continue
+            if monotonic() >= deadline:
+                break  # Listing may have consumed the remaining request budget.
             message_id = state.pending[0]
             result['count'] += 1
             try:
@@ -199,7 +201,13 @@ def sync_account(db, account_id):
     with (bind.connect() if dedicated else nullcontext(bind)) as connection:
         locked = False
         try:
-            locked = bool(connection.scalar(text('SELECT pg_try_advisory_lock(724193, :account)'), {'account': account_id}))
+            try:
+                locked = bool(connection.scalar(text('SELECT pg_try_advisory_lock(724193, :account)'), {'account': account_id}))
+            except BaseException:
+                # A lost/cancelled response can leave acquisition ambiguous.
+                # Never pool a connection that might own this session lock.
+                connection.invalidate()
+                raise
             if dedicated:
                 connection.commit()
             if not locked:
@@ -212,9 +220,13 @@ def sync_account(db, account_id):
                 try:
                     if dedicated and connection.in_transaction():
                         connection.rollback()
-                    connection.execute(text('SELECT pg_advisory_unlock(724193, :account)'), {'account': account_id})
+                    released = connection.scalar(text('SELECT pg_advisory_unlock(724193, :account)'), {'account': account_id})
+                    if not released:
+                        raise RuntimeError('Sync lock release was not confirmed')
                     if dedicated:
                         connection.commit()
-                except Exception:
+                except BaseException as error:
                     connection.invalidate()
+                    if not isinstance(error, Exception):
+                        raise
             db.expire_all()

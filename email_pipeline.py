@@ -2,6 +2,7 @@
 import hashlib
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from sqlalchemy import select
@@ -20,6 +21,13 @@ import embedding_service
 from semantic_content import CONTENT_VERSION
 
 logger = logging.getLogger(__name__)
+
+
+def disabled_sync_stages():
+    """The default/local profile retains every enrichment stage."""
+    if os.getenv('INBOX_RUNTIME_PROFILE', 'full').strip().lower() == 'render-free':
+        return frozenset({'classify', 'embedding'})
+    return frozenset()
 
 
 def parse_header_date(raw):
@@ -91,7 +99,26 @@ def process_email(db, email, *, commit_stages=False, deadline=None):
               ('tasks', 'tasks-v1', _tasks), ('facts', email_facts.EXTRACTOR_VERSION, lambda e, s: refresh_facts(e, s)),
               ('embedding', embedding_service.MODEL_NAME + ':' + str(CONTENT_VERSION), lambda e, s: index_email(e, s))]
     failures = []
+    disabled = disabled_sync_stages()
+    # Persist terminal markers before any deadline/clean-stage early return.
+    # Previously interrupted or failed heavy stages must not keep sync pending.
+    for stage, version, _ in stages:
+        if stage not in disabled:
+            continue
+        state = db.scalar(select(ProcessingState).where(
+            ProcessingState.email_id == email.id, ProcessingState.stage == stage))
+        if state is None:
+            state = ProcessingState(email_id=email.id, stage=stage, attempts=0,
+                                    input_hash='', version=version)
+            db.add(state)
+        state.status, state.error_code = 'skipped', 'runtime_disabled'
+    if disabled:
+        db.flush()
+        if commit_stages:
+            db.commit()
     for stage, version, operation in stages:
+        if stage in disabled:
+            continue  # Do not prepare inputs, load models, or erase derived data.
         data = email.raw_payload if stage == 'clean' else [email.subject, email.body, email.email_date,
                                                           email.summary if stage == 'embedding' else None]
         digest = hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
