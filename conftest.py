@@ -71,6 +71,8 @@ def semantic_test_schema():
                 scripts.get_revision('c4d9e6f135ab').module.upgrade()
             if not inspect(connection).has_table('gmail_sync_states'):
                 scripts.get_revision('d5ea7f246bc0').module.upgrade()
+            if 'import_query' not in {c['name'] for c in inspect(connection).get_columns('gmail_sync_states')}:
+                scripts.get_revision('e6fb80357cd1').module.upgrade()
 
 
 @pytest.fixture(autouse=True)

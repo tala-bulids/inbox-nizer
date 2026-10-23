@@ -13,7 +13,7 @@ import gmail_sync
 import email_pipeline
 
 
-def test_progress_changes_within_a_page_and_last_sync_waits_for_completion(sync_env, monkeypatch):
+def test_progress_changes_within_a_page_and_last_sync_records_saved_batches(sync_env, monkeypatch):
     from account_routes import accounts
     db, account, service = sync_env
     monkeypatch.setenv('INBOX_RUNTIME_PROFILE', 'render-free')
@@ -28,7 +28,7 @@ def test_progress_changes_within_a_page_and_last_sync_waits_for_completion(sync_
         assert result['has_more']
         tokens.append(result['progress_token'])
         assert accounts(db)['accounts'][0]['sync_pending']
-        assert db.get(GmailAccount, account).last_synced_at is None
+        assert db.get(GmailAccount, account).last_synced_at is not None
     assert len(set(tokens)) == 3  # Same page token does not mean stalled work.
     final = gmail_sync.sync_account(db, account)
     assert not final['has_more']
@@ -55,13 +55,13 @@ def test_unchanged_page_token_stops_without_acknowledging_page(sync_env, monkeyp
         gmail_sync.sync_account(db, account)
     assert error.value.status_code == 503
     assert db.get(GmailSyncState, account).page_token == 'stuck'
-    assert db.get(GmailAccount, account).last_synced_at is None
+    assert db.get(GmailAccount, account).last_synced_at is not None
     assert db.query(Email).count() == 1
     assert not gmail_sync.sync_account(db, account)['has_more']
     assert db.query(Email).count() == 2
 
 
-def test_failed_enrichment_stays_visible_after_reload_and_timestamp_waits(sync_env, monkeypatch):
+def test_failed_enrichment_stays_visible_after_reload_without_blocking_gmail_timestamp(sync_env, monkeypatch):
     from account_routes import accounts
     db, account, _ = sync_env
     monkeypatch.setenv('INBOX_RUNTIME_PROFILE', 'render-free')
@@ -71,7 +71,7 @@ def test_failed_enrichment_stays_visible_after_reload_and_timestamp_waits(sync_e
     assert first['has_more'] and first['enrichment_failed']
     db.expire_all()
     assert accounts(db)['accounts'][0]['sync_pending']
-    assert db.get(GmailAccount, account).last_synced_at is None
+    assert db.get(GmailAccount, account).last_synced_at is not None
     second = gmail_sync.sync_account(db, account)
     assert first['progress_token'] == second['progress_token']
     monkeypatch.setattr(email_pipeline, 'summarize_email', original)

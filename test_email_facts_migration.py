@@ -13,7 +13,7 @@ def test_facts_migration_upgrade_downgrade_preserves_parent(test_database):
     config.set_main_option('script_location', str(Path(__file__).parent / 'alembic'))
     scripts = ScriptDirectory.from_config(config)
     migration = scripts.get_revision('a2b7c4d913ef')
-    assert scripts.get_heads() == ['d5ea7f246bc0']
+    assert scripts.get_heads() == ['e6fb80357cd1']
     assert migration.down_revision == 'f1a6b3c802de'
     email = saved_email(test_database, body='status: Under review')
     refresh_facts(email, test_database)

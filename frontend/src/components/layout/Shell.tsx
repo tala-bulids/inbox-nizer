@@ -14,6 +14,7 @@ import { useSignOut } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
 import { Loading } from "../shared/States";
 import { DesktopTopBar } from "../ui/DesktopTopBar";
+import { GmailSyncNotice } from "../../features/settings/GmailSync";
 
 export function Shell() {
   const logout = useSignOut();
@@ -120,6 +121,7 @@ export function Shell() {
             </span>
           </header>
           <main id="main" className="main-content" tabIndex={-1}>
+            <GmailSyncNotice />
             <Suspense fallback={<Loading />}>
               <Outlet />
             </Suspense>

@@ -33,6 +33,7 @@ import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import { LocaleProvider } from "./locale";
 import { AskSession } from "../features/ask/AskSession";
 import { SearchSession } from "../features/search/SearchSession";
+import { GmailSyncProvider } from "../features/settings/GmailSync";
 function InboxEntry() {
   const { api } = useAuth();
   const { data } = useQuery({
@@ -55,21 +56,23 @@ export function App() {
         ) : (
           <>
             <AuthProvider>
-              <SearchSession>
-                <AskSession>
-                  <Routes>
-                    <Route element={<Shell />}>
-                      <Route index element={<InboxEntry />} />
-                      <Route path="email/:id" element={<EmailPage />} />
-                      <Route path="search" element={<SearchPage />} />
-                      <Route path="ask" element={<AskPage />} />
-                      <Route path="tasks" element={<TasksPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Route>
-                  </Routes>
-                </AskSession>
-              </SearchSession>
+              <GmailSyncProvider>
+                <SearchSession>
+                  <AskSession>
+                    <Routes>
+                      <Route element={<Shell />}>
+                        <Route index element={<InboxEntry />} />
+                        <Route path="email/:id" element={<EmailPage />} />
+                        <Route path="search" element={<SearchPage />} />
+                        <Route path="ask" element={<AskPage />} />
+                        <Route path="tasks" element={<TasksPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
+                    </Routes>
+                  </AskSession>
+                </SearchSession>
+              </GmailSyncProvider>
             </AuthProvider>
           </>
         )}

@@ -65,8 +65,11 @@ export const accountsSchema = z.object({
       last_synced_at: text,
       sync_error: text,
       sync_pending: z.boolean().optional(),
+      initial_sync_pending: z.boolean().optional(),
+      message_count: z.number().optional(),
     }),
   ),
+  sync_interval_seconds: z.number().optional(),
 });
 export type Accounts = z.infer<typeof accountsSchema>;
 export const oauthSchema = z.object({ authorization_url: z.string().url() });

@@ -48,6 +48,7 @@ class GmailSyncState(Base):
     page_token: Mapped[str | None] = mapped_column(Text)
     pending: Mapped[list] = mapped_column(JSON, default=list)
     listing_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    import_query: Mapped[str | None] = mapped_column(String(100))
 
 
 class OAuthAttempt(Base):

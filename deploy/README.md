@@ -35,7 +35,7 @@ The runtime database role needs SELECT/INSERT/DELETE on app_access_tokens and go
 For the Render Free backend, set **`INBOX_RUNTIME_PROFILE=render-free`** in the
 service environment and redeploy `codex/inbox-nizer-release`. Keep the existing
 Google OAuth settings and database credentials unchanged. Run one backend worker.
-See [bounded sync](BOUNDED_SYNC.md#render-free-runtime) for stage behavior and recovery.
+See [automatic sync](BOUNDED_SYNC.md) for the required migration, ONNX classifier artifact, stage behavior and recovery.
 Local installations default to `full` when this variable is absent.
 
 Backend secrets (never VITE): DATABASE_URL, OAUTH_TOKEN_KEYS, Google client credentials/config and model configuration. TEST_DATABASE_URL must point to a separate _test database.
@@ -57,7 +57,7 @@ Production builds always use browser-session auth. Development builds also show 
 
 ## OAuth presentation
 
-Frontend POSTs /auth/google/start?browser=true, then opens only an HTTPS accounts.google.com URL without userinfo or a nondefault port. Existing nonce/state/PKCE checks and one-use attempts remain. Browser callback redirects only to configured BROWSER_ORIGIN/oauth/complete with a bounded result: success, denied, expired or provider_error. Codes/tokens/private details are never forwarded. The page tells the user to open Settings to confirm account status; the URL itself is not proof of connection. Non-browser clients keep the legacy JSON/error responses.
+Frontend POSTs /auth/google/start?browser=true, then opens only an HTTPS accounts.google.com URL without userinfo or a nondefault port. Existing nonce/state/PKCE checks and one-use attempts remain. Browser callback redirects only to configured BROWSER_ORIGIN/oauth/complete with a bounded result: success, denied, expired or provider_error. Codes/tokens/private details are never forwarded. Success opens the authenticated inbox, which verifies account state and starts preparation automatically; the URL itself is not proof of connection. Non-browser clients keep the legacy JSON/error responses.
 
 ## Headers and cache
 

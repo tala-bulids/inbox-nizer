@@ -39,7 +39,7 @@ const syncResult = {
   emails: [{ body: "PRIVATE_BODY" }],
 };
 
-test("one click syncs sequential batches, accumulates progress and refreshes completion timestamp", async () => {
+test("initial connection automatically syncs sequential batches and refreshes completion timestamp", async () => {
   let calls = 0;
   let active = 0;
   let maxActive = 0;
@@ -68,24 +68,21 @@ test("one click syncs sequential batches, accumulates progress and refreshes com
       });
     }),
   );
-  const user = await open("/settings");
-  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await open("/settings");
   expect(
-    await screen.findByRole("button", { name: "جارٍ المزامنة…" }),
+    await screen.findByRole("button", { name: "جاري التحديث..." }),
   ).toBeDisabled();
-  await screen.findByText(/تمت مزامنة 2 رسالة/);
-  await screen.findByText(/اكتملت المزامنة بنجاح. تمت مزامنة 6 رسالة/);
+  await screen.findByText(/تم تجهيز 2 رسالة/);
+  await screen.findByText("تم تحديث البريد");
   expect(calls).toBe(3);
   expect(maxActive).toBe(1);
-  expect(screen.getByRole("button", { name: "مزامنة Gmail" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "تحديث الآن" })).toBeEnabled();
   expect(screen.queryByText("متابعة المزامنة")).not.toBeInTheDocument();
   await waitFor(() =>
     expect(
       document.querySelector('time[datetime="2026-10-23T10:30:00Z"]'),
     ).not.toBeNull(),
   );
-  await user.click(screen.getByRole("button", { name: "تحديث الحالة" }));
-  expect(screen.queryByText("لم تتم المزامنة بعد")).not.toBeInTheDocument();
 }, 15000);
 
 test.each([409, 503, "network"])(
@@ -110,14 +107,12 @@ test.each([409, 503, "network"])(
       }),
     );
     const user = await open("/settings");
-    await user.click(
-      await screen.findByRole("button", { name: "مزامنة Gmail" }),
-    );
-    await screen.findByText(/توقفت المزامنة. تمت مزامنة 2/);
+    await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
+    await screen.findByText(/تعذر إكمال التحديث الآن/);
     expect(calls).toBe(2);
-    expect(screen.getByRole("alert")).not.toHaveTextContent("PRIVATE");
-    await user.click(screen.getByRole("button", { name: "مزامنة Gmail" }));
-    await screen.findByText(/اكتملت المزامنة بنجاح/);
+    expect(document.body).not.toHaveTextContent("PRIVATE");
+    await user.click(screen.getByRole("button", { name: "تحديث الآن" }));
+    await screen.findByText(/تم تحديث البريد/);
     expect(calls).toBe(3);
   },
 );
@@ -138,16 +133,14 @@ test.each(["partial", "stalled"])(
       }),
     );
     const user = await open("/settings");
-    await user.click(
-      await screen.findByRole("button", { name: "مزامنة Gmail" }),
-    );
-    await screen.findByText(/توقفت المزامنة مؤقتًا/);
+    await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
+    await screen.findByText(/تعذر إكمال التحديث الآن/);
     expect(calls).toBe(reason === "partial" ? 1 : 2);
-    expect(screen.getByRole("button", { name: "مزامنة Gmail" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "تحديث الآن" })).toBeEnabled();
   },
 );
 
-test("leaving Settings stops further batches while retaining server progress", async () => {
+test("leaving Settings keeps syncing while the app remains usable", async () => {
   let calls = 0;
   let finishBatch!: () => void;
   const heldBatch = new Promise<void>((resolve) => {
@@ -159,19 +152,19 @@ test("leaving Settings stops further batches while retaining server progress", a
       await heldBatch;
       return HttpResponse.json({
         ...syncResult,
-        has_more: true,
+        has_more: calls < 2,
         progress_token: String(calls),
       });
     }),
   );
   const user = await open("/settings");
-  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
   await waitFor(() => expect(calls).toBe(1));
   await user.click(screen.getByRole("link", { name: "المهام" }));
   await screen.findByText(taskPage.tasks[0]!.task);
   finishBatch();
   await delay(200);
-  expect(calls).toBe(1);
+  await waitFor(() => expect(calls).toBe(2));
 });
 test("task loading skeleton then mixed text/deadline/source metadata", async () => {
   server.use(
@@ -320,7 +313,7 @@ test.each(["disconnected", "reconnect_required"])(
     );
     await open("/settings");
     expect(
-      await screen.findByRole("button", { name: "مزامنة Gmail" }),
+      await screen.findByRole("button", { name: "تحديث الآن" }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "إعادة الاتصال" })).toBeEnabled();
   },
@@ -348,13 +341,13 @@ test("sync is explicit duplicate guarded with truthful pending/result", async ()
   );
   const user = await open("/settings");
   expect(calls).toBe(0);
-  const button = await screen.findByRole("button", { name: "مزامنة Gmail" });
+  const button = await screen.findByRole("button", { name: "تحديث الآن" });
   await user.click(button);
   fireEvent.click(button);
-  expect(await screen.findByRole("status")).toHaveTextContent(
-    "جارٍ مزامنة البريد",
-  );
-  await screen.findByText(/اكتملت المزامنة بنجاح/);
+  expect(
+    screen.getByRole("button", { name: "جاري التحديث..." }),
+  ).toBeDisabled();
+  await screen.findByText(/تم تحديث البريد/);
   expect(calls).toBe(1);
   expect(screen.queryByText("PRIVATE_BODY")).not.toBeInTheDocument();
 });
@@ -369,10 +362,10 @@ test.each([409, 503])(
       }),
     );
     const user = await open("/settings");
-    await user.click(
-      await screen.findByRole("button", { name: "مزامنة Gmail" }),
-    );
-    expect(await screen.findByRole("alert")).not.toHaveTextContent("PRIVATE");
+    await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
+    expect(
+      await screen.findByText(/تعذر إكمال التحديث الآن/),
+    ).not.toHaveTextContent("PRIVATE");
     expect(calls).toBe(1);
   },
 );
@@ -395,13 +388,22 @@ test("successful sync invalidates tasks and account data", async () => {
   const user = await open();
   await screen.findByText(taskPage.tasks[0]!.task);
   await user.click(screen.getByRole("link", { name: "الإعدادات" }));
-  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
-  await screen.findByText(/اكتملت المزامنة بنجاح/);
+  await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
+  await screen.findByText(/تم تحديث البريد/);
   await user.click(screen.getByRole("link", { name: "المهام" }));
   await waitFor(() => expect(taskCalls).toBe(2));
   expect(accountCalls).toBeGreaterThan(1);
 });
 test("connect and reconnect use secure POST handshake and honest JSON-return guidance", async () => {
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({
+        accounts: [
+          { ...accountData.accounts[0], status: "reconnect_required" },
+        ],
+      }),
+    ),
+  );
   let calls = 0;
   server.use(
     http.post(base + "/auth/google/start", () => {
@@ -417,7 +419,7 @@ test("connect and reconnect use secure POST handshake and honest JSON-return gui
   const link = await screen.findByRole("link", { name: "متابعة إلى Google" });
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
-  expect(screen.getByText(/صفحة نتيجة الاتصال/)).toBeVisible();
+  expect(screen.getByText(/نبدأ تجهيزه تلقائيًا/)).toBeVisible();
   expect(calls).toBe(1);
 });
 test.each([
@@ -426,6 +428,11 @@ test.each([
   "https://accounts.google.com:444/",
   "http://accounts.google.com/",
 ])("reject unsafe OAuth URL %s", async (url) => {
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({ accounts: [] }),
+    ),
+  );
   server.use(
     http.post(base + "/auth/google/start", () =>
       HttpResponse.json({ authorization_url: url }),
@@ -448,7 +455,7 @@ test("401 from sync clears auth session", async () => {
     ),
   );
   const user = await open("/settings");
-  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
   await screen.findByLabelText("رمز الوصول التطويري");
   expect(
     screen.queryByText(accountData.accounts[0]!.address),

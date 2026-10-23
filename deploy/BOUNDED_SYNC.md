@@ -1,57 +1,110 @@
-# Bounded Gmail sync operations
+# Automatic Gmail sync
 
-The new migration is `d5ea7f246bc0`, after `c4d9e6f135ab`. It adds `gmail_sync_states` and nullable `emails.sync_generation`. It was tested only in the isolated test database. **Production migration and sync were not run.**
+The authenticated app starts/resumes Gmail sync on app open, eligible focus/visibility
+changes, and while visible. The default freshness interval is five minutes
+(`GMAIL_SYNC_INTERVAL_SECONDS=300`, clamped to 60â€“3600). Navigation between Inbox,
+Settings and other routes does not stop the coordinator. The user button is
+**Update now**. OAuth success enters the authenticated Inbox, where account state
+is verified before sync; callback query parameters never authorize access.
 
-Deploy with traffic/sync stopped, a verified backup and the separate migration-owner connection. The runtime role requires SELECT/INSERT/UPDATE/DELETE on `gmail_sync_states`, plus its existing email/stage permissions; it must not receive DDL/ownership privileges. Do not deploy this sync implementation before the migration/grants. Readiness compares against the new Alembic head. Existing source columns and rows are unchanged by the migration.
+## Initial import and recovery
 
-Each authenticated sync POST processes at most five pending message IDs and two Gmail listing pages (`maxResults=50`), then at most five full-scan reconciliation deletions and one older enrichment retry. API counts refer to that batch. Settings starts with one **Sync Gmail** click and awaits each batch before sending another while `has_more=true`. It displays cumulative successful-message counts for the current run and refreshes account, inbox and task data when the run finishes or pauses. There is no installed background scheduler.
+New scans use `GMAIL_INITIAL_SYNC_DAYS=90` by default. A fixed `after:<epoch>` Gmail
+query is saved on the checkpoint so changing config/restarting cannot change the
+scope of a partially imported page. Set 0 only to explicitly request an unfiltered
+mirror. Existing checkpoints retain their null query and continue unchanged.
+Scoped imports never delete older local messages just because they fall outside
+the window. Existing mail, tokens, ownership and uniqueness are not migrated.
 
-Automatic continuation uses an opaque `progress_token` describing source, reconciliation and enrichment progress. Gmail's page token alone is insufficient: a single page can require several batches. A repeated progress checkpoint (including a cycle), missing checkpoint, source/enrichment failure, HTTP/network error, 90-second request timeout, 1,000 batches or 30 minutes stops the run safely. There are no automatic retries of uncertain POST outcomes. The backend also rejects an unchanged nonempty next-page token without acknowledging that page. Empty final pages and unfinished work within a final page still follow `has_more`, not page-token presence alone.
+After sources are acknowledged, `history_id` advances transactionally. Subsequent
+updates use `history.list(startHistoryId=...)`, including additions, deletions and
+label changes. HTTP 404 from History starts a recent recovery scan with a fresh
+anchor. Confirmed message GET 404 removes that mirrored message; scoped recovery
+preserves older records whose deletion can no longer be established from History.
+Unfiltered legacy scans retain their bounded full reconciliation behavior.
 
-Keep Settings open during automatic sync. Navigating away, signing out or closing/reloading the tab stops further requests; already committed progress remains in PostgreSQL. One later **Sync Gmail** click resumes it. Another active request can still return 409; wait before resuming. A partial failure preserves successful messages and the failed ID for retry rather than silently advancing past it. The existing `(account_id, message_id)` uniqueness constraint and source replay logic prevent duplicate rows. `last_synced_at` is updated only when both source and enrichment work finish; account status also reports interrupted enrichment after reload. No new database columns or OAuth changes are required.
+`last_synced_at` means the last successful Gmail contact with committed source
+progress, or a successful no-change update. It may advance during initial import;
+it does not assert that optional enrichment has finished. `initial_sync_pending`
+comes from the absence of a published history cursor; no second timestamp is needed.
 
-The 20-second budget is soft: checks happen between operations, including after listing a page, not by interrupting an atomic provider request. Provider transport timeouts remain 30 seconds; application retries happen in later batches. In the full runtime, one local model call may exceed the budget. The Render Free profile below excludes those calls. Target-host wall time, CPU/RAM and mixed-workload capacity remain unverified.
+## Bounded execution and failures
 
-## Render Free runtime
+Each POST still handles at most five message IDs, two listing pages of up to 50
+IDs, five legacy reconciliation deletions, and one older enrichment retry. The
+20-second budget is soft; provider calls retain their 30-second transport timeout.
+Sources commit before enrichment, and acknowledgements survive process loss.
+A malformed/failing source stays pending while other IDs in its page can succeed;
+its History cursor never advances past the unresolved source. No duplicate rows
+can bypass the `(account_id, message_id)` database constraint.
 
-Set `INBOX_RUNTIME_PROFILE=render-free` on the Render backend and redeploy the
-release branch. No schema migration or OAuth configuration change is needed for
-this profile. The default, including an absent environment variable, is `full`.
+The client awaits each POST. It stops on unchanged/cyclic progress, an uncertain
+request, source failure, 90-second request timeout, 1000 batches or 30 minutes.
+Operational caps are internal; normal progress automatically resumes later.
+Failures back off (5, 10, 20, 30 minutes by default), then stop automatic attempts
+after five consecutive failures for that app session. Manual Update now or reopening
+can try again. Optional enrichment retries at most three times per input/version;
+changed inputs reset attempts. Failed classifications do not block later sources.
 
-Render Free sync runs `clean`, the existing model-free extractive `summary`,
-`tasks`, and `facts`. It never calls the classifier, embedding preparation, or
-SentenceTransformer during sync. `classify` and `embedding` receive terminal
-`skipped` states with `runtime_disabled` as the reason, without incrementing
-attempts or deleting original mail or existing derived data. These markers are
-saved before deadline checks, so interrupted heavy stages also become terminal
-when that email is retried. Older interrupted emails are still handled at the
-existing bounded rate of one enrichment retry per batch; they are not bulk-reprocessed.
-Only genuine pending/failed work keeps `has_more` true. New category predictions
-and semantic vectors are unavailable for emails synced under this profile.
+Browser Web Locks coordinate tabs when available; the PostgreSQL session advisory
+lock is always authoritative. Keep a direct/session-pooled database connection,
+not a transaction pool. Acquisition/unlock uncertainty invalidates the connection.
+Closing the browser, logout, or a Render restart cannot lose committed progress.
+Hidden tabs pause after the current batch; there is no always-on worker, Pub/Sub,
+paid service, or promise of execution while all browsers are closed.
 
-Switching back to `full` restores all stages when an email is next processed;
-skipped states are not treated as completed inference. No automatic backfill,
-threads, workers, or scheduler is added. This profile limits Gmail sync only;
-other explicit AI endpoints are outside its memory guarantee.
+## Render Free classification
 
-An overlapping sync can still correctly return 409. Wait for the active bounded
-request before retrying. Redeployment stops any old process still running model
-inference; do not delete checkpoints or attempt to unlock another live session.
-Use a direct PostgreSQL connection (or session pooling), not transaction pooling,
-because the account lock must remain on the same PostgreSQL session across commits.
-Acquisition errors and unsuccessful/interrupted unlocks invalidate the pinned
-connection so a possibly locked session is never returned to the pool.
+`INBOX_RUNTIME_PROFILE=render-free` now classifies through the SAME `classify_email`
+entry point using a lazy, single-session ONNX CPU export of the existing weights.
+The classifier is not retrained or quantized. FP32 weights are external ONNX tensors to reduce load-time memory. Category mapping, preprocessing, 512-token bound
+and sigmoid confidence semantics are preserved. Embeddings remain runtime-disabled
+and are marked skipped. Torch/Transformers are never imported by this sync profile.
+Previously skipped classifier states become eligible for bounded backfill.
 
-## Durability and recovery
+Provision `model.onnx`, `weights.bin`, `tokenizer.json`, and `config.json` at
+`CLASSIFIER_ONNX_PATH` (default `local_models/render/classifier`). Dependencies
+include the pinned `onnxruntime` in requirements.txt. Export the approved existing
+artifact outside production with `python deploy/export_classifier_onnx.py --source
+<existing-classifier> --output <new-ignored-output-directory>`. Do not commit weights,
+mailbox data, credentials or signed download URLs. Do not substitute an unverified
+base checkpoint. Validate parity against that artifact and actual Linux memory
+before enabling live classification. Missing artifacts produce retryable stage
+failures, never fabricated labels or a silent Torch fallback.
 
-The full-sync anchor is captured before listing. Page tokens, current-page pending IDs and the final candidate history ID are committed before body retrieval. Each original source and its pending enrichment marker commit before optional enrichment. Stage results are independently committed; model computation for classification, summary and embeddings holds no database transaction. The published History cursor changes only after every source ID and full-scan reconciliation are acknowledged. Source uniqueness and stage hashes make replay idempotent. Derived-stage failure can remain retryable after the source cursor advances.
+A local ten-text English/Arabic parity probe preserved top labels and confidence
+within 0.0001 of the original outputs. Backend plus classifier inference peaked at
+333.9 MiB on Windows (307.4 MiB resident), without Torch or Transformers imports.
+This is a functional smoke test, not an accuracy claim or Linux/live qualification.
 
-A pinned connection holds a PostgreSQL session advisory lock per account across the short transactions. `finally` releases it; failed unlock invalidates the connection instead of pooling a lock. Process/connection loss releases the lock at PostgreSQL. Reconnect/disconnect use the same lock. Restart resumes the durable state; no token/cursor is accepted from the browser. OwnedSession scopes checkpoint reads/writes as well as messages. Monitor pool availability: each active sync reserves one connection.
+## Deploy order and live verification
 
-HTTP 404 on History schedules full recovery without advancing the committed cursor. Expired page tokens restart from the committed History anchor or a fresh full-scan generation. Other provider failures retain pending work. A repeatedly failing source blocks cursor advancement and is reported; retry/reconnect after resolving the cause rather than silently skipping it. Prior failed/interrupted enrichment gets one retry per batch even without new Gmail history.
+1. Hold deployment until the database/artifact prerequisites are ready. This release
+   commit uses `[skip render]` to keep pushing it from triggering an automatic
+   deployment. After prerequisites are verified, deploy it manually; do not push
+   another unmarked commit beforehand.
+2. With the migration-owner connection, apply Alembic `e6fb80357cd1` (after
+   `d5ea7f246bc0`). It adds only nullable `gmail_sync_states.import_query`.
+   Old rows remain null; downgrade refuses while scoped imports exist. Do not
+   grant DDL to the runtime role or run migrations with its credentials.
+3. Provision and verify the existing classifier export in the build artifact.
+   Set the Render profile, classifier path, initial window and interval above.
+   Preserve OAuth configuration, encrypted token keys and the existing database.
+   Package only the four inference files with `python deploy/install_classifier.py
+   --pack <export-dir> --archive <ignored-zip>`. Provision that artifact at an approved
+   HTTPS location, set `CLASSIFIER_BUNDLE_URL` and its printed SHA-256 server-side,
+   and append `python deploy/install_classifier.py` to the existing backend build
+   command after dependency installation. Never put the URL/credentials in Git or VITE.
+4. Deploy `codex/inbox-nizer-release` to the existing `inbox-nizer-beta` service.
+   Verify health, actual deployed SHA and peak memory; no paid resources are needed.
+5. Test a connected account: automatic recent import, progressive inbox/categories,
+   navigation during import, close/reopen resume, one newly received email via
+   History, fast no-change Update now, correct last update, no duplicate rows,
+   revoked-consent reconnect and concurrent tabs. Do not send test mail without
+   the user's chosen recipient/content and authorization.
 
-Full reconciliation still follows the existing Gmail mirror semantics: only after a complete scan, remove locally mirrored messages absent from Gmail in bounded groups. A message GET 404 follows existing deletion semantics. No such reconciliation, deletion or sync was executed against production by this task. A newly connected mailbox's first full scan must be explicitly started by its owner.
+Current local checks do not prove the production migration, artifact provisioning,
+Google consent flow or live classification. Record those separately after execution.
 
-Rollback: stop the service/sync, retain the DB backup and old artifacts. Prefer application rollback with additive schema retained. The schema downgrade refuses while a continuation row exists; do not delete checkpoints merely to bypass the guard. Decide explicitly whether to finish or abandon a job, preserving original mail and the last committed History cursor. Rehearse on a restored disposable database first.
-
-Protocol references: [Gmail History pagination and expired-cursor behavior](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.history/list), [Gmail synchronization guide](https://developers.google.com/workspace/gmail/api/guides/sync). These describe provider behavior, not evidence of a live-provider deployment test.
+References: [Gmail synchronization](https://developers.google.com/workspace/gmail/api/guides/sync),
+[Gmail message-list query](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list).

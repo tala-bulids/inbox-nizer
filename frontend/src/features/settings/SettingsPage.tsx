@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  useIsMutating,
-} from "@tanstack/react-query";
+import { useRef } from "react";
+import { useMutation, useQuery, useIsMutating } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
-import { accounts, syncAll, type SyncProgress } from "../../api/accounts";
+import { accounts } from "../../api/accounts";
+import { useGmailSync } from "./GmailSync";
 import { keys } from "../../app/query";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
@@ -18,39 +14,15 @@ import { RetroWindow } from "../../components/ui/RetroWindow";
 export function SettingsPage() {
   const { api, getCurrentUser } = useAuth();
   const { t } = useLocale();
-  const qc = useQueryClient();
-  const syncLock = useRef(false);
-  const syncController = useRef<AbortController | null>(null);
-  const [progress, setProgress] = useState<SyncProgress | null>(null);
-  useEffect(() => () => syncController.current?.abort(), []);
+  const { states, update } = useGmailSync();
   const connectLock = useRef(false);
-  const syncing = useIsMutating({ mutationKey: ["gmail-sync"] }) > 0;
+  const syncing = Object.values(states).some(
+    (state) => state.phase === "running",
+  );
   const connecting = useIsMutating({ mutationKey: ["gmail-connect"] }) > 0;
   const query = useQuery({
     queryKey: keys.accounts,
     queryFn: ({ signal }) => accounts.list(api, signal),
-  });
-  const sync = useMutation({
-    mutationKey: ["gmail-sync"],
-    retry: false,
-    mutationFn: (id: number) => {
-      const controller = new AbortController();
-      syncController.current = controller;
-      return syncAll(api, id, controller.signal, setProgress);
-    },
-    onSettled: async () => {
-      try {
-        await qc.cancelQueries({ queryKey: ["search"] });
-        qc.removeQueries({ queryKey: ["search"] });
-        await Promise.all([
-          qc.invalidateQueries({ queryKey: keys.accounts }),
-          qc.invalidateQueries({ queryKey: keys.emails }),
-          qc.invalidateQueries({ queryKey: keys.tasks }),
-        ]);
-      } finally {
-        syncLock.current = false;
-      }
-    },
   });
   const connect = useMutation({
     mutationKey: ["gmail-connect"],
@@ -60,12 +32,6 @@ export function SettingsPage() {
       connectLock.current = false;
     },
   });
-  function startSync(id: number) {
-    if (syncLock.current || syncing) return;
-    syncLock.current = true;
-    setProgress(null);
-    sync.mutate(id);
-  }
   function startConnect() {
     if (connectLock.current || connecting) return;
     connectLock.current = true;
@@ -102,12 +68,6 @@ export function SettingsPage() {
           <section className="surface settings-section">
             <div className="section-heading">
               <h2>{t("حسابات Gmail", "Gmail accounts")}</h2>
-              <button
-                disabled={query.isFetching}
-                onClick={() => void query.refetch()}
-              >
-                {t("تحديث الحالة", "Refresh status")}
-              </button>
             </div>
             {query.isPending ? (
               <Loading />
@@ -124,42 +84,51 @@ export function SettingsPage() {
                   </h3>
                   <p className="account-status">{status(account.status)}</p>
                   <p className="muted">
-                    {t("آخر مزامنة: ", "Last sync: ")}
+                    {t("آخر تحديث: ", "Last update: ")}
                     {account.last_synced_at ? (
                       <EmailDate value={account.last_synced_at} />
                     ) : (
-                      t("لم تتم المزامنة بعد", "Not synced yet")
+                      t("جاري تجهيز البريد", "Preparing your inbox")
                     )}
                   </p>
                   {account.sync_error && (
                     <p className="muted">
                       {t(
-                        "لم تكتمل المزامنة الأخيرة. حاول مجددًا أو أعد الاتصال.",
-                        "The last sync did not finish. Retry or reconnect.",
+                        "تعذر تحديث البريد مؤقتًا. سنحاول لاحقًا.",
+                        "Mail could not be updated temporarily. We will try again later.",
                       )}
                     </p>
                   )}
                   <div className="account-actions">
                     <button
                       disabled={syncing || account.status !== "connected"}
-                      onClick={() => startSync(account.id)}
+                      onClick={() => update(account.id)}
                     >
-                      {syncing && sync.variables === account.id
-                        ? t("جارٍ المزامنة…", "Syncing…")
-                        : t("مزامنة Gmail", "Sync Gmail")}
+                      {states[account.id]?.phase === "running"
+                        ? t("جاري التحديث...", "Updating…")
+                        : t("تحديث الآن", "Update now")}
                     </button>
-                    <button
-                      disabled={connecting || syncing}
-                      onClick={startConnect}
-                    >
-                      {t("إعادة الاتصال", "Reconnect")}
-                    </button>
+                    {account.status !== "connected" && (
+                      <button
+                        disabled={connecting || syncing}
+                        onClick={startConnect}
+                      >
+                        {t("إعادة الاتصال", "Reconnect")}
+                      </button>
+                    )}
                   </div>
-                  {account.sync_pending && !syncing && (
-                    <p className="muted">
+                  {states[account.id]?.phase === "complete" && (
+                    <p role="status" className="muted">
+                      {t("تم تحديث البريد", "Mail updated")}
+                    </p>
+                  )}
+                  {["paused", "error"].includes(
+                    states[account.id]?.phase ?? "",
+                  ) && (
+                    <p role="status" className="muted">
                       {t(
-                        "يوجد تقدم محفوظ. مزامنة Gmail تستكمل من حيث توقفت.",
-                        "Progress is saved. Sync Gmail resumes where it stopped.",
+                        "تعذر إكمال التحديث الآن. التقدم محفوظ وسنحاول تلقائيًا لاحقًا.",
+                        "The update could not finish now. Progress is saved and we will retry automatically later.",
                       )}
                     </p>
                   )}
@@ -168,104 +137,61 @@ export function SettingsPage() {
             ) : (
               <Empty title={t("لا يوجد حساب متصل", "No connected account")} />
             )}
-            {syncing && (
-              <p role="status">
-                {t("جارٍ مزامنة البريد…", "Syncing email…")}{" "}
-                {t("تمت مزامنة", "Synced")} {progress?.success_count ?? 0}{" "}
-                {t("رسالة.", "messages.")}
+          </section>
+          {(!query.data?.accounts.length ||
+            query.data.accounts.some((a) => a.status !== "connected")) && (
+            <section className="surface settings-section">
+              <h2>{t("اتصال Gmail", "Gmail connection")}</h2>
+              <p className="muted">
+                {t(
+                  "سيُفتح Google في تبويب جديد. لإعادة الاتصال، اختر عنوان Gmail نفسه هناك.",
+                  "Google opens in a new tab. To reconnect, choose the same Gmail address there.",
+                )}
               </p>
-            )}
-            {sync.isError && (
-              <>
-                <ErrorState error={sync.error} />
+              <button
+                className="primary"
+                disabled={connecting || syncing}
+                onClick={startConnect}
+              >
+                {t(
+                  "اتصال Gmail أو إعادة الاتصال",
+                  "Connect or reconnect Gmail",
+                )}
+              </button>
+              {connecting && (
                 <p role="status">
-                  {t("توقفت المزامنة. تمت مزامنة", "Sync stopped. Synced")}{" "}
-                  {progress?.success_count ?? 0}{" "}
-                  {t(
-                    "رسالة في هذه المحاولة. التقدم المحفوظ لن يُحذف. تحقق من الاتصال ثم حاول مجددًا؛ إذا طُلب إعادة ربط Gmail فاستخدم إعادة الاتصال.",
-                    "messages in this run. Saved progress is retained. Check the connection and retry; reconnect Gmail if requested.",
-                  )}
+                  {t("جارٍ تجهيز الاتصال…", "Preparing connection…")}
                 </p>
-              </>
-            )}
-            {sync.data && !syncing && (
-              <p role="status" className="sync-result">
-                {sync.data.reason === "complete"
-                  ? t(
-                      "اكتملت المزامنة بنجاح. تمت مزامنة",
-                      "Sync completed successfully. Synced",
-                    )
-                  : t(
-                      "توقفت المزامنة مؤقتًا. تمت مزامنة",
-                      "Sync paused. Synced",
-                    )}{" "}
-                {sync.data.success_count} {t("رسالة.", "messages.")}{" "}
-                {t(
-                  "رسائل تعذرت معالجتها: ",
-                  "Messages that could not be processed: ",
-                )}
-                {sync.data.failed_count}.{" "}
-                {t(
-                  "معلومات مساعدة غير مكتملة: ",
-                  "Incomplete derived information: ",
-                )}
-                {sync.data.enrichment_failed}.
-                {sync.data.reason !== "complete" &&
-                  t(
-                    " تم حفظ التقدم. توقفت المتابعة التلقائية بسبب خطأ أو عدم تقدم أو بلوغ حد الأمان. حاول مزامنة Gmail لاحقًا للاستكمال.",
-                    " Progress saved. Automatic sync stopped after an error, no progress, or the safety limit. Sync Gmail later to resume.",
-                  )}
-              </p>
-            )}
-          </section>
-          <section className="surface settings-section">
-            <h2>{t("اتصال Gmail", "Gmail connection")}</h2>
-            <p className="muted">
-              {t(
-                "سيُفتح Google في تبويب جديد. لإعادة الاتصال، اختر عنوان Gmail نفسه هناك.",
-                "Google opens in a new tab. To reconnect, choose the same Gmail address there.",
               )}
-            </p>
-            <button
-              className="primary"
-              disabled={connecting || syncing}
-              onClick={startConnect}
-            >
-              {t("اتصال Gmail أو إعادة الاتصال", "Connect or reconnect Gmail")}
-            </button>
-            {connecting && (
-              <p role="status">
-                {t("جارٍ تجهيز الاتصال…", "Preparing connection…")}
-              </p>
-            )}
-            {connect.isError && <ErrorState error={connect.error} />}
-            {connect.data && !connecting && (
-              <div className="oauth-ready">
-                <a
-                  className="button"
-                  href={connect.data}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t("متابعة إلى Google", "Continue to Google")}
-                </a>
-                <p>
-                  {t(
-                    "بعد الموافقة ستعود إلى صفحة نتيجة الاتصال في التطبيق. افتح الإعدادات للتحقق من الحساب، أو عد إلى هذا التبويب وحدّث الحالة. الرابط صالح لعشر دقائق.",
-                    "After consent, the app shows the connection result. Open Settings to verify the account, or return to this tab and refresh status. The link is valid for ten minutes.",
-                  )}
-                </p>
-                {import.meta.env.DEV && (
-                  <small>
+              {connect.isError && <ErrorState error={connect.error} />}
+              {connect.data && !connecting && (
+                <div className="oauth-ready">
+                  <a
+                    className="button"
+                    href={connect.data}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t("متابعة إلى Google", "Continue to Google")}
+                  </a>
+                  <p>
                     {t(
-                      "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
-                      "Use localhost for both frontend and backend during development.",
+                      "بعد الموافقة سنفتح بريدك ونبدأ تجهيزه تلقائيًا.",
+                      "After consent, your inbox opens and starts preparing automatically.",
                     )}
-                  </small>
-                )}
-              </div>
-            )}
-          </section>
+                  </p>
+                  {import.meta.env.DEV && (
+                    <small>
+                      {t(
+                        "استخدم localhost للواجهة والخادم معًا أثناء التطوير.",
+                        "Use localhost for both frontend and backend during development.",
+                      )}
+                    </small>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
           <section className="development-note">
             {getCurrentUser().kind === "browser-session" ? (
               <>

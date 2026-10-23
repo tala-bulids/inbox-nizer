@@ -5,7 +5,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from sqlalchemy import select
+from sqlalchemy import select, and_, or_
 from models import Email, EmailPrediction, EmailTask
 from backend_models import ProcessingState
 from email_utils import extract_email_body
@@ -26,8 +26,16 @@ logger = logging.getLogger(__name__)
 def disabled_sync_stages():
     """The default/local profile retains every enrichment stage."""
     if os.getenv('INBOX_RUNTIME_PROFILE', 'full').strip().lower() == 'render-free':
-        return frozenset({'classify', 'embedding'})
+        return frozenset({'embedding'})
     return frozenset()
+
+
+def retryable_stages():
+    # Bounded retries per input/version; a failing classifier never blocks Gmail
+    # cursor publication. Previously disabled classification is adopted gradually.
+    return or_(ProcessingState.status == 'pending',
+               and_(ProcessingState.status == 'failed', ProcessingState.attempts < 3),
+               and_(ProcessingState.status == 'skipped', ProcessingState.stage == 'classify'))
 
 
 def parse_header_date(raw):
@@ -130,6 +138,8 @@ def process_email(db, email, *, commit_stages=False, deadline=None):
         if state is None:
             state = ProcessingState(email_id=email.id, stage=stage, attempts=0)
             db.add(state)
+        elif state.input_hash != digest or state.version != version:
+            state.attempts = 0
         state.input_hash, state.version, state.status = digest, version, 'pending'
         state.attempts += 1
         db.flush()

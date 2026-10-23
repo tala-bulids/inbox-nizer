@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, patch, ANY
 
 import pytest
 from fastapi.testclient import TestClient
@@ -70,7 +70,8 @@ def test_gmail_success(gmail_mocks):
         }
         for number in (1, 2)
     ]
-    messages.list.assert_called_once_with(userId="me", maxResults=50, includeSpamTrash=True)
+    messages.list.assert_called_once_with(userId="me", maxResults=50, includeSpamTrash=True, q=ANY)
+    assert messages.list.call_args.kwargs['q'].startswith('after:')
     assert messages.get.call_args_list == [
         call(userId="me", id=str(number), format="full") for number in (1, 2)
     ]
@@ -116,24 +117,24 @@ def test_gmail_resumes_after_source_failure(gmail_mocks):
         response = client.post("/gmail/messages")
         result = response.json()
         assert response.status_code == 200
-        assert result["count"] == 2
-        assert result["success_count"] == 1
+        assert result["count"] == 3
+        assert result["success_count"] == 2
         assert result["failed_count"] == 1
         assert result["has_more"] is True
-        assert [email["id"] for email in result["emails"]] == ["1"]
+        assert [email["id"] for email in result["emails"]] == ["1", "3"]
         assert "synthetic-test-value" not in response.text
-        assert messages.get.call_count == 2
+        assert messages.get.call_count == 3
         requests[1].execute.side_effect = None
         messages.get.side_effect = requests[1:]
         resumed = client.post("/gmail/messages")
     assert resumed.status_code == 200
-    assert resumed.json()["success_count"] == 2
+    assert resumed.json()["success_count"] == 1
     assert resumed.json()["failed_count"] == 0
     assert resumed.json()["has_more"] is False
-    assert [email["id"] for email in resumed.json()["emails"]] == ["2", "3"]
+    assert [email["id"] for email in resumed.json()["emails"]] == ["2"]
     assert messages.list.call_count == 1
     assert messages.get.call_args_list == [
-        call(userId="me", id=message_id, format="full") for message_id in ("1", "2", "2", "3")
+        call(userId="me", id=message_id, format="full") for message_id in ("1", "2", "3", "2")
     ]
 
 

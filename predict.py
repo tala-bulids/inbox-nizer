@@ -1,4 +1,5 @@
 from threading import Lock
+import os
 from email_utils import clean_email_body
 from classifier_contract import inference_token_limit, validate_classifier_config
 from classifier_config import model_path
@@ -47,6 +48,16 @@ def _get_classifier():
     return tokenizer, model
 
 def classify_email(subject, body):
+    render_free = os.getenv('INBOX_RUNTIME_PROFILE', 'full').strip().lower() == 'render-free'
+    runtime = os.getenv('CLASSIFIER_RUNTIME', 'onnx' if render_free else 'torch').strip().lower()
+    if runtime == 'onnx':
+        from onnx_classifier import classify
+        text = ((subject or '').strip() + ' ' + clean_email_body(body or '')).strip()
+        return classify(text)
+    if runtime != 'torch':
+        raise ValueError('Unsupported classifier runtime')
+    if render_free:
+        raise ValueError('Render Free requires the bounded ONNX classifier runtime')
     classifier_tokenizer, classifier_model = _get_classifier()
     with _inference_lock:
         return predict_with_classifier(classifier_tokenizer, classifier_model, subject, body)

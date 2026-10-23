@@ -32,6 +32,8 @@ def message(body='Please send the report.', date='Wed, 16 Sep 2026 10:09:26 +030
 
 @pytest.fixture
 def sync_env(test_database, monkeypatch):
+    # Legacy unfiltered mirror coverage; recent-import tests explicitly use 90.
+    monkeypatch.setenv("GMAIL_INITIAL_SYNC_DAYS", "0")
     service = Mock()
     service.users.return_value.getProfile.return_value.execute.return_value = {'historyId': '100'}
     service.users.return_value.messages.return_value.list.return_value.execute.return_value = {'messages': [{'id': 'm1'}]}

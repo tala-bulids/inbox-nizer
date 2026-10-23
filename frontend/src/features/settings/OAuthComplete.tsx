@@ -1,5 +1,6 @@
 import { DesktopTopBar } from "../../components/ui/DesktopTopBar";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { useLocale } from "../../app/locale";
 import { RetroWindow } from "../../components/ui/RetroWindow";
@@ -8,6 +9,12 @@ export function OAuthComplete() {
   const { t, toggle, language } = useLocale();
   const [params] = useSearchParams();
   const result = params.get("result");
+  const navigate = useNavigate();
+  useEffect(() => {
+    // The authenticated app verifies account state; the query string is never
+    // treated as proof of consent and carries no tokens or mailbox information.
+    if (result === "success") navigate("/", { replace: true });
+  }, [result, navigate]);
   const title =
     result === "success"
       ? t("انتهت خطوة اتصال Google", "Google connection step completed")

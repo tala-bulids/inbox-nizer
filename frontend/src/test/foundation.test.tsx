@@ -102,7 +102,8 @@ test("401 clears session and hides previously cached mailbox", async () => {
     ),
   );
   await user.click(screen.getByRole("link", { name: "الإعدادات" }));
-  await user.click(await screen.findByRole("button", { name: "تحديث الحالة" }));
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 16_000);
+  window.dispatchEvent(new Event("focus"));
   await screen.findByLabelText("رمز الوصول التطويري");
   expect(screen.queryByText(email.subject)).not.toBeInTheDocument();
 });
@@ -321,15 +322,20 @@ test("settings sync is explicit and does not display returned bodies", async () 
   );
   const user = await open("/settings");
   expect(calls).toBe(0);
-  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
   expect(await screen.findByRole("status")).toHaveTextContent(
-    "اكتملت المزامنة بنجاح",
+    "تم تحديث البريد",
   );
   expect(calls).toBe(1);
   expect(screen.queryByText("PRIVATE_SYNC_BODY")).not.toBeInTheDocument();
 });
 
 test("OAuth start refuses an arbitrary redirect host", async () => {
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({ accounts: [] }),
+    ),
+  );
   server.use(
     http.post(base + "/auth/google/start", () =>
       HttpResponse.json({
@@ -348,3 +354,5 @@ test("OAuth start refuses an arbitrary redirect host", async () => {
     screen.queryByRole("link", { name: "متابعة إلى Google" }),
   ).not.toBeInTheDocument();
 });
+
+afterEach(() => vi.restoreAllMocks());

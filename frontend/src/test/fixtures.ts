@@ -34,7 +34,7 @@ export const accountData = {
       id: 2,
       address: "demo@example.invalid",
       status: "connected",
-      last_synced_at: null,
+      last_synced_at: new Date().toISOString(),
       sync_error: null,
     },
   ],

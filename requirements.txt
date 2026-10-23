@@ -7,6 +7,7 @@ accelerate==1.14.0
 huggingface_hub==1.24.0
 sentencepiece==0.2.2
 numpy==2.4.6
+onnxruntime==1.31.0
 scikit-learn==1.9.1
 
 fastapi[standard]==0.141.1

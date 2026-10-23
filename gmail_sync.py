@@ -1,6 +1,7 @@
 """Bounded, resumable Gmail history sync; one request is one committed batch."""
 from contextlib import nullcontext
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import os
 import logging
 import hashlib
 import json
@@ -14,13 +15,23 @@ from models import Email
 from backend_models import GmailAccount, GmailSyncState, ProcessingState
 from ownership import OwnedSession
 from gmail_service import get_gmail_service
-from email_pipeline import store_message, process_email
+from email_pipeline import store_message, process_email, retryable_stages
 
 logger = logging.getLogger(__name__)
 MESSAGE_LIMIT = 5
 PAGE_LIMIT = 2
 PAGE_SIZE = 50
-TIME_BUDGET = 20  # Soft: checked between operations; render-free never runs models.
+TIME_BUDGET = 20  # Soft: checked between operations; Render uses bounded CPU inference.
+
+
+def initial_query():
+    days = int(os.getenv('GMAIL_INITIAL_SYNC_DAYS', '90'))
+    if not 0 <= days <= 3650:
+        raise ValueError('Invalid Gmail initial import window')
+    if not days:
+        return None  # Explicit operator opt-in to an unfiltered mirror.
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    return 'after:' + str(int(cutoff.timestamp()))
 
 
 def execute(request):
@@ -38,6 +49,8 @@ def _page(service, state):
     if state.page_token:
         args['pageToken'] = state.page_token
     if state.mode == 'full':
+        if state.import_query:
+            args['q'] = state.import_query
         result = execute(service.users().messages().list(includeSpamTrash=True, **args))
         ids = [item['id'] for item in result.get('messages', [])]
     else:
@@ -73,10 +86,10 @@ def _progress_token(db, account_id, state):
     Attempts are intentionally excluded: repeated failures are not progress.
     """
     retry = db.scalar(select(ProcessingState).join(Email, Email.id == ProcessingState.email_id)
-        .where(Email.account_id == account_id, ProcessingState.status.in_(['failed', 'pending']))
+        .where(Email.account_id == account_id, retryable_stages())
         .order_by(ProcessingState.id).limit(1))
     missing = None
-    if state and state.mode == 'full' and state.listing_done and not state.pending:
+    if state and state.mode == 'full' and not state.import_query and state.listing_done and not state.pending:
         missing = db.scalar(select(Email.id).where(Email.account_id == account_id,
             or_(Email.sync_generation.is_(None), Email.sync_generation != state.generation))
             .order_by(Email.id).limit(1))
@@ -96,6 +109,7 @@ def _batch(db, account_id):
     result = dict(count=0, success_count=0, failed_count=0, enrichment_failed=0,
                   deleted=0, emails=[], has_more=False)
     processed = set()
+    failed_ids = set()
     try:
         service = get_gmail_service(db, account)
         db.commit()
@@ -103,7 +117,8 @@ def _batch(db, account_id):
         if state is None:
             state = GmailSyncState(account_id=account_id, generation=str(uuid4()),
                 mode='history' if account.history_id else 'full', anchor=account.history_id,
-                pending=[], listing_done=False)
+                pending=[], listing_done=False,
+                import_query=None if account.history_id else initial_query())
             db.add(state)
         db.commit()
         if state.mode == 'full' and not state.anchor:
@@ -121,6 +136,7 @@ def _batch(db, account_id):
                     if error.resp.status == 404 and state.mode == 'history':
                         state.mode, state.anchor, state.target = 'full', None, None
                         state.generation = str(uuid4())
+                        state.import_query = initial_query()
                     elif error.resp.status == 400 and state.page_token:
                         if state.mode == 'full':
                             state.generation, state.anchor, state.target = str(uuid4()), None, None
@@ -138,6 +154,8 @@ def _batch(db, account_id):
             if monotonic() >= deadline:
                 break  # Listing may have consumed the remaining request budget.
             message_id = state.pending[0]
+            if message_id in failed_ids:
+                break  # One attempt per failed source ID per request.
             result['count'] += 1
             try:
                 existing = db.scalar(select(Email).where(Email.account_id == account_id, Email.message_id == message_id))
@@ -173,11 +191,15 @@ def _batch(db, account_id):
                 db.rollback()
                 logger.warning('Gmail source failed: error_type=%s', type(error).__name__)
                 result['failed_count'] += 1
-                break  # Failed ID remains pending, never silently skipped.
+                failed_ids.add(message_id)
+                # Keep failures durable, but allow other IDs on this page to
+                # succeed. The cursor cannot advance while any failed ID remains.
+                state.pending = state.pending[1:] + [message_id]
+                db.commit()
 
         if not state.pending and state.listing_done:
             missing = []
-            if state.mode == 'full':
+            if state.mode == 'full' and not state.import_query:
                 missing = db.scalars(select(Email).where(Email.account_id == account_id,
                     or_(Email.sync_generation.is_(None), Email.sync_generation != state.generation))
                     .order_by(Email.id).limit(MESSAGE_LIMIT)).all()
@@ -191,7 +213,7 @@ def _batch(db, account_id):
                 db.commit()
                 state = None
         pending = list(db.scalars(select(ProcessingState.email_id).join(Email, Email.id == ProcessingState.email_id)
-            .where(Email.account_id == account_id, ProcessingState.status.in_(['failed', 'pending']),
+            .where(Email.account_id == account_id, retryable_stages(),
                    ProcessingState.email_id.not_in(processed))
             .distinct().order_by(ProcessingState.email_id).limit(1)))
         for email_id in pending:
@@ -201,10 +223,12 @@ def _batch(db, account_id):
             failures = process_email(db, email, commit_stages=True, deadline=deadline)
             result['enrichment_failed'] += bool(failures)
         enrichment_pending = db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
-            .where(Email.account_id == account_id, ProcessingState.status.in_(['failed', 'pending'])).limit(1)) is not None
+            .where(Email.account_id == account_id, retryable_stages()).limit(1)) is not None
         result['has_more'] = state is not None or enrichment_pending
         account.sync_error = 'partial_failure' if result['failed_count'] or enrichment_pending else None
-        if not result['has_more'] and not result['failed_count']:
+        # Last successful Gmail contact with committed source progress, not the
+        # completion time of optional classification/backfill work.
+        if result['success_count'] or result['deleted'] or (state is None and not result['failed_count']):
             account.last_synced_at = datetime.now(timezone.utc)
         result['progress_token'] = _progress_token(db, account_id, state)
         db.commit()

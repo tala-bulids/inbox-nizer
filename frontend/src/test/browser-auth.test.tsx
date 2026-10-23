@@ -22,6 +22,42 @@ function restore() {
     ),
   );
 }
+test("successful Gmail callback verifies the session and starts import without a click", async () => {
+  restore();
+  let syncs = 0;
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({
+        accounts: [
+          {
+            ...accountData.accounts[0],
+            last_synced_at: syncs ? new Date().toISOString() : null,
+            initial_sync_pending: syncs === 0,
+            sync_pending: syncs === 0,
+            message_count: syncs,
+          },
+        ],
+      }),
+    ),
+    http.post(base + "/gmail/accounts/2/sync", ({ request }) => {
+      expect(request.headers.get("x-csrf-token")).toBe(csrf);
+      syncs++;
+      return HttpResponse.json({
+        count: 1,
+        success_count: 1,
+        failed_count: 0,
+        enrichment_failed: 0,
+        has_more: false,
+      });
+    }),
+  );
+  open("/oauth/complete?result=success");
+  await screen.findByRole("navigation", { name: "التنقل الرئيسي" });
+  await waitFor(() => expect(syncs).toBe(1));
+  expect(
+    screen.queryByRole("button", { name: "تحديث الآن" }),
+  ).not.toBeInTheDocument();
+});
 test("browser login exchanges code once; cookie API uses CSRF and logout accepts 204", async () => {
   const calls: { path: string; auth: string | null; csrf: string | null }[] =
     [];
@@ -68,9 +104,11 @@ test("browser login exchanges code once; cookie API uses CSRF and logout accepts
   await waitFor(() =>
     expect(calls).toContainEqual({ path: "logout", auth: null, csrf }),
   );
-  expect(calls.filter((c) => c.path === "accounts")).toEqual([
-    { path: "accounts", auth: null, csrf: null },
-  ]);
+  expect(calls.filter((c) => c.path === "accounts")).toContainEqual({
+    path: "accounts",
+    auth: null,
+    csrf: null,
+  });
   expect(calls[0]).toEqual({
     path: "login",
     auth: "Bearer temporary-admin-code",
@@ -159,7 +197,6 @@ test("new login does not retain the previous user's inbox cache", async () => {
   expect(screen.queryByText("FIRST USER")).not.toBeInTheDocument();
 });
 test.each([
-  ["success", "انتهت خطوة اتصال Google"],
   ["denied", "لم تمنح الموافقة"],
   ["expired", "انتهت صلاحية محاولة الاتصال"],
   ["provider_error", "تعذر إكمال الاتصال"],
@@ -243,10 +280,13 @@ test("Google session without Gmail consent opens Settings and connected refresh 
   ).not.toBeInTheDocument();
   connected = true;
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "تحديث الحالة" }));
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 16_000);
+  window.dispatchEvent(new Event("focus"));
   await screen.findByText("متصل");
   await user.click(screen.getByRole("link", { name: "البريد الوارد" }));
   expect(
     await screen.findByRole("heading", { name: inbox.emails[0]!.subject }),
   ).toBeVisible();
 });
+
+afterEach(() => vi.restoreAllMocks());

@@ -32,8 +32,7 @@ def states(db, email_id):
 
 def block_models(monkeypatch):
     calls = []
-    for module, name in ((email_pipeline, 'classify_email'),
-                         (email_pipeline, 'index_email'),
+    for module, name in ((email_pipeline, 'index_email'),
                          (semantic_index, 'prepare_index'),
                          (embedding_service, '_load_encoder')):
         spy = Mock(side_effect=AssertionError('Sync must not load a model'))
@@ -64,8 +63,8 @@ def test_render_free_keeps_light_stages_without_model_imports(sync_env, monkeypa
     assert email.body and email.summary and email.tasks
     rows = states(db, email.id)
     assert {name for name, row in rows.items() if row.status == 'complete'} == {
-        'clean', 'summary', 'tasks', 'facts'}
-    for name in ('classify', 'embedding'):
+        'clean', 'classify', 'summary', 'tasks', 'facts'}
+    for name in ('embedding',):
         assert rows[name].status == 'skipped'
         assert rows[name].error_code == 'runtime_disabled'
         assert rows[name].attempts == 0
@@ -85,7 +84,7 @@ def test_old_heavy_work_becomes_terminal_without_new_mail(sync_env, monkeypatch,
     predictions = [(p.category, p.confidence) for p in email.predictions]
     chunk_ids = list(db.scalars(select(EmailEmbeddingChunk.id)))
     rows = states(db, email.id)
-    attempts = {name: rows[name].attempts for name in ('classify', 'embedding')}
+    attempts = {name: rows[name].attempts for name in ('embedding',)}
     for name in attempts:
         rows[name].status = old_status
         rows[name].error_code = 'stage_unavailable'
@@ -112,7 +111,7 @@ def test_disabled_stages_terminal_even_when_budget_expired(sync_env, monkeypatch
     email_pipeline.process_email(db, email, commit_stages=True, deadline=0)
     rows = states(db, email.id)
     assert rows['clean'].status == 'pending'  # Genuine work can resume.
-    assert all(rows[name].status == 'skipped' for name in ('classify', 'embedding'))
+    assert all(rows[name].status == 'skipped' for name in ('embedding',))
     assert email.raw_payload == message()['payload']
     email_pipeline.process_email(db, email, commit_stages=True)
     assert not any(row.status in {'failed', 'pending'} for row in states(db, email.id).values())
@@ -146,7 +145,7 @@ def test_switching_back_to_full_processes_skipped_stages(sync_env, monkeypatch):
     monkeypatch.setattr(email_pipeline, 'classify_email', classify)
     monkeypatch.setattr(semantic_index, 'prepare_index', prepare)
     assert email_pipeline.process_email(db, email, commit_stages=True) == []
-    classify.assert_called_once()
+    classify.assert_not_called()
     prepare.assert_called_once()
     assert all(row.status == 'complete' for row in states(db, email.id).values())
 
@@ -191,6 +190,7 @@ def test_real_engine_releases_lock_and_connection(test_database, monkeypatch, ou
     service.users().messages().list.return_value.execute.return_value = {'messages': [{'id': 'm1'}]}
     service.users().messages().get.return_value.execute.return_value = message()
     monkeypatch.setattr(gmail_sync, 'get_gmail_service', lambda *args: service)
+    monkeypatch.setattr(email_pipeline, 'classify_email', lambda *args: [{'category': 'Business', 'confidence': .9}])
     with Session(test_engine) as admin:
         user = AppUser(name='render-lock-' + str(uuid4()), active=True)
         admin.add(user)

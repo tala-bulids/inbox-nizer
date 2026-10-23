@@ -1,10 +1,11 @@
 """Authenticated account operations and one-use, user-bound OAuth callbacks."""
 import secrets
+import os
 from urllib.parse import urlsplit
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, JSONResponse
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.exc import IntegrityError
 from authentication import current_user, auth_session, digest
 from backend_config import encrypt, decrypt, redirect_uri, ConfigurationError, browser_origin
@@ -17,6 +18,7 @@ from googleapiclient.discovery import build
 from google_auth_httplib2 import AuthorizedHttp
 from httplib2 import Http
 from gmail_sync import sync_account, connection_guard
+from email_pipeline import retryable_stages
 
 router = APIRouter()
 
@@ -25,11 +27,14 @@ router = APIRouter()
 def accounts(db=Depends(get_db)):
     return {'accounts': [dict(id=a.id, address=a.address, status=a.status,
                               last_synced_at=a.last_synced_at, sync_error=a.sync_error,
+                              initial_sync_pending=a.history_id is None,
+                              message_count=db.scalar(select(func.count(Email.id)).where(Email.account_id == a.id)),
                               sync_pending=(db.get(GmailSyncState, a.id) is not None or
                                   db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
                                     .where(Email.account_id == a.id,
-                                           ProcessingState.status.in_(['failed', 'pending'])).limit(1)) is not None))
-                         for a in db.scalars(select(GmailAccount).order_by(GmailAccount.id))]}
+                                           retryable_stages()).limit(1)) is not None))
+                         for a in db.scalars(select(GmailAccount).order_by(GmailAccount.id))],
+            'sync_interval_seconds': max(60, min(3600, int(os.getenv('GMAIL_SYNC_INTERVAL_SECONDS', '300'))))}
 
 
 @router.post('/gmail/accounts/{account_id}/sync')

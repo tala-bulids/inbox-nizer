@@ -33,7 +33,7 @@ export async function syncAll(
   api: ApiClient,
   id: number,
   signal: AbortSignal,
-  onProgress: (progress: SyncProgress) => void,
+  onProgress: (progress: SyncProgress) => void | Promise<void>,
 ): Promise<SyncRun> {
   const totals: SyncProgress = {
     success_count: 0,
@@ -53,9 +53,8 @@ export async function syncAll(
     totals.success_count += result.success_count;
     totals.failed_count += result.failed_count;
     totals.enrichment_failed += result.enrichment_failed;
-    onProgress({ ...totals });
-    if (result.failed_count || result.enrichment_failed)
-      return { ...totals, reason: "partial" };
+    await onProgress({ ...totals });
+    if (result.failed_count) return { ...totals, reason: "partial" };
     if (!result.has_more) return { ...totals, reason: "complete" };
     if (!result.progress_token || seen.has(result.progress_token))
       return { ...totals, reason: "stalled" };
