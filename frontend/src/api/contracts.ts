@@ -76,6 +76,7 @@ export const syncSchema = z.object({
   failed_count: z.number(),
   enrichment_failed: z.number(),
   has_more: z.boolean().optional(),
+  progress_token: z.string().optional(),
 });
 export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);

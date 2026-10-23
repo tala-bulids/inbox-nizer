@@ -321,8 +321,10 @@ test("settings sync is explicit and does not display returned bodies", async () 
   );
   const user = await open("/settings");
   expect(calls).toBe(0);
-  await user.click(await screen.findByRole("button", { name: "مزامنة الآن" }));
-  expect(await screen.findByRole("status")).toHaveTextContent("تمت معالجة");
+  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "اكتملت المزامنة بنجاح",
+  );
   expect(calls).toBe(1);
   expect(screen.queryByText("PRIVATE_SYNC_BODY")).not.toBeInTheDocument();
 });

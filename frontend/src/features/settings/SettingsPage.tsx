@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -6,7 +6,7 @@ import {
   useIsMutating,
 } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
-import { accounts } from "../../api/accounts";
+import { accounts, syncAll, type SyncProgress } from "../../api/accounts";
 import { keys } from "../../app/query";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
@@ -20,6 +20,9 @@ export function SettingsPage() {
   const { t } = useLocale();
   const qc = useQueryClient();
   const syncLock = useRef(false);
+  const syncController = useRef<AbortController | null>(null);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
+  useEffect(() => () => syncController.current?.abort(), []);
   const connectLock = useRef(false);
   const syncing = useIsMutating({ mutationKey: ["gmail-sync"] }) > 0;
   const connecting = useIsMutating({ mutationKey: ["gmail-connect"] }) > 0;
@@ -30,7 +33,11 @@ export function SettingsPage() {
   const sync = useMutation({
     mutationKey: ["gmail-sync"],
     retry: false,
-    mutationFn: (id: number) => accounts.sync(api, id),
+    mutationFn: (id: number) => {
+      const controller = new AbortController();
+      syncController.current = controller;
+      return syncAll(api, id, controller.signal, setProgress);
+    },
     onSettled: async () => {
       try {
         await qc.cancelQueries({ queryKey: ["search"] });
@@ -56,6 +63,7 @@ export function SettingsPage() {
   function startSync(id: number) {
     if (syncLock.current || syncing) return;
     syncLock.current = true;
+    setProgress(null);
     sync.mutate(id);
   }
   function startConnect() {
@@ -138,11 +146,7 @@ export function SettingsPage() {
                     >
                       {syncing && sync.variables === account.id
                         ? t("جارٍ المزامنة…", "Syncing…")
-                        : account.sync_pending ||
-                            (sync.variables === account.id &&
-                              sync.data?.has_more)
-                          ? t("متابعة المزامنة", "Continue sync")
-                          : t("مزامنة الآن", "Sync now")}
+                        : t("مزامنة Gmail", "Sync Gmail")}
                     </button>
                     <button
                       disabled={connecting || syncing}
@@ -151,6 +155,14 @@ export function SettingsPage() {
                       {t("إعادة الاتصال", "Reconnect")}
                     </button>
                   </div>
+                  {account.sync_pending && !syncing && (
+                    <p className="muted">
+                      {t(
+                        "يوجد تقدم محفوظ. مزامنة Gmail تستكمل من حيث توقفت.",
+                        "Progress is saved. Sync Gmail resumes where it stopped.",
+                      )}
+                    </p>
+                  )}
                 </article>
               ))
             ) : (
@@ -158,17 +170,36 @@ export function SettingsPage() {
             )}
             {syncing && (
               <p role="status">
-                {t(
-                  "جارٍ مزامنة البريد. قد تستغرق العملية بعض الوقت.",
-                  "Syncing email. This may take a little time.",
-                )}
+                {t("جارٍ مزامنة البريد…", "Syncing email…")}{" "}
+                {t("تمت مزامنة", "Synced")} {progress?.success_count ?? 0}{" "}
+                {t("رسالة.", "messages.")}
               </p>
             )}
-            {sync.isError && <ErrorState error={sync.error} />}
+            {sync.isError && (
+              <>
+                <ErrorState error={sync.error} />
+                <p role="status">
+                  {t("توقفت المزامنة. تمت مزامنة", "Sync stopped. Synced")}{" "}
+                  {progress?.success_count ?? 0}{" "}
+                  {t(
+                    "رسالة في هذه المحاولة. التقدم المحفوظ لن يُحذف. تحقق من الاتصال ثم حاول مجددًا؛ إذا طُلب إعادة ربط Gmail فاستخدم إعادة الاتصال.",
+                    "messages in this run. Saved progress is retained. Check the connection and retry; reconnect Gmail if requested.",
+                  )}
+                </p>
+              </>
+            )}
             {sync.data && !syncing && (
               <p role="status" className="sync-result">
-                {t("تمت معالجة", "Processed")} {sync.data.success_count}{" "}
-                {t("رسالة.", "messages.")}{" "}
+                {sync.data.reason === "complete"
+                  ? t(
+                      "اكتملت المزامنة بنجاح. تمت مزامنة",
+                      "Sync completed successfully. Synced",
+                    )
+                  : t(
+                      "توقفت المزامنة مؤقتًا. تمت مزامنة",
+                      "Sync paused. Synced",
+                    )}{" "}
+                {sync.data.success_count} {t("رسالة.", "messages.")}{" "}
                 {t(
                   "رسائل تعذرت معالجتها: ",
                   "Messages that could not be processed: ",
@@ -179,10 +210,10 @@ export function SettingsPage() {
                   "Incomplete derived information: ",
                 )}
                 {sync.data.enrichment_failed}.
-                {sync.data.has_more &&
+                {sync.data.reason !== "complete" &&
                   t(
-                    " تم حفظ التقدم. اضغط متابعة المزامنة لجلب الدفعة التالية.",
-                    " Progress saved. Continue sync to fetch the next batch.",
+                    " تم حفظ التقدم. توقفت المتابعة التلقائية بسبب خطأ أو عدم تقدم أو بلوغ حد الأمان. حاول مزامنة Gmail لاحقًا للاستكمال.",
+                    " Progress saved. Automatic sync stopped after an error, no progress, or the safety limit. Sync Gmail later to resume.",
                   )}
               </p>
             )}

@@ -39,27 +39,140 @@ const syncResult = {
   emails: [{ body: "PRIVATE_BODY" }],
 };
 
-test("partial batch offers explicit continuation and survives refreshed account state", async () => {
+test("one click syncs sequential batches, accumulates progress and refreshes completion timestamp", async () => {
   let calls = 0;
+  let active = 0;
+  let maxActive = 0;
   server.use(
     http.get(base + "/gmail/accounts", () =>
       HttpResponse.json({
-        accounts: [{ ...accountData.accounts[0], sync_pending: true }],
+        accounts: [
+          {
+            ...accountData.accounts[0],
+            sync_pending: calls < 3,
+            last_synced_at: calls >= 3 ? "2026-10-23T10:30:00Z" : null,
+          },
+        ],
       }),
     ),
-    http.post(base + "/gmail/accounts/2/sync", () => {
+    http.post(base + "/gmail/accounts/2/sync", async () => {
       calls++;
-      return HttpResponse.json({ ...syncResult, has_more: true });
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await delay(150);
+      active--;
+      return HttpResponse.json({
+        ...syncResult,
+        has_more: calls < 3,
+        progress_token: `checkpoint-${calls}`,
+      });
     }),
   );
   const user = await open("/settings");
-  await user.click(
-    await screen.findByRole("button", { name: "متابعة المزامنة" }),
+  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  expect(
+    await screen.findByRole("button", { name: "جارٍ المزامنة…" }),
+  ).toBeDisabled();
+  await screen.findByText(/تمت مزامنة 2 رسالة/);
+  await screen.findByText(/اكتملت المزامنة بنجاح. تمت مزامنة 6 رسالة/);
+  expect(calls).toBe(3);
+  expect(maxActive).toBe(1);
+  expect(screen.getByRole("button", { name: "مزامنة Gmail" })).toBeEnabled();
+  expect(screen.queryByText("متابعة المزامنة")).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      document.querySelector('time[datetime="2026-10-23T10:30:00Z"]'),
+    ).not.toBeNull(),
   );
-  await screen.findByText(/تم حفظ التقدم/);
-  expect(calls).toBe(1);
-  expect(screen.getByRole("button", { name: "متابعة المزامنة" })).toBeEnabled();
+  await user.click(screen.getByRole("button", { name: "تحديث الحالة" }));
+  expect(screen.queryByText("لم تتم المزامنة بعد")).not.toBeInTheDocument();
 }, 15000);
+
+test.each([409, 503, "network"])(
+  "mid-run %s stops and one later click resumes saved work",
+  async (status) => {
+    let calls = 0;
+    server.use(
+      http.post(base + "/gmail/accounts/2/sync", () => {
+        calls++;
+        if (calls === 2)
+          return status === "network"
+            ? HttpResponse.error()
+            : HttpResponse.json(
+                { detail: "PRIVATE" },
+                { status: Number(status) },
+              );
+        return HttpResponse.json({
+          ...syncResult,
+          has_more: calls === 1,
+          progress_token: "saved",
+        });
+      }),
+    );
+    const user = await open("/settings");
+    await user.click(
+      await screen.findByRole("button", { name: "مزامنة Gmail" }),
+    );
+    await screen.findByText(/توقفت المزامنة. تمت مزامنة 2/);
+    expect(calls).toBe(2);
+    expect(screen.getByRole("alert")).not.toHaveTextContent("PRIVATE");
+    await user.click(screen.getByRole("button", { name: "مزامنة Gmail" }));
+    await screen.findByText(/اكتملت المزامنة بنجاح/);
+    expect(calls).toBe(3);
+  },
+);
+
+test.each(["partial", "stalled"])(
+  "%s work pauses automatically without an infinite loop",
+  async (reason) => {
+    let calls = 0;
+    server.use(
+      http.post(base + "/gmail/accounts/2/sync", () => {
+        calls++;
+        return HttpResponse.json({
+          ...syncResult,
+          has_more: true,
+          progress_token: "same",
+          failed_count: reason === "partial" ? 1 : 0,
+        });
+      }),
+    );
+    const user = await open("/settings");
+    await user.click(
+      await screen.findByRole("button", { name: "مزامنة Gmail" }),
+    );
+    await screen.findByText(/توقفت المزامنة مؤقتًا/);
+    expect(calls).toBe(reason === "partial" ? 1 : 2);
+    expect(screen.getByRole("button", { name: "مزامنة Gmail" })).toBeEnabled();
+  },
+);
+
+test("leaving Settings stops further batches while retaining server progress", async () => {
+  let calls = 0;
+  let finishBatch!: () => void;
+  const heldBatch = new Promise<void>((resolve) => {
+    finishBatch = resolve;
+  });
+  server.use(
+    http.post(base + "/gmail/accounts/2/sync", async () => {
+      calls++;
+      await heldBatch;
+      return HttpResponse.json({
+        ...syncResult,
+        has_more: true,
+        progress_token: String(calls),
+      });
+    }),
+  );
+  const user = await open("/settings");
+  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await waitFor(() => expect(calls).toBe(1));
+  await user.click(screen.getByRole("link", { name: "المهام" }));
+  await screen.findByText(taskPage.tasks[0]!.task);
+  finishBatch();
+  await delay(200);
+  expect(calls).toBe(1);
+});
 test("task loading skeleton then mixed text/deadline/source metadata", async () => {
   server.use(
     http.get(base + "/tasks", async () => {
@@ -207,7 +320,7 @@ test.each(["disconnected", "reconnect_required"])(
     );
     await open("/settings");
     expect(
-      await screen.findByRole("button", { name: "مزامنة الآن" }),
+      await screen.findByRole("button", { name: "مزامنة Gmail" }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "إعادة الاتصال" })).toBeEnabled();
   },
@@ -235,13 +348,13 @@ test("sync is explicit duplicate guarded with truthful pending/result", async ()
   );
   const user = await open("/settings");
   expect(calls).toBe(0);
-  const button = await screen.findByRole("button", { name: "مزامنة الآن" });
+  const button = await screen.findByRole("button", { name: "مزامنة Gmail" });
   await user.click(button);
   fireEvent.click(button);
   expect(await screen.findByRole("status")).toHaveTextContent(
     "جارٍ مزامنة البريد",
   );
-  await screen.findByText(/تمت معالجة/);
+  await screen.findByText(/اكتملت المزامنة بنجاح/);
   expect(calls).toBe(1);
   expect(screen.queryByText("PRIVATE_BODY")).not.toBeInTheDocument();
 });
@@ -257,7 +370,7 @@ test.each([409, 503])(
     );
     const user = await open("/settings");
     await user.click(
-      await screen.findByRole("button", { name: "مزامنة الآن" }),
+      await screen.findByRole("button", { name: "مزامنة Gmail" }),
     );
     expect(await screen.findByRole("alert")).not.toHaveTextContent("PRIVATE");
     expect(calls).toBe(1);
@@ -282,8 +395,8 @@ test("successful sync invalidates tasks and account data", async () => {
   const user = await open();
   await screen.findByText(taskPage.tasks[0]!.task);
   await user.click(screen.getByRole("link", { name: "الإعدادات" }));
-  await user.click(await screen.findByRole("button", { name: "مزامنة الآن" }));
-  await screen.findByText(/تمت معالجة/);
+  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
+  await screen.findByText(/اكتملت المزامنة بنجاح/);
   await user.click(screen.getByRole("link", { name: "المهام" }));
   await waitFor(() => expect(taskCalls).toBe(2));
   expect(accountCalls).toBeGreaterThan(1);
@@ -335,7 +448,7 @@ test("401 from sync clears auth session", async () => {
     ),
   );
   const user = await open("/settings");
-  await user.click(await screen.findByRole("button", { name: "مزامنة الآن" }));
+  await user.click(await screen.findByRole("button", { name: "مزامنة Gmail" }));
   await screen.findByLabelText("رمز الوصول التطويري");
   expect(
     screen.queryByText(accountData.accounts[0]!.address),

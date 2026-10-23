@@ -8,7 +8,8 @@ from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from authentication import current_user, auth_session, digest
 from backend_config import encrypt, decrypt, redirect_uri, ConfigurationError, browser_origin
-from backend_models import AppUser, GmailAccount, OAuthAttempt, OAuthCredential, GmailSyncState
+from backend_models import AppUser, GmailAccount, OAuthAttempt, OAuthCredential, GmailSyncState, ProcessingState
+from models import Email
 from database import get_db
 from gmail_auth import create_google_flow
 from gmail_service import save_credentials
@@ -24,7 +25,10 @@ router = APIRouter()
 def accounts(db=Depends(get_db)):
     return {'accounts': [dict(id=a.id, address=a.address, status=a.status,
                               last_synced_at=a.last_synced_at, sync_error=a.sync_error,
-                              sync_pending=db.get(GmailSyncState, a.id) is not None)
+                              sync_pending=(db.get(GmailSyncState, a.id) is not None or
+                                  db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
+                                    .where(Email.account_id == a.id,
+                                           ProcessingState.status.in_(['failed', 'pending'])).limit(1)) is not None))
                          for a in db.scalars(select(GmailAccount).order_by(GmailAccount.id))]}
 
 

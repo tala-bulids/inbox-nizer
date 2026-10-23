@@ -2,6 +2,8 @@
 from contextlib import nullcontext
 from datetime import datetime, timezone
 import logging
+import hashlib
+import json
 from time import monotonic
 from uuid import uuid4
 from fastapi import HTTPException
@@ -46,8 +48,11 @@ def _page(service, state):
                 ids.extend(item['message']['id'] for item in event.get(kind, []))
             ids.extend(item['id'] for item in event.get('messages', []))
         state.target = str(result['historyId'])
+    next_page = result.get('nextPageToken')
+    if next_page and next_page == state.page_token:
+        raise RuntimeError('Gmail pagination did not advance')
     state.pending = list(dict.fromkeys(ids))
-    state.page_token = result.get('nextPageToken')
+    state.page_token = next_page
     state.listing_done = not state.page_token
 
 
@@ -58,6 +63,29 @@ def _mark_pending(db, email):
         state = ProcessingState(email_id=email.id, stage='clean', input_hash='', version='clean-v1', attempts=0)
         db.add(state)
     state.status = 'pending'
+
+
+def _progress_token(db, account_id, state):
+    """Opaque checkpoint, not a continuation authority or a Gmail page token.
+
+    A page spans several batches. Include its remaining IDs, reconciliation,
+    and the first retryable stage so unchanged work can be detected by clients.
+    Attempts are intentionally excluded: repeated failures are not progress.
+    """
+    retry = db.scalar(select(ProcessingState).join(Email, Email.id == ProcessingState.email_id)
+        .where(Email.account_id == account_id, ProcessingState.status.in_(['failed', 'pending']))
+        .order_by(ProcessingState.id).limit(1))
+    missing = None
+    if state and state.mode == 'full' and state.listing_done and not state.pending:
+        missing = db.scalar(select(Email.id).where(Email.account_id == account_id,
+            or_(Email.sync_generation.is_(None), Email.sync_generation != state.generation))
+            .order_by(Email.id).limit(1))
+    checkpoint = dict(
+        source=[state.generation, state.mode, state.anchor, state.target, state.page_token,
+                state.pending, state.listing_done] if state else None,
+        retry=[retry.id, retry.status, retry.input_hash, retry.version] if retry else None,
+        missing=missing)
+    return hashlib.sha256(json.dumps(checkpoint, sort_keys=True).encode()).hexdigest()
 
 
 def _batch(db, account_id):
@@ -101,6 +129,7 @@ def _batch(db, account_id):
                     state.page_token, state.pending, state.listing_done = None, [], False
                     db.commit()
                     result['has_more'] = True
+                    result['progress_token'] = _progress_token(db, account_id, state)
                     return result
                 pages += 1
                 db.commit()  # Persist page IDs before fetching any bodies.
@@ -158,7 +187,6 @@ def _batch(db, account_id):
                 db.commit()
             if not missing:
                 account.history_id = state.target
-                account.last_synced_at = datetime.now(timezone.utc)
                 db.delete(state)
                 db.commit()
                 state = None
@@ -175,7 +203,10 @@ def _batch(db, account_id):
         enrichment_pending = db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
             .where(Email.account_id == account_id, ProcessingState.status.in_(['failed', 'pending'])).limit(1)) is not None
         result['has_more'] = state is not None or enrichment_pending
-        account.sync_error = 'partial_failure' if result['failed_count'] else None
+        account.sync_error = 'partial_failure' if result['failed_count'] or enrichment_pending else None
+        if not result['has_more'] and not result['failed_count']:
+            account.last_synced_at = datetime.now(timezone.utc)
+        result['progress_token'] = _progress_token(db, account_id, state)
         db.commit()
         return result
     except HTTPException:

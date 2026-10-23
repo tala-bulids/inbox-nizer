@@ -13,6 +13,73 @@ import gmail_sync
 import email_pipeline
 
 
+def test_progress_changes_within_a_page_and_last_sync_waits_for_completion(sync_env, monkeypatch):
+    from account_routes import accounts
+    db, account, service = sync_env
+    monkeypatch.setenv('INBOX_RUNTIME_PROFILE', 'render-free')
+    monkeypatch.setattr(gmail_sync, 'MESSAGE_LIMIT', 1)
+    service.users().messages().list.return_value.execute.side_effect = [
+        {'messages': [{'id': 'm1'}, {'id': 'm2'}], 'nextPageToken': 'page-two'},
+        {'messages': [{'id': 'm2'}, {'id': 'm3'}]},
+    ]
+    tokens = []
+    for _ in range(3):
+        result = gmail_sync.sync_account(db, account)
+        assert result['has_more']
+        tokens.append(result['progress_token'])
+        assert accounts(db)['accounts'][0]['sync_pending']
+        assert db.get(GmailAccount, account).last_synced_at is None
+    assert len(set(tokens)) == 3  # Same page token does not mean stalled work.
+    final = gmail_sync.sync_account(db, account)
+    assert not final['has_more']
+    assert db.query(Email).count() == 3  # Duplicate m2 is not inserted/refetched.
+    assert service.users().messages().get.call_count == 3
+    db.expire_all()
+    refreshed = accounts(db)['accounts'][0]
+    assert refreshed['last_synced_at'] is not None and not refreshed['sync_pending']
+    assert service.users().messages().list.call_args.kwargs['pageToken'] == 'page-two'
+
+
+def test_unchanged_page_token_stops_without_acknowledging_page(sync_env, monkeypatch):
+    db, account, service = sync_env
+    monkeypatch.setenv('INBOX_RUNTIME_PROFILE', 'render-free')
+    monkeypatch.setattr(gmail_sync, 'PAGE_LIMIT', 1)
+    listing = service.users().messages().list.return_value.execute
+    listing.side_effect = [
+        {'messages': [{'id': 'm1'}], 'nextPageToken': 'stuck'},
+        {'messages': [{'id': 'm2'}], 'nextPageToken': 'stuck'},
+        {'messages': [{'id': 'm2'}]},
+    ]
+    assert gmail_sync.sync_account(db, account)['has_more']
+    with pytest.raises(HTTPException) as error:
+        gmail_sync.sync_account(db, account)
+    assert error.value.status_code == 503
+    assert db.get(GmailSyncState, account).page_token == 'stuck'
+    assert db.get(GmailAccount, account).last_synced_at is None
+    assert db.query(Email).count() == 1
+    assert not gmail_sync.sync_account(db, account)['has_more']
+    assert db.query(Email).count() == 2
+
+
+def test_failed_enrichment_stays_visible_after_reload_and_timestamp_waits(sync_env, monkeypatch):
+    from account_routes import accounts
+    db, account, _ = sync_env
+    monkeypatch.setenv('INBOX_RUNTIME_PROFILE', 'render-free')
+    original = email_pipeline.summarize_email
+    monkeypatch.setattr(email_pipeline, 'summarize_email', Mock(side_effect=RuntimeError))
+    first = gmail_sync.sync_account(db, account)
+    assert first['has_more'] and first['enrichment_failed']
+    db.expire_all()
+    assert accounts(db)['accounts'][0]['sync_pending']
+    assert db.get(GmailAccount, account).last_synced_at is None
+    second = gmail_sync.sync_account(db, account)
+    assert first['progress_token'] == second['progress_token']
+    monkeypatch.setattr(email_pipeline, 'summarize_email', original)
+    assert not gmail_sync.sync_account(db, account)['has_more']
+    assert not accounts(db)['accounts'][0]['sync_pending']
+    assert db.get(GmailAccount, account).last_synced_at is not None
+
+
 def test_many_messages_resume_without_relisting_or_duplicates(sync_env, monkeypatch):
     db, account, service = sync_env
     monkeypatch.setattr(gmail_sync, 'MESSAGE_LIMIT', 2)
