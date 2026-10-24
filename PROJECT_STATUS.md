@@ -2,6 +2,8 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
+**Stabilize complete, 24 October:** V05–V09 are implemented in local commits `8037691`, `9c13764`, `3977d52`, `bd45e46`, `0f3b1ee`. Final validation at `0f3b1ee`: **1,370 backend tests passed, 5 opt-in checks skipped, 2 subtests passed; 162 frontend tests passed; lint, typecheck, build and API contract checks passed**. These commits are not pushed or deployed. The audit baseline above remains the reference for before/after findings. Stop here; deployment and the remaining V1 release gates are not part of Stabilize.
+
 This is the single source of truth for current product scope, release blockers and remaining work. Historical reports describe their dated experiments, not current release approval. Update this file when a checklist item is verified; include the tested commit, environment and evidence. Do not mark work complete merely because code exists.
 
 **Current verdict:** suitable for a supervised demonstration in a prepared environment; **not yet a reproducible, independently usable portfolio V1 or a verified hosted release**. The user reported a real Gmail run reaching 1,585 messages. That is useful integration evidence, not proof that this latest commit, classifier, all visible features or recovery paths are live on Render.
@@ -53,7 +55,7 @@ Important differences needing an explicit disposition:
 - The original workspace has stronger candidate database-role checks in `deployment_health.py` and associated tests. Review those narrowly during the security gate; neither discard them nor assume all original-workspace changes are newer/better.
 - `docs/history/legacy-workspace.patch` archives the old accidental `t_gmail.py` diff. It is historical material, not a migration or a script to execute.
 
-The current release commit includes **`[skip render]`**. Code was pushed, but its new migration and model artifact were not deployed in the preceding work. Do not push an unmarked follow-up commit to an auto-deploying service before those prerequisites are ready. Live deployed SHA, service configuration, database provider/revision, and current plan limits are **unverified** in this audit.
+The audit baseline `05f452a` was pushed with **`[skip render]`**, but its migration and model artifact were not deployed in the preceding work. Stabilize commits also use that marker and remain local. Do not push an unmarked follow-up commit to an auto-deploying service before those prerequisites are ready. Live deployed SHA, service configuration, database provider/revision, and current plan limits remain **unverified**.
 
 ## 3. Architecture as implemented
 
@@ -76,7 +78,7 @@ GmailSyncProvider stops with the browser; PostgreSQL preserves continuation.
 
 React 19, TypeScript, Vite, React Router, TanStack Query, Zod, Tailwind, Radix Dialog and Lucide; npm lockfile committed. Node 24 is used by CI and is the straightforward development choice. There is no Next.js or frontend server-side rendering.
 
-`frontend/src/app/App.tsx` mounts authenticated providers around Inbox `/`, Detail `/email/:id`, Search `/search`, Ask `/ask`, Tasks `/tasks`, and Settings `/settings`. `/oauth/complete` is a public callback-result page which navigates successful consent back to the authenticated app. `Shell.tsx` currently exposes all feature links unconditionally.
+`frontend/src/app/App.tsx` mounts authenticated providers around Inbox `/`, Detail `/email/:id`, Search `/search`, Ask `/ask`, Tasks `/tasks`, and Settings `/settings`. `/oauth/complete` is a public callback-result page which navigates successful consent back to the authenticated app. The server reports its runtime profile through the accounts response; `Shell.tsx` hides Search/Ask on Render Free and their direct frontend routes show Not Found. Backend requests are independently rejected before retrieval or inference.
 
 `AuthProvider.tsx` restores the HttpOnly server session, obtains a CSRF token and seeds account state. Production shows Google sign-in; a bearer-token form is development-only. Private query/session state is in memory and cleared on logout. Search/Ask state survives navigation inside the session, not browser restart. `ApiClient` uses same-origin credentials, no-store requests and abort signals; it avoids exposing raw server errors.
 
@@ -92,6 +94,7 @@ FastAPI is assembled in `main.py`; `routes.py` includes account and Ask routers.
 | Gmail consent | `POST /auth/google/start`, `GET /auth/google/callback`; legacy `GET /auth/google` remains |
 | Accounts and sync | `GET /gmail/accounts`, `POST /gmail/accounts/{id}/sync`, `DELETE /gmail/accounts/{id}/connection`; legacy single-account `POST /gmail/messages` remains |
 | Organizer | `GET /email-categories`, `/emails`, `/emails/{id}`, `/tasks` |
+| Enrichment recovery | `POST /emails/{id}/retry-enrichment`; one stored email, shared account advisory lock, no automatic request retries |
 | AI utilities | `POST /classify-email`, `GET /search/semantic`, `POST /ask` |
 | Operations | `/health/live`, `/health/ready`; `/` returns an API status message, not the SPA |
 
@@ -131,6 +134,9 @@ Backfills/reprocessing tools use privileged sessions. Several process the entire
 7. Enrichment stages are clean, classify, extractive summary, tasks, facts, embedding. `full` remains the default. `render-free` uses ONNX classification and marks embeddings skipped/runtime-disabled.
 8. `last_synced_at` means successful Gmail contact with committed source progress (or a successful no-change completion), **not** that every old message is imported or every AI stage has succeeded.
 9. The frontend caps each continuation run at 30 minutes/1,000 batches, detects repeated progress tokens and backs off errors. After five consecutive unsuccessful runs automatic retries stop for that browser session. Hidden tabs pause after the current batch. Closing every browser stops execution; reopening resumes saved work.
+10. Failed source IDs retain attempt counts inside the existing checkpoint JSON. Later pages continue; three automatic attempts exhaust a failed ID until explicit Update now recovery (one bounded batch). Neither History publication nor full-mirror reconciliation discards unresolved IDs. Reopening an exhausted checkpoint does not restart automatic retries. Existing string-only checkpoints remain readable; older code cannot read the new failed-entry metadata.
+11. Inbox ordering defaults to parsed `sent_at`, falling back to Gmail `message_at`; unknown dates are last, ties use ID in the selected direction, and filtering precedes pagination. Explicit legacy `created_at` sorting remains supported. Import time is not a fallback message date.
+12. Email detail offers a single-request enrichment retry. Completed and runtime-disabled stages stay untouched; failed-stage automatic budgets do not reset. Settings reports failed enrichment separately from Gmail synchronization.
 
 ### Classification and other AI
 
@@ -155,14 +161,14 @@ No checked-in Render Blueprint/Dockerfile or validated Render build/start recipe
 | Area | Status | Remaining limit |
 | --- | --- | --- |
 | Google login, sessions, CSRF, mailbox ownership | Implemented/tested; Google login also user-reported live | Verify deployed origin, grants, proxy headers, account invitation and session behavior |
-| Gmail consent, refresh/reconnect | Implemented/tested; user-reported live | Live revoked-token flow and user-facing disconnect still need completion |
-| Bounded/resumable sync, History and deduplication | Implemented/tested; user reports 1,585 imported messages | Latest automatic-sync commit is not verified deployed; poison-message and exhausted-retry UX need work |
+| Gmail consent, refresh/reconnect/disconnect | Implemented/tested; consent user-reported live | Live acceptance of the Stabilize candidate remains pending |
+| Bounded/resumable sync, History and deduplication | Implemented/tested; user reports 1,585 imported messages | Durable failed-source recovery now verified with synthetic Gmail and PostgreSQL; latest candidate is not verified deployed |
 | Automatic open/focus/periodic sync | Implemented/tested | Requires an active browser; actual cold starts and multiple-tab behavior need host checks |
-| Inbox, detail, filters, priorities, summaries, tasks | Implemented/tested | Chronological order, quality review and a few status/copy fixes |
+| Inbox, detail, filters, priorities, summaries, tasks | Implemented/tested; chronology and explicit enrichment retry fixed | Artifact quality review and remaining onboarding polish |
 | ONNX classifier on Render profile | Integration and local parity tested | Approved artifact identity/hosting, Linux memory and live classifications unverified |
-| Semantic Search | Implemented/tested in full runtime | No embeddings means empty results; old embeddings can trigger heavy runtime loads on Render |
-| Ask | Extensive implemented/tested full-runtime paths | Only some mailbox-plan paths avoid embeddings; general extraction depends on retrieval; generation has further runtime requirements |
-| Disconnect / deletion | Backend disconnect and operator `delete-user` exist | No Settings disconnect control; no clear user data-retention/deletion instructions |
+| Semantic Search | Implemented/tested in full runtime; disabled at hosted UI/API boundary | Separate future runtime/quality qualification required |
+| Ask | Implemented/tested in full runtime; disabled at hosted UI/API boundary | General retrieval/generation remains deferred for hosted V1 |
+| Disconnect / deletion | Settings disconnect and retention guidance implemented; operator `delete-user` documented | Live acceptance and operational backup-retention policy remain deployment work |
 | Health, CI, operational docs | Implemented locally | Remote CI result, actual host controls, restore drill and release recipe unverified |
 | Training and evaluation | Offline training/evaluation path and mechanics tests work | No approved representative quality result established by this audit |
 
@@ -173,12 +179,12 @@ No checked-in Render Blueprint/Dockerfile or validated Render build/start recipe
 | ID | Confirmed issue or unknown | Evidence / bounded remedy |
 | --- | --- | --- |
 | B1 | Release source, public repository entry and deployment are not one reproducible unit | Competing worktrees; build/start/runtime requirements exist only as uncommitted experiments; remote default `main` does not show the release. Selectively reconcile, record actual hosted SHA/config, publish one recipe and point reviewers to the verified release branch. |
-| B2 | Hosted feature surface exceeds the protected runtime | Only `email_pipeline.py` and `predict.py` read `INBOX_RUNTIME_PROFILE`. `Shell.tsx`, `routes.py`, `rag_api.py`, `embedding_service.py` and `local_llm.py` do not gate unsupported features. Hide hosted Search/Ask and guard direct requests before any model work. |
+| B2 | Resolved locally — hosted capability mismatch | V05 gates navigation, direct frontend routes and backend APIs; no retrieval/model calls on disabled paths. Live candidate acceptance remains separate. |
 | B3 | Classification is not yet a qualified hosted feature | New FP32 artifact not provisioned; Linux memory/latency and approved source identity unknown. Readiness intentionally checks no model. Add a release-time artifact/inference check, not heavy inference to health probes. |
-| B4 | Inbox “newest” is import chronology | `routes.get_saved_emails` and `readInboxState` default to `created_at`; older mail imported later can lead the inbox. Use a documented message-date order with stable tie-breaks and missing-date behavior. |
-| B5 | Enrichment exhaustion has no effective normal-user retry | Failed stages leave retry selection after three attempts. Update now need not revisit an unchanged failed email. Detail shows only a generic unavailable notice; Settings can report Mail updated. Provide a bounded targeted retry/recovery path and truthful partial status. |
-| B6 | A permanently bad source can prevent progress beyond its page | Failed IDs rotate but remain in `state.pending`; new listing waits for that queue to empty. Cursor safety is good, but repeated failures can stop the whole account after the client retry cap. Add explicit recoverable attention state and a durable failure policy; never advance a cursor by silently losing an ID. |
-| B7 | Users cannot stop the connection from the UI | `DELETE /gmail/accounts/{id}/connection` exists; Settings/API client does not expose it. Wire that existing operation, prevent further sync, explain retained data and the existing operator deletion procedure. Do not confuse local disconnect with revoking Google consent. |
+| B4 | Resolved locally — import-time inbox ordering | V06 defaults to message chronology with stable ties, missing dates last and tested filtering/pagination. |
+| B5 | Resolved locally — exhausted enrichment recovery | V07 adds one-email explicit retries, preserves automatic attempt budgets and separates Gmail update status from enrichment failures. |
+| B6 | Resolved locally — source failure blocks later pages | V08 retains failed IDs durably, continues listing, bounds attempts and exposes explicit recovery. Cursor publication still waits for every ID. |
+| B7 | Resolved locally — missing disconnect UI | V09 exposes the existing endpoint, explains retained mail/checkpoints and preserves same-account reconnection. Local disconnect does not revoke Google's grant globally. |
 | B8 | Deployment security/recovery is unproven | Actual runtime role, owner connection, direct/session pooling, TLS/proxy, limits, logging and backup restoration need evidence. Do not assume nginx examples apply to Render. |
 | B9 | Core AI value lacks a bounded representative acceptance review | Existing quality tooling and historical reports are not new approval. Freeze the existing artifact, assess classifications and task/summary usefulness, report supported language/sample limits, and decide once. No automatic retraining project. |
 | B10 | Documentation and acceptance evidence contradict the current product | README/frontend README still describe explicitly starting sync; OPERATIONS mentions Continue sync and older schema. Correct current instructions and publish exact verified scope, setup, screenshots and results. |
@@ -189,7 +195,7 @@ Security detail for B8: release readiness checks `pg_has_role(..., 'USAGE')` for
 
 | ID | Work | Why / stopping point |
 | --- | --- | --- |
-| S1 | Align status and onboarding copy | Inbox empty state still directs users to manually sync; Settings promises later retries even after the retry cap; connected/no-new-mail and initial-empty states need distinct truthful wording. Required retry-state corrections are part of B5/B6; remaining copy is polish. |
+| S1 | Align remaining onboarding copy | Inbox empty state still directs users to manually sync; connected/no-new-mail and initial-empty states could be clearer. Required retry-state corrections were completed in V07/V08; remaining copy is polish. |
 | S2 | Validate numeric runtime configuration once | Invalid `GMAIL_SYNC_INTERVAL_SECONDS`/`GMAIL_INITIAL_SYNC_DAYS` can fail at request time. Reject bad config with a safe actionable startup/release error; no config framework. |
 | S3 | Clarify source text terminology | Detail says original stored text but displays cleaned/extracted `email.body`; raw Gmail payload is preserved separately. Label the displayed text accurately; do not build an HTML mail renderer. |
 | S4 | Improve OpenAPI response contracts incrementally | Core accounts/sync/emails/search return dictionaries without response models. Zod covers these today; add schemas when touching these endpoints, keeping snapshot parity checked. No API rewrite. |
@@ -230,7 +236,7 @@ No TODO/FIXME/HACK/XXX markers were found in the scanned source/test files. That
 
 ## 7. FINAL V1 CHECKLIST — dependency order
 
-All boxes below are open release work, not permission to begin implementation during this audit. Each item has a bounded verification result. Complete MUST items; do not expand the release to absorb every SHOULD/LATER item.
+V05–V09 are implemented and individually tested in Stabilize; their final verification evidence appears below. Other items remain open, including real-host acceptance. This checklist does not authorize deployment or the next phase. Do not expand the release to absorb every SHOULD/LATER item.
 
 | Order | Priority / item | Depends on | Done when |
 | --- | --- | --- | --- |
@@ -238,11 +244,11 @@ All boxes below are open release work, not permission to begin implementation du
 | V02 | MUST — inventory the existing hosted setup | V01 | Record service/frontend URLs, deployed SHA/branch, build/start/proxy, runtime profile, DB provider/revision/connection mode and free-plan selection; record secret **names only**. |
 | V03 | MUST — identify the approved existing classifier | V01 | Source checkpoint, tokenizer/config/weight hashes and intended languages are recorded; the ONNX export matches that source and no model is silently promoted. |
 | V04 | MUST — commit one reproducible Render build/start recipe | V02, V03 | Fresh build installs required dependencies and hash-verified artifact; startup performs no training/download/migration; proxy/callback and one-worker settings are reproducible. |
-| V05 | MUST — gate unsupported hosted Search/Ask paths | V02 | Hosted navigation and direct API requests agree; Render tests prove no Torch/SentenceTransformer/Qwen load through disabled paths; full/local behavior remains tested. |
-| V06 | MUST — fix inbox chronological ordering | None | Three messages imported out of date order render by the documented Gmail/message date, including ties/missing dates and pagination. |
-| V07 | MUST — make failed enrichment recoverable and status truthful | V03 | A classifier failing three times remains visible as incomplete; a bounded retry after repair actually produces saved classification; successful Gmail sync is not presented as completed enrichment. |
-| V08 | MUST — resolve persistent source-failure recovery | None | A malformed message across multiple pages has an explicit durable outcome/recovery path; good messages can progress without silently dropping the failure or advancing History unsafely; retries remain bounded. |
-| V09 | MUST — expose existing disconnect and retention behavior | None | Disconnect from Settings prevents further sync, preserves/deletes data only as documented, and leaves a working reconnect path; operator deletion instructions are tested in disposable data. |
+| V05 | DONE locally — gate unsupported hosted Search/Ask paths | Hosted verification remains V02/V17 | `8037691`: navigation/direct routes agree with backend rejection before retrieval; full/local tests preserved. |
+| V06 | DONE locally — fix inbox chronological ordering | None | `9c13764`: out-of-import-order dates, missing dates, ties, filters, pagination and legacy sort verified. |
+| V07 | DONE locally — make failed enrichment recoverable and status truthful | Actual artifact qualification remains V03/V12 | `3977d52`: exhausted classifier is recoverable through a bounded user action; persisted result, source retention, ownership and retry limits verified. |
+| V08 | DONE locally — resolve persistent source-failure recovery | None | `bd45e46`: later pages progress, failures remain durable, retries are capped, reopening does not restart exhausted work, and History advances only after resolution. |
+| V09 | DONE locally — expose existing disconnect and retention behavior | None | `0f3b1ee`: Settings disconnect/retention guidance, credential removal, preserved source/checkpoint, same-account reconnect, CSRF/isolation and cascade behavior verified with disposable data. |
 | V10 | MUST — run one finite core-quality review | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
 | V11 | MUST — verify deployment security controls | V02, V04 | Runtime/owner roles and assumable privileges are verified; auth/CSRF/isolation, TLS/cookies, safe logging and request/admission limits work on the actual proxy topology. Document disconnect/deletion and invited access. |
 | V12 | MUST — qualify Linux resource and timing limits | V04, V05 | Cold/warm classification, long messages, a five-message sync and concurrent inbox read stay within the actual RAM/admission budget with headroom, no OOM and no ordinary batch exceeding the client's 90-second deadline. Record measurements; Windows RSS is not acceptance. |
@@ -305,7 +311,7 @@ The prior full-suite skips cover opt-in browser/Ask integration, runtime/batch b
 
 ### Required final verification
 
-- Add regressions for B2, B4–B7 before fixing them; retain current full-runtime, tenant/CSRF and advisory-lock tests.
+- Regressions for B2, B4–B7 and existing full-runtime, tenant/CSRF and advisory-lock tests pass in Stabilize. Repeat the candidate checks if subsequent code changes affect these paths.
 - Test a pristine migration chain and upgrade from a populated previous revision with saved sync state. Exercise backup restoration separately from migration tests.
 - Assert no heavy imports in **every exposed Render request path**, not only Gmail sync. Test missing/corrupt classifier artifacts at build/release time and prove no request-time downloads.
 - Test Gmail 404 History recovery, 429/5xx, invalid/revoked refresh tokens, network loss, malformed/oversized source, DB failure and advisory unlock. Preserve source/cursor invariants.
@@ -323,7 +329,7 @@ Once those conditions hold, tag V1 and stop. SHOULD FIX items may remain explici
 
 ## Stabilize implementation evidence (24 October 2026)
 
-V05 implemented locally: backend-owned runtime profile hides Search/Ask navigation and blocks direct frontend routes; backend rejects both APIs with `runtime_disabled` before retrieval/model work. Full/local paths remain intact. Regression-first backend run: 4 expected failures. After fix: hosted capability + Render sync tests **22 passed**; frontend capability + full Search/Ask tests **37 passed**. Frontend required execution outside the Windows sandbox because esbuild could not traverse parent directories. No deployment performed. V06–V09 remain open until individually verified below.
+V05 implemented locally: backend-owned runtime profile hides Search/Ask navigation and blocks direct frontend routes; backend rejects both APIs with `runtime_disabled` before retrieval/model work. Full/local paths remain intact. Regression-first backend run: 4 expected failures. After fix: hosted capability + Render sync tests **22 passed**; frontend capability + full Search/Ask tests **37 passed**. Frontend required execution outside the Windows sandbox because esbuild could not traverse parent directories. No deployment performed. Subsequent items are individually verified below.
 
 V06 implemented: default `message_date` sorts by `COALESCE(sent_at, message_at)`, unknown dates last in either direction and ID ties matching direction. Filtering precedes pagination; explicit `created_at`/priority/ID options remain compatible. Backend date regressions failed before the fix; inbox suite **32 passed** after it. Frontend inbox/detail suite **18 passed** (an existing navigation assertion was corrected to await the detail page rather than matching the outgoing inbox). OpenAPI and generated types updated.
 
@@ -332,3 +338,65 @@ V07 implemented: `POST /emails/{id}/retry-enrichment` attempts one stored email,
 V08 implemented: failed source IDs and attempt counts remain in the existing checkpoint JSON; legacy string IDs remain readable. Listing proceeds past failed bodies, successful source records remain intact, and History publication/reconciliation waits until every ID resolves. Three automatic attempts per failed ID; explicit Update now permits one bounded retry batch (at most five IDs), without resetting counters. Reloading exhausted checkpoints does not restart auto retries. Partial work is never displayed as complete. Backend regressions first reproduced the stall; final affected suites **81 passed, 1 skipped** (opt-in latency). Frontend sync/automatic/Settings suites **43 passed**, including later-page continuation, bounded manual retries and reopening. No schema change or live migration. Operational compatibility: older code does not understand failure metadata in pending JSON; do not downgrade an active checkpoint to the pre-Stabilize reader.
 
 V09 implemented: Settings calls the existing disconnect API with duplicate/busy guards, immediately updates connection state and keeps saved Inbox data usable. Retention and same-address reconnection are explained; operator deletion scope is documented in deploy/OPERATIONS.md. UI regressions failed before implementation. Backend disconnect/reconnect, browser CSRF, ownership and OAuth suites **62 passed**; frontend Settings/automatic sync/browser authentication **55 passed**. Tests confirm credential removal, preserved account/source/checkpoint, no Gmail client while disconnected, same-account consent restoration, resumed sync without duplicates and rejected unauthorized mutations. No production data or credentials were modified.
+
+### Final Stabilize acceptance
+
+Code candidate: `0f3b1eeec7c8db78beb87a442ad45ce0bc42dd3c` on `codex/inbox-nizer-release`. Documentation-only reconciliation follows this candidate; runtime code is unchanged by that final documentation commit.
+
+| Check | Exact final result |
+| --- | --- |
+| `python -m pytest -q --tb=short -ra --basetemp private_review/pytest-stabilize-full` | **1,370 passed, 5 skipped, 2 subtests passed**, 80.44 seconds; 2 dependency warnings |
+| `npm test` | **162 passed, 10 test files passed**, 92.06 seconds |
+| `npm run lint` | Passed, exit 0 |
+| `npm run typecheck` | Passed, exit 0 |
+| `npm run build` | TypeScript + Vite production build passed, exit 0 |
+| Application `app.openapi()` compared to `frontend/openapi.json` | Exact equality |
+| `npm run api:generate` followed by `git diff --exit-code -- src/api/generated/schema.d.ts` | Passed; generated types have no drift |
+| `git diff --check` | Passed |
+
+The backend skipped checks are unchanged opt-ins: classifier-review browser smoke, full-runtime Ask browser integration, existing ONNX artifact parity, runtime performance benchmark, and bounded-sync latency benchmark. The first two concern unchanged/deferred tools; artifact and target-host performance qualification remain V03/V12 and are not asserted by synthetic Stabilize tests. Local auth/ownership, CSRF, OAuth callback, real PostgreSQL persistence and advisory locks were exercised; Google network boundaries and classifier failures/results were synthetic. No real Google consent or hosted acceptance was performed in this phase. Live host/CI verification remains a later release gate because these commits were deliberately not pushed or deployed.
+
+Non-failing warnings: google-api-core's future Python 3.11 support notice, Starlette's httpx deprecation, and Rollup dropping two misplaced dependency comment annotations. No dependency replacements were made.
+
+**Stabilize is complete.** No outstanding failed automated check. No schema change, live migration, production data mutation, Render configuration change, merge into `main`, push or deployment occurred. Other worktrees were not edited. Do not continue to the next phase without a new instruction.
+
+### Stabilize file-by-file change record
+
+Paths below are relative to the canonical release checkout. Tests, generated contracts and the prior audit documents account for much of the diff; no dependencies or model implementations were replaced.
+
+| File | Reason |
+| --- | --- |
+| `PROJECT_STATUS.md` | Commit the audit contract, resolve V05–V09 findings and record exact verification/remaining release limits. |
+| `README.md` | Commit the prior audit's status link and corrected automatic-sync setup instructions. |
+| `runtime_capabilities.py` | Central server-owned profile check and early unsupported-capability rejection. |
+| `routes.py` | Gate semantic search, order inbox by message dates, expose one-email enrichment retry. |
+| `rag_api.py` | Reject hosted Ask before retrieval/inference. |
+| `account_routes.py` | Publish runtime/recovery counts, compute actionable pending state, accept explicit bounded source retry. |
+| `email_pipeline.py` | Respect exhausted stage budgets; permit an explicit one-pass retry without resetting counts. |
+| `gmail_sync.py` | Share account locking for enrichment recovery; retain failed source IDs/counts while later pages progress. |
+| `frontend/src/app/capabilities.ts` | Read backend runtime capability from authenticated accounts data. |
+| `frontend/src/app/App.tsx` | Block direct hosted Search/Ask routes. |
+| `frontend/src/components/layout/Shell.tsx` | Hide unsupported hosted navigation. |
+| `frontend/src/api/contracts.ts` | Parse runtime profile and durable recovery counts/flags. |
+| `frontend/src/api/accounts.ts` | Wire disconnect and explicit source retry; continue later pages despite durably retained failures. |
+| `frontend/src/api/emails.ts` | Add bounded explicit enrichment-retry request. |
+| `frontend/src/features/inbox/inboxState.ts` | Use message chronology by default while retaining explicit legacy sorts. |
+| `frontend/src/features/email/EmailPage.tsx` | Expose one-email retry with pending/error handling and refresh saved results. |
+| `frontend/src/features/settings/GmailSync.tsx` | Stop exhausted auto-retries on reopen; permit bounded manual recovery and truthful paused wording. |
+| `frontend/src/features/settings/SettingsPage.tsx` | Show source/enrichment recovery separately, expose disconnect and explain retention/reconnect. |
+| `frontend/openapi.json` | Refresh actual backend contract for new retry route/query and sort option. |
+| `frontend/src/api/generated/schema.d.ts` | Regenerate types from that contract. |
+| `test_hosted_capabilities.py` | Verify early Render rejection, no retrieval/heavy imports, and preserved full defaults. |
+| `test_inbox_api.py` | Verify out-of-order import dates, missing dates, ties, filtering and pagination. |
+| `test_enrichment_recovery.py` | Verify exhaustion, explicit repair persistence, source retention and cross-owner denial. |
+| `test_source_recovery.py` | Verify later pages, durable failures, exhausted/reopened state, bounded explicit retry, expired page recovery and cursor safety. |
+| `test_disconnect_recovery.py` | Verify disconnect through consent/reconnect to resumed sync, retaining source/account/checkpoint. |
+| `test_browser_auth.py` | Extend existing CSRF regression to disconnect and enrichment retry. |
+| `test_gmail_automatic.py` | Assert durable failure metadata rather than the old uncounted failed ID. |
+| `test_render_sync.py` | Update simulated SQL-failure callback for the explicit-retry argument; retain real lock cleanup assertions. |
+| `frontend/src/test/hosted-capabilities.test.tsx` | Verify hidden navigation and blocked direct hosted routes. |
+| `frontend/src/test/inbox-detail.test.tsx` | Verify message ordering and failed-enrichment retry/error UI; await detail navigation reliably. |
+| `frontend/src/test/sync-run.test.ts` | Verify continuation past retained failures and one manual retry batch. |
+| `frontend/src/test/auto-gmail.test.tsx` | Verify exhausted checkpoints stay stopped on reopen and disconnected accounts never auto-sync. |
+| `frontend/src/test/tasks-settings.test.tsx` | Verify disconnect/reconnect/retained Inbox, failed disconnect and accurate recovery wording. |
+| `deploy/OPERATIONS.md` | Document existing disconnect, retention, reconnection and operator deletion scope; no host configuration changes. |
