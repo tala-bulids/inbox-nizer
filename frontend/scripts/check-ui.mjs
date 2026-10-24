@@ -46,6 +46,8 @@ try {
     const errors = [];
     const askRequests = [];
     let signedIn = false;
+    let gmailStatus = "connected";
+    let lastSyncedAt = new Date().toISOString();
     page.on("pageerror", (e) => errors.push(e.name));
     await page.route(
       new URL(process.env.UI_URL || "http://localhost:5173").origin + "/api/**",
@@ -158,8 +160,15 @@ try {
                   },
                 ],
         };
+        if (path === "/api/gmail/accounts/2/connection") {
+          assert.equal(route.request().method(), "DELETE");
+          gmailStatus = "disconnected";
+          await route.fulfill({ status: 204 });
+          return;
+        }
         if (path === "/api/gmail/accounts/2/sync") {
           await new Promise((resolve) => setTimeout(resolve, 900));
+          lastSyncedAt = new Date().toISOString();
           await route.fulfill({
             status: 200,
             contentType: "application/json",
@@ -178,7 +187,8 @@ try {
                 accounts: [
                   {
                     ...accountData.accounts[0],
-                    last_synced_at: "2026-10-08T12:00:00Z",
+                    last_synced_at: lastSyncedAt,
+                    status: gmailStatus,
                   },
                 ],
               }
@@ -442,12 +452,16 @@ try {
     await page.getByText("متصل", { exact: true }).waitFor();
     await capture("settings-connected");
     await page
-      .getByRole("button", { name: "مزامنة الآن", exact: true })
+      .getByRole("button", { name: "تحديث الآن", exact: true })
       .click();
-    await page.getByText(/جارٍ مزامنة البريد/).waitFor();
+    const updating = page.getByRole("button", { name: "جاري التحديث...", exact: true });
+    await updating.waitFor();
+    assert.equal(await updating.isDisabled(), true);
     await capture("settings-sync-pending");
-    await page.getByText(/تمت معالجة/).waitFor();
+    await page.getByText("تم تحديث البريد", { exact: true }).waitFor();
     await capture("settings-sync-success");
+    await page.getByRole("button", { name: "قطع اتصال Gmail", exact: true }).click();
+    await page.getByText("غير متصل", { exact: true }).waitFor();
     const reconnect = page.getByRole("button", {
       name: "إعادة الاتصال",
       exact: true,
@@ -456,6 +470,8 @@ try {
     await page.keyboard.press("Enter");
     await page.getByRole("link", { name: "متابعة إلى Google" }).waitFor();
     await capture("settings-oauth");
+    // Simulate consent completion; no real Google exchange is performed.
+    gmailStatus = "connected";
     assert.equal(
       await page.evaluate(() => localStorage.length + sessionStorage.length),
       0,
@@ -498,9 +514,12 @@ try {
             process.env.UI_URL || "http://localhost:5173",
           ).href,
         );
-        await page
-          .getByRole("link", { name: "الانتقال إلى الإعدادات" })
-          .waitFor();
+        if (result === "success") {
+          await page.waitForURL(new URL("/", process.env.UI_URL || "http://localhost:5173").href);
+          await page.getByRole("button", { name: "المتابعة باستخدام Google" }).waitFor();
+        } else {
+          await page.getByRole("link", { name: "الانتقال إلى الإعدادات" }).waitFor();
+        }
         await capture("oauth-" + result);
       }
     }
