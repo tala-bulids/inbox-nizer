@@ -2,6 +2,8 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
+**V03/V10 follow-up, 24 October:** the export source has now been identified as `results/checkpoint-3159` (`97a26b67…`), not the separate `email_classifier` directory (`1686c767…`). The prior mismatch interpretation is superseded. Source identity is resolved; release approval and representative quality acceptance remain blocked. See [the focused evidence report](docs/release/V03_V10_EVIDENCE.md) and the final V03/V10 section below. No model was replaced or retrained.
+
 **Closure execution, 24 October:** release HEAD `30d7c357b762ba9305f69acf03ff6105bd639e0d` was published and verified through Git and GitHub. Both remote CI runs passed. This closure change adds documentation and synthetic screenshots only; application code remains `b3225fa`. **NO-GO for hosted V1:** classifier approval/quality, target-host acceptance, isolated restore, database expiry and now-confirmed credential/access cleanup remain open. See the final closure ledger below; historical evidence sections retain their original dates and scope.
 
 **Verify & Deploy preparation, 24 October:** code candidate **`b3225fa0b6e2863aae1c445f1789d3303fabd8e1`** on `codex/inbox-nizer-release`; preparation commits `3405cf0`, `5ed8b46`, `b3225fa` preserve every Stabilize commit. **NO-GO for production.** Live Render remains `f53e22c`; no deployment, migration, configuration or credential changes were made. The current evidence and exact unblock steps are in the final section of this document and [the Render release runbook](deploy/RENDER_RELEASE.md). Earlier audit statements below are historical unless superseded by that evidence.
@@ -246,14 +248,14 @@ V05–V09 are implemented and individually tested in Stabilize; their final veri
 | --- | --- | --- | --- |
 | V01 | DONE — narrow alternate-worktree disposition | This audit | A short include/archive decision exists for the deployment scripts, experimental ONNX/RAG guards and stronger role checks; release source remains on the requested branch, without a bulk merge. |
 | V02 | PARTIAL — service/deploy/plan known; live variables/schema/role blocked | V01 | Record service/frontend URLs, deployed SHA/branch, build/start/proxy, runtime profile, DB provider/revision/connection mode and free-plan selection; record secret **names only**. |
-| V03 | BLOCKED — current checkpoint/export provenance differ; approval missing | V01 | Source checkpoint, tokenizer/config/weight hashes and intended languages are recorded; the ONNX export matches that source and no model is silently promoted. |
+| V03 | PROVENANCE VERIFIED; release approval blocked by V10 | V01 | Source checkpoint, tokenizer/config/weight hashes and intended languages are recorded; the ONNX export matches that source and no model is silently promoted. |
 | V04 | PREPARED — committed and locally tested; approved artifact/Linux build pending | V02, V03 | Fresh build installs required dependencies and hash-verified artifact; startup performs no training/download/migration; proxy/callback and one-worker settings are reproducible. |
 | V05 | DONE locally — gate unsupported hosted Search/Ask paths | Hosted verification remains V02/V17 | `8037691`: navigation/direct routes agree with backend rejection before retrieval; full/local tests preserved. |
 | V06 | DONE locally — fix inbox chronological ordering | None | `9c13764`: out-of-import-order dates, missing dates, ties, filters, pagination and legacy sort verified. |
 | V07 | DONE locally — make failed enrichment recoverable and status truthful | Actual artifact qualification remains V03/V12 | `3977d52`: exhausted classifier is recoverable through a bounded user action; persisted result, source retention, ownership and retry limits verified. |
 | V08 | DONE locally — resolve persistent source-failure recovery | None | `bd45e46`: later pages progress, failures remain durable, retries are capped, reopening does not restart exhausted work, and History advances only after resolution. |
 | V09 | DONE locally — expose existing disconnect and retention behavior | None | `0f3b1ee`: Settings disconnect/retention guidance, credential removal, preserved source/checkpoint, same-account reconnect, CSRF/isolation and cascade behavior verified with disposable data. |
-| V10 | FAILED GATE — diagnostic complete; representative holdout missing | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
+| V10 | FAIL — reviewed development reproduced; representative holdout missing | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
 | V11 | PARTIAL — local security tests pass; actual host controls unverified | V02, V04 | Runtime/owner roles and assumable privileges are verified; auth/CSRF/isolation, TLS/cookies, safe logging and request/admission limits work on the actual proxy topology. Document disconnect/deletion and invited access. |
 | V12 | BLOCKED — Windows diagnostics only; target Linux access unavailable | V04, V05 | Cold/warm classification, long messages, a five-message sync and concurrent inbox read stay within the actual RAM/admission budget with headroom, no OOM and no ordinary batch exceeding the client's 90-second deadline. Record measurements; Windows RSS is not acceptance. |
 | V13 | DONE — local checks and remote backend/frontend CI passed at 30d7c35 | V05–V09 | Targeted regressions then backend/frontend suites, API drift, lint, build and relevant browser smoke pass at one candidate SHA; every skipped check is either executed separately or justified by excluded scope. Remote CI is checked. |
@@ -463,6 +465,8 @@ request admission and platform logging still require hosted evidence.
 
 ### Artifact identity and finite quality result
 
+**Historical observation, superseded for source identity:** the V03/V10 follow-up below identifies checkpoint-3159 as the exact export source. The `1686c767…` comparison used a different directory; it did not establish that checkpoint-3159 had changed.
+
 Existing `private_review/gmail-classifier-export` is FP32 with external weights.
 Its recorded source safetensors SHA-256 starts `97a26b67`; the current local source
 checkpoint hash is **`1686c767582eab051298eb82fa048822b9c6142842f61b3a384f55e204f6902b`**.
@@ -635,14 +639,14 @@ must be read after publication, not inferred from the earlier runs.
 | --- | --- | --- |
 | V01 | COMPLETE | Narrow source disposition; no bulk merge; 3405cf0 / 5ed8b46. |
 | V02 | PARTIAL | Live service/SHA/plan/topology and current IP rule known; actual runtime configuration, schema/role/session-affinity still unverified. |
-| V03 | BLOCKED | Source 1686c767 differs from export provenance 97a26b67; no approved model identity supplied. |
+| V03 | PROVENANCE VERIFIED; APPROVAL BLOCKED | Follow-up identifies checkpoint-3159 (97a26b67) as the exact export source. The 1686c767 file is a different checkpoint. No V1 quality approval exists. |
 | V04 | PREPARED, NOT CLOSED | Committed same-origin recipe, pinned serving dependencies and offline smoke; approved artifact and fresh target build remain prerequisites. |
 | V05 | COMPLETE IN SOURCE | 8037691; hosted UI/API capability gates and no-heavy-load regressions pass. |
 | V06 | COMPLETE IN SOURCE | 9c13764; message chronology, ties, missing dates and pagination regressions pass. |
 | V07 | COMPLETE IN SOURCE | 3977d52; bounded explicit enrichment repair persists results; ownership/source retained. |
 | V08 | COMPLETE IN SOURCE | bd45e46; durable failed IDs, later-page progress, retry bounds and History invariants tested. |
 | V09 | COMPLETE IN SOURCE | 0f3b1ee; disconnect/reconnect, retained data, CSRF and ownership tested. |
-| V10 | FAILED RELEASE GATE | Diagnostic recorded honestly; representative reviewed holdout absent; thresholds unchanged. |
+| V10 | FAILED RELEASE GATE | Follow-up reproduces 32/100 on reviewed development; representative final holdout absent; thresholds unchanged. |
 | V11 | PARTIAL / SECURITY ACTION OPEN | Local tests pass; operator reports exposed DB password; temporary laptop rule still present; live controls not accepted. |
 | V12 | BLOCKED | Windows diagnostic/Ubuntu CI are not target Render capacity; metrics empty, no target mixed-load result. |
 | V13 | COMPLETE FOR CODE CANDIDATE | Full local evidence plus successful remote backend/frontend CI at 30d7c35; closure docs/images are separately checked. |
@@ -657,6 +661,8 @@ source completion distinct from hosted acceptance. No other gate is checked mere
 because a recipe, backup archive, screenshot or passing unit test exists.
 
 ### Classifier and quality verdict
+
+**Historical closure verdict:** the source-mismatch claim in the following paragraph is superseded by the V03/V10 follow-up. Its lack-of-approval and failed-quality conclusions still apply.
 
 The prior artifact hashes/parity results remain the evidence of record. No new model
 approval or provenance reconciliation was supplied in this closure turn. The existing
@@ -727,9 +733,11 @@ They are UI demonstration material, not real Gmail/inference/production evidence
 2. The operator restores the already verified encrypted archive into a distinct
    isolated database using protected local keys, then records schema/count/FK/unique/
    checkpoint and credential-decryption results. No passphrase needs to enter chat.
-3. Identify the approved existing classifier and reconcile its export hashes/parity.
-   Supply the representative human-reviewed holdout and run the unchanged gate once.
-   Any model/retraining scope change needs an explicit decision if the gate fails.
+3. Source/export identity is resolved in the V03/V10 follow-up. No existing model
+   has V1 quality approval. Freeze the explicitly selected artifact and an untouched,
+   representative human-reviewed holdout before one final evaluation under the
+   unchanged policy. Do not recycle the consumed development sample. Any classifier
+   improvement/retraining or V1 scope change requires a separate explicit decision.
 4. Resolve the database's expiry/zero-cost continuity constraint with an authorized
    decision; no paid upgrade or hosting migration has been inferred or performed.
 5. Obtain target-host evidence for configuration/runtime DB privileges, TLS/proxy/
@@ -743,3 +751,16 @@ The GitHub branch and portfolio materials can be reviewed now, explicitly as a r
 candidate. They are not a declaration that every V1 gate is closed. No main merge,
 production deploy, live migration, credential/network change or mailbox deletion
 was performed in this closure pass.
+
+
+## V03 / V10 focused closure evidence — 24 October 2026
+
+This follow-up changes evidence/documentation only, based on release HEAD `1d37c4647f45bef5762b432be08f6a12f856f23f`; application candidate remains `b3225fa`. It supersedes the earlier checkpoint-mismatch interpretation, not the unrelated release gates. Full details and safe aggregate evidence: [V03/V10 report](docs/release/V03_V10_EVIDENCE.md), [JSON](docs/release/v03-v10-20261024.json).
+
+**V03 technical provenance PASS; release-model approval remains BLOCKED by V10.** The existing FP32 export's source is `results/checkpoint-3159/model.safetensors`, SHA-256 `97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4`. The prior `1686c767…` comparison was with separate `email_classifier` weights. Tokenizer hashes match exactly; parsed configs differ only by omitted `use_cache: false`. Fresh Torch/ONNX comparison passes on 111 inputs at the unchanged 0.0001 score tolerance, with 111/111 top-one agreement. The checkpoint's original training report/split is unavailable: do not claim complete training reproducibility or silently promote it. The existing alternative v2 has a training report but poorer reviewed-development performance; no existing candidate has V1 approval.
+
+**V10 FAIL, rating C.** Fresh evaluation reproduces the baseline's 32/100 correct (32%), top-one macro-F1 0.2839, 14 Finance false positives and 18 wrong high-score predictions. Separate heuristic slices: English **20/56 (35.71%)**; Arabic-heavy **1/11 (9.09%)**; mixed **10/32 (31.25%)**; other **1/1**. The original script's stricter script-presence categories contain only **one Arabic-only example (0/1)**; neither language convention establishes representative Arabic quality. The 100 examples are already-consumed, deliberately difficult human-reviewed development, with zero Business, four Finance and two Travel examples. They are not a final holdout or general accuracy claim.
+
+The existing release gate status was rerun against the correct source hash: **representative human-reviewed final holdout evaluation is missing**. All original thresholds remain unchanged (>=300 examples, >=20/class, >=50 Arabic and English, accuracy >=90%, top-one macro-F1 >=85%, plus all per-class/Finance/calibration/language-gap/ambiguity limits). No final labels were opened. Tests: **29 passed, 2 skipped, 2 subtests passed**; initial seven Windows temp-directory setup errors resolved with a fresh workspace-local basetemp. Skips are explicit opt-in browser and saved-reference artifact tests; the separate fresh 111-input parity run passed. See the report for exact commands/results.
+
+**Exact remaining action:** explicitly freeze a selected artifact, supply a separate untouched representative human-reviewed holdout with the existing group-disjoint manifest and sampling policy, then run the existing one-time final evaluation under the unchanged gate. Do not recycle development examples. Poor development results remain a warning, not a forecast or a reason to lower thresholds. If baseline acceptance is not pursued or the final gate fails, a bounded classifier-improvement or release-scope decision requires separate authorization; no retraining/model search is started here. V03's approval requirement and V10 are not declared closed. No deployment, Gmail, database, credentials, hosting or UI changes were made.
