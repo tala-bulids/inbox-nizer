@@ -2,6 +2,8 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
+**Closure execution, 24 October:** release HEAD `30d7c357b762ba9305f69acf03ff6105bd639e0d` was published and verified through Git and GitHub. Both remote CI runs passed. This closure change adds documentation and synthetic screenshots only; application code remains `b3225fa`. **NO-GO for hosted V1:** classifier approval/quality, target-host acceptance, isolated restore, database expiry and now-confirmed credential/access cleanup remain open. See the final closure ledger below; historical evidence sections retain their original dates and scope.
+
 **Verify & Deploy preparation, 24 October:** code candidate **`b3225fa0b6e2863aae1c445f1789d3303fabd8e1`** on `codex/inbox-nizer-release`; preparation commits `3405cf0`, `5ed8b46`, `b3225fa` preserve every Stabilize commit. **NO-GO for production.** Live Render remains `f53e22c`; no deployment, migration, configuration or credential changes were made. The current evidence and exact unblock steps are in the final section of this document and [the Render release runbook](deploy/RENDER_RELEASE.md). Earlier audit statements below are historical unless superseded by that evidence.
 
 **Stabilize complete, 24 October:** V05–V09 are implemented in local commits `8037691`, `9c13764`, `3977d52`, `bd45e46`, `0f3b1ee`. Final validation at `0f3b1ee`: **1,370 backend tests passed, 5 opt-in checks skipped, 2 subtests passed; 162 frontend tests passed; lint, typecheck, build and API contract checks passed**. These commits are not pushed or deployed. The audit baseline above remains the reference for before/after findings. That phase ended here; the subsequent user-authorized Verify & Deploy preparation is recorded below.
@@ -254,12 +256,12 @@ V05–V09 are implemented and individually tested in Stabilize; their final veri
 | V10 | FAILED GATE — diagnostic complete; representative holdout missing | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
 | V11 | PARTIAL — local security tests pass; actual host controls unverified | V02, V04 | Runtime/owner roles and assumable privileges are verified; auth/CSRF/isolation, TLS/cookies, safe logging and request/admission limits work on the actual proxy topology. Document disconnect/deletion and invited access. |
 | V12 | BLOCKED — Windows diagnostics only; target Linux access unavailable | V04, V05 | Cold/warm classification, long messages, a five-message sync and concurrent inbox read stay within the actual RAM/admission budget with headroom, no OOM and no ordinary batch exceeding the client's 90-second deadline. Record measurements; Windows RSS is not acceptance. |
-| V13 | LOCAL PASS — final checks recorded below; remote candidate CI pending publication | V05–V09 | Targeted regressions then backend/frontend suites, API drift, lint, build and relevant browser smoke pass at one candidate SHA; every skipped check is either executed separately or justified by excluded scope. Remote CI is checked. |
+| V13 | DONE — local checks and remote backend/frontend CI passed at 30d7c35 | V05–V09 | Targeted regressions then backend/frontend suites, API drift, lint, build and relevant browser smoke pass at one candidate SHA; every skipped check is either executed separately or justified by excluded scope. Remote CI is checked. |
 | V14 | BLOCKED — protected live database access/restore evidence unavailable | V02 | A protected backup restores into a separate database; aggregate counts, constraints, schema and credential decryption are checked without exposing data; rollback path is recorded. |
 | V15 | MUST — apply the additive migration safely | V13, V14 | Migration owner applies through `e6fb80357cd1`; existing accounts, emails and progress remain intact; restricted runtime readiness passes. No destructive downgrade or mailbox rebuild. |
 | V16 | MUST — deploy one pinned candidate | V11–V15 | Actual hosted SHA equals the tested candidate, artifact is verified, correct origin works, health succeeds and a real new email receives a saved category. |
 | V17 | MUST — complete live journey/recovery acceptance | V16 | Connect/returning account, multi-page import, usable inbox during sync, refresh/reopen, new-mail History update, no-change update, timestamp, duplicates, token reconnect, disconnect and two-tab cases have recorded results. Use approved test accounts/content only. |
-| V18 | MUST — publish the bounded portfolio release | V10, V17 | README/docs match shipped scope and commands; sanitized screenshots/short demo and limitations are available; a clean clone can follow setup; reviewer links open the verified release branch rather than old default `main`; tag the verified commit and update this file with all evidence. Any merge/default-branch change requires separate authorization. |
+| V18 | PARTIAL — release branch, honest README and sanitized gallery published; verified V1/tag withheld | V10, V17 | README/docs match shipped scope and commands; sanitized screenshots/short demo and limitations are available; a clean clone can follow setup; reviewer links open the verified release branch rather than old default `main`; tag the verified commit and update this file with all evidence. Any merge/default-branch change requires separate authorization. |
 
 For implementation order, V06–V09 can be handled after V01 while deployment inventory is pending. V13 is the final automated check after those fixes, not an instruction to re-run all tests after every documentation edit.
 
@@ -592,3 +594,152 @@ Never erase failed IDs or advance History cursors as a rollback shortcut.
 The existing running deployment and all source/stored user data were left untouched.
 No paid resource, live migration, credential rotation, push or deployment occurred.
 Stop here at the access/evidence boundary; do not treat local preparation as V1 done.
+
+
+## Final V1 closure ledger — 24 October 2026
+
+### Repository and automated checks
+
+Started clean on `codex/inbox-nizer-release` at **30d7c357b762ba9305f69acf03ff6105bd639e0d**.
+All ten Stabilize/preparation commits are preserved above 05f452a, including b3225fa
+and 30d7c35. The prior publication used a normal fast-forward push; canonical GitHub
+and origin both returned that exact HEAD. Origin's historical repository URL redirects
+to tala-bulids/inbox-nizer; no remote/default-branch change was necessary.
+
+The previous outgoing-history scan inspected 74 blob versions across those ten
+commits, found no credential patterns, private mailbox dumps or model binaries,
+and found only synthetic example addresses. The largest outgoing blob was 67,604
+bytes. It was not repeated as a new project audit. Closure publication reviews only
+the new documentation/gallery delta. The archive/passphrase/credentials are excluded.
+
+Both GitHub Actions runs completed **success** for 30d7c35:
+- [40102885080](https://github.com/tala-bulids/inbox-nizer/actions/runs/40102885080)
+- [40102881362](https://github.com/tala-bulids/inbox-nizer/actions/runs/40102881362)
+
+Verified backend job steps: CPU dependency installation, full requirements, pip check,
+pytest and classifier-review unittest. Verified frontend steps: clean npm install,
+API generation/no drift, typecheck, lint, tests and production build. These were
+Ubuntu CI jobs, not measurements of the Render allocation or production database.
+The exact local final counts remain **1,380 backend passed / 5 skipped / 2 subtests**,
+**162 frontend passed**, **49 isolated-runtime/parity passed**, **115 quality
+regressions passed**, and one passing test for each optional local benchmark.
+The full-suite skipped artifact and benchmark checks were executed separately;
+the classifier-review UI and full-runtime Ask browser opt-ins remain outside hosted V1.
+No application code changed after the verified candidate; redundant local suites
+were not rerun for prose/images. Remote CI for the closure documentation commit
+must be read after publication, not inferred from the earlier runs.
+
+### Exact V01–V18 disposition
+
+| Item | Closure status | Evidence or remaining gate |
+| --- | --- | --- |
+| V01 | COMPLETE | Narrow source disposition; no bulk merge; 3405cf0 / 5ed8b46. |
+| V02 | PARTIAL | Live service/SHA/plan/topology and current IP rule known; actual runtime configuration, schema/role/session-affinity still unverified. |
+| V03 | BLOCKED | Source 1686c767 differs from export provenance 97a26b67; no approved model identity supplied. |
+| V04 | PREPARED, NOT CLOSED | Committed same-origin recipe, pinned serving dependencies and offline smoke; approved artifact and fresh target build remain prerequisites. |
+| V05 | COMPLETE IN SOURCE | 8037691; hosted UI/API capability gates and no-heavy-load regressions pass. |
+| V06 | COMPLETE IN SOURCE | 9c13764; message chronology, ties, missing dates and pagination regressions pass. |
+| V07 | COMPLETE IN SOURCE | 3977d52; bounded explicit enrichment repair persists results; ownership/source retained. |
+| V08 | COMPLETE IN SOURCE | bd45e46; durable failed IDs, later-page progress, retry bounds and History invariants tested. |
+| V09 | COMPLETE IN SOURCE | 0f3b1ee; disconnect/reconnect, retained data, CSRF and ownership tested. |
+| V10 | FAILED RELEASE GATE | Diagnostic recorded honestly; representative reviewed holdout absent; thresholds unchanged. |
+| V11 | PARTIAL / SECURITY ACTION OPEN | Local tests pass; operator reports exposed DB password; temporary laptop rule still present; live controls not accepted. |
+| V12 | BLOCKED | Windows diagnostic/Ubuntu CI are not target Render capacity; metrics empty, no target mixed-load result. |
+| V13 | COMPLETE FOR CODE CANDIDATE | Full local evidence plus successful remote backend/frontend CI at 30d7c35; closure docs/images are separately checked. |
+| V14 | PARTIAL, RESTORE UNVERIFIED | Operator-reported encrypted backup checks pass; no isolated restore/count/constraint/key validation. |
+| V15 | NOT EXECUTED | Live additive migration requires restore evidence and explicit approval. |
+| V16 | NOT EXECUTED | Live f53e22c is unchanged; no production deployment approved/executed. |
+| V17 | NOT EXECUTED | Real invited-user hosted acceptance requires the approved deployment. |
+| V18 | PARTIAL | Branch, installation guide, architecture, limitations and sanitized gallery prepared/published; release tag and V1-complete claim withheld. |
+
+Thus the closed checklist items are **V01, V05, V06, V07, V08, V09 and V13**, with
+source completion distinct from hosted acceptance. No other gate is checked merely
+because a recipe, backup archive, screenshot or passing unit test exists.
+
+### Classifier and quality verdict
+
+The prior artifact hashes/parity results remain the evidence of record. No new model
+approval or provenance reconciliation was supplied in this closure turn. The existing
+export matches its saved ten-reference outputs, not the changed current source.
+The source-weight mismatch and missing approval remain unresolved. No retraining,
+re-export, model substitution, repeated holdout use or threshold reduction occurred.
+
+The existing finite 20-example synthetic diagnostic remains **7/10 English, 1/10
+Arabic, 8/20 total**. This is not representative accuracy. The release policy still
+requires >=300 reviewed examples, >=20 per class, >=50 per language and its original
+quality/calibration constraints. Status inspection found 100 development attestations
+but no representative final holdout in the inspected directory. **Quality is not approved.**
+
+### Encrypted backup evidence and database security verdict
+
+The operator provided this evidence; the agent did not repeat completed verification,
+request a passphrase, inspect private mailbox content or assume access to Windows D:.
+
+- Local encrypted archive name: `inbox-nizer-20261024-170201-bb51b442.dump.gpg`.
+- Reported encryption: **GPG AES256**.
+- Reported SHA-256: **49b141a24d7dae46039e15888a1cd76509a948e6ad43a498f0fece8ebe27d191**.
+- Reported verification: **CHECKSUM OK**, **BACKUP DECRYPTION VERIFIED**,
+  **POSTGRESQL ARCHIVE LIST OK**, **242 archive entries**, **16 TABLE DATA entries**.
+- Reported script names: verify_backup.py and check_inbox_nizer_archive.py.
+  No separate verification manifest is confirmed.
+- **No full isolated restore has been tested.** Archive listing/decryption does not
+  prove restored schema, counts, uniqueness/FKs, checkpoints, application credential
+  decryption or recovery time. No archive, encryption key or secret is published.
+
+The operator reports a database password exposed in an earlier screenshot for role
+`inboxnizer_beta_db_user`. Flag it for coordinated rotation; no password is reproduced
+and no rotation is claimed. Preserve OAuth keys and backup passphrase independently.
+
+A new read-only Render recheck found **one /32 rule labelled Temporary laptop backup
+still present**. Earlier empty-allowlist observations are historical and do not prove
+current cleanup. **Temporary external access removal is NOT verified.** No rule was
+changed without approval. The exact proposed removal and coordinated role-password /
+client-config cutover, risks and verification are in deploy/RENDER_RELEASE.md. The
+available MCP interface does not expose those Postgres mutations in this session.
+
+### Render and portfolio verdict
+
+Read-only closure checks: live commit still f53e22cd3c4a881671e06ab6a00b3bd2b9d393c0;
+auto-deploy remains off. Database remains Free PostgreSQL 18 with reported expiration
+**21 November 2026, 06:37:29 UTC**. Memory/limit/latency metrics returned empty series.
+Unauthenticated HTTPS checks for root, health/live and auth/session timed out after
+about 30 seconds from this workstation. This is inconclusive reachability evidence,
+not proof of adequate security/capacity and not a diagnosis of service failure.
+
+README now leads with the actual product, source-vs-hosted status, runtime capability
+table, architecture, install prerequisites and known limitations. New portfolio
+screenshots show the existing built UI with **render-free** capability fixtures:
+Arabic/English desktop Inbox and mobile Settings. All senders are example.invalid;
+all content/classifications/summaries/connection state are synthetic. External browser
+requests and local database connections were blocked. Captures at 1440/390 px passed
+page-error, hidden-unsupported-link and overflow assertions and were visually reviewed.
+They are UI demonstration material, not real Gmail/inference/production evidence.
+
+### Finite remaining actions and approval boundary
+
+**NO-GO for hosted V1 completion.** No new feature work is needed to describe these gates:
+
+1. Security first: obtain approval to remove the single labelled temporary /32 rule;
+   have the authorized operator remove it and verify the read-back. Coordinate
+   approval, maintenance and client activation for rotation of the exposed existing
+   role. Verify the old password is rejected and the updated clients work; do not
+   silently trigger the current migration-on-start command during that cutover.
+2. The operator restores the already verified encrypted archive into a distinct
+   isolated database using protected local keys, then records schema/count/FK/unique/
+   checkpoint and credential-decryption results. No passphrase needs to enter chat.
+3. Identify the approved existing classifier and reconcile its export hashes/parity.
+   Supply the representative human-reviewed holdout and run the unchanged gate once.
+   Any model/retraining scope change needs an explicit decision if the gate fails.
+4. Resolve the database's expiry/zero-cost continuity constraint with an authorized
+   decision; no paid upgrade or hosting migration has been inferred or performed.
+5. Obtain target-host evidence for configuration/runtime DB privileges, TLS/proxy/
+   cookies/private logging and bounded sync with concurrent Inbox under actual memory
+   limits. Empty metrics or CI success cannot substitute for that acceptance.
+6. Only after those prerequisites pass, approve the exact owner-only migration to
+   e6fb80357cd1 and pinned deployment, with a verified backup and rollback compatible
+   with pending failure metadata. Then execute V17 live acceptance before tagging V1.
+
+The GitHub branch and portfolio materials can be reviewed now, explicitly as a release
+candidate. They are not a declaration that every V1 gate is closed. No main merge,
+production deploy, live migration, credential/network change or mailbox deletion
+was performed in this closure pass.

@@ -21,13 +21,14 @@ self-managed full-runtime setup; do not apply them to this service.
   before Uvicorn. Neither command was changed in the Dashboard.
 - PostgreSQL: `inboxnizer-beta-db`, `dpg-dbcquaa9lscs73eqtki0-a`, PostgreSQL 18,
   Free, Frankfurt, available. No managed connection pool, replicas or HA.
-  External IP allowlist is empty. The application URL/role and any external
+  Closure recheck: one temporary /32 rule, "Temporary laptop backup", remains.
+  Removal is NOT verified. The application URL/role and any external
   pooler remain unverified; session advisory locks require session affinity.
 - Database expiration reported by Render: **2026-11-21 06:37:29.181483 UTC**.
   A durable zero-cost beta cannot be promised with that expiration unresolved.
   No paid upgrade or hosting migration is authorized by this recipe.
-- Read-only SQL through hosted MCP was refused because external access is
-  blocked. No firewall rules were changed. No schema/count/key/backup result
+- Earlier read-only SQL through hosted MCP was refused when the allowlist was
+  empty. The later temporary laptop rule does not establish MCP access. No firewall rules were changed. No schema/count/key/backup result
   can be inferred from the platform saying the database is available.
 - Metrics returned empty memory/latency series. Public HTTPS probes from this
   workstation timed out (35 seconds per request); availability/TLS/cookies
@@ -109,10 +110,57 @@ per-class, Finance, calibration and ambiguity limits. Current inspected review
 metadata has 100 development attestations and no final holdout in that directory.
 Do not relabel examples, lower thresholds or consume a holdout repeatedly to pass.
 
-## Protected backup and restoration gate — NOT executed
+## Protected backup and restoration gate — partial operator evidence
+
+The operator supplied the following evidence on 24 October; these completed checks
+were not repeated, and no passphrase was requested or printed:
+
+- Encrypted local backup: `inbox-nizer-20261024-170201-bb51b442.dump.gpg` (Windows D: drive).
+- Encryption reported: GPG AES256.
+- SHA-256: `49b141a24d7dae46039e15888a1cd76509a948e6ad43a498f0fece8ebe27d191`.
+- Operator results: CHECKSUM OK; BACKUP DECRYPTION VERIFIED; POSTGRESQL ARCHIVE
+  LIST OK; 242 archive entries; 16 TABLE DATA entries.
+- Verification scripts reported: verify_backup.py and check_inbox_nizer_archive.py.
+  No separate verification manifest is confirmed. The backup was not opened,
+  copied, uploaded or assumed accessible by this agent.
+- **Full database restoration has NOT been tested.** These checks do not prove
+  schema/count/constraint equivalence, credential decryption after restore, RPO/RTO
+  or restored application operation. Continue with the isolated-restore gate below.
+
+### Security actions requiring approval
+
+The operator reports the password for `inboxnizer_beta_db_user` was exposed in a
+screenshot. Treat that password as compromised. No exposed value is reproduced in
+this repository. OAuth encryption keys and the backup passphrase are separate and
+must be preserved; database password rotation does not justify rotating them.
+
+Exact proposed operations, **not executed**:
+
+1. On `inboxnizer-beta-db`, remove only the temporary /32 entry labelled
+   **Temporary laptop backup**, then read back Networking/IP rules to confirm no
+   external entries remain. This closes that laptop's direct DB access; it does not
+   remove data or change Render's internal connection. Coordinate any remaining
+   operator work before closing access. The closure recheck still found this rule.
+2. In an approved maintenance window, rotate only `inboxnizer_beta_db_user`'s
+   password using the database owner's authorized mechanism. Keep the new secret
+   outside commands, screenshots and Git. Update every legitimate dependent client,
+   including the existing service's protected DATABASE_URL, then activate it through
+   a separately approved deployment operation. New connections can fail between
+   password change and client activation; existing pooled connections are not proof
+   that the new password works. The current start command auto-migrates, so do not
+   blindly deploy/restart to apply a credential change before reviewing that risk.
+3. Verify old-password authentication fails, new runtime connections/readiness work,
+   and account/source/checkpoint data are preserved. Record only results, not secrets.
+   No rotation or successful post-rotation check is claimed here.
+
+Approval and authorized operator access are required before either operation. The
+available MCP tools in this session cannot edit Postgres networking or rotate its
+credentials. Do not substitute database deletion/recreation or a new public rule.
+
+### Remaining restoration procedure
 
 1. Obtain an authorized database connection without making the database public.
-   Hosted MCP cannot reach this empty external allowlist. An operator can use an
+   The temporary laptop rule is not a general authorized access path for hosted MCP. An operator can use an
    existing approved network path or separately approve narrowly scoped temporary
    access. Do not add 0.0.0.0/0. Keep passwords in protected PostgreSQL service /
    password files, never shell arguments or reports. PostgreSQL 18 client binaries

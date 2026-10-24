@@ -1,20 +1,81 @@
 # inbox-nizer
 
-**Current status and release scope:** [PROJECT_STATUS.md](PROJECT_STATUS.md) is the
-source of truth for the V1 checklist, known blockers and verified capabilities.
-The hosted release is still being qualified; full/local features are not all
-available in the Render Free runtime. The [existing Render release recipe](deploy/RENDER_RELEASE.md)
-records the verified topology, proposed commands and outstanding approval/recovery gates;
-it is not a claim that this candidate is live.
+Inbox-nizer is a read-only Gmail organizer with an Arabic/English React interface.
+It imports mail in small resumable batches and presents messages, category/priority
+suggestions, extractive summaries and source-linked tasks in one workspace.
 
-An email organization project built with Python, FastAPI, PostgreSQL and a bilingual
-Arabic/English React interface. It started with DistilBERT fine-tuning and now includes
-read-only Gmail synchronization, classification, summaries, tasks, semantic search
-and questions grounded in the user's stored emails.
+**Portfolio release candidate — hosted V1 is not yet approved.** The published
+release branch contains the tested application and release preparation. The live
+Render service still runs an older commit. [PROJECT_STATUS.md](PROJECT_STATUS.md)
+is the release contract and evidence ledger; [RENDER_RELEASE.md](deploy/RENDER_RELEASE.md)
+contains the existing-host installation and recovery procedure.
 
-This is a cooperative-training portfolio project. Representative mailbox accuracy and
-a verified public deployment remain outstanding. No model performance claim is made
-here. See [validation and limitations](docs/VALIDATION.md).
+The local candidate passed **1,380 backend tests and 162 frontend tests**; GitHub
+backend/frontend CI also passed at [30d7c35](https://github.com/tala-bulids/inbox-nizer/actions/runs/40102885080).
+These checks prove application behavior under their stated fixtures, not production
+capacity, real Google consent or classifier accuracy.
+
+## Product preview
+
+Actual production-build UI, using **synthetic example.invalid messages and mocked
+API responses** with the render-free capability profile. The displayed categories,
+summaries and connection state are fixtures, not live inference or Gmail results.
+No private mailbox data appears in these screenshots.
+
+![Arabic inbox with synthetic messages](docs/portfolio/inbox-ar.png)
+
+[English inbox](docs/portfolio/inbox-en.png) · [Mobile connection settings](docs/portfolio/settings-mobile.png) · [Screenshot provenance](docs/portfolio/README.md)
+
+The intended journey is Google app sign-in → separate Gmail read-only consent →
+automatic bounded import → inbox/detail/tasks → incremental updates. Reload resumes
+saved progress. Disconnect stops Gmail access while retaining imported data; reconnect
+uses the same account. The browser drives continuation, so it must remain active.
+
+## Architecture and runtime scope
+
+```mermaid
+flowchart LR
+  Browser[React + TypeScript SPA] -->|same-origin /api| API[FastAPI]
+  API -->|OIDC sign-in + separate Gmail OAuth| Google[Google / Gmail readonly]
+  API --> DB[(PostgreSQL + pgvector)]
+  API --> Sync[Bounded sync + durable checkpoints]
+  Sync --> Source[Original email + derived processing states]
+  Source --> DB
+  Sync --> AI[Local classifier + extractive enrichment]
+```
+
+The existing Render topology uses one Python process to serve the built SPA and
+mounted API. Session cookies, CSRF validation, account ownership and encrypted OAuth
+credentials protect the application boundary. Advisory locks serialize account sync;
+Gmail IDs prevent duplicates. This is application ownership enforcement, not a claim
+of database row-level-security policies.
+
+| Capability | render-free | Full/local |
+| --- | --- | --- |
+| Inbox, details, summaries, tasks, Gmail connection/recovery | Implemented and tested locally | Preserved |
+| Classification | Provisioned FP32 ONNX; source approval/quality gate still blocked | Existing local classifier |
+| Semantic Search / Ask | Navigation/routes disabled; API rejects before heavy inference | pgvector, local embeddings and optional Qwen/GGUF |
+| Model downloads on a user request | None | Explicit offline provisioning required |
+
+No paid inference API is used. Hosted dependencies exclude Torch, Transformers,
+SentenceTransformer and llama-cpp; full/local implementations remain in the repository.
+See [installation](#full-application-setup), [models](docs/MODELS.md) and
+[validation](docs/VALIDATION.md) for requirements and limits.
+
+## Demonstrated limitations
+
+- The approved classifier identity is unresolved: current source weights differ from
+  the existing ONNX export's recorded source. Neither is silently approved for V1.
+- A 20-example public diagnostic scored **7/10 English, 1/10 Arabic**. This small
+  synthetic sample is not representative mailbox accuracy. Bilingual UI does not
+  imply validated Arabic classification. The human-reviewed holdout gate is unmet.
+- Linux memory/concurrent-workload capacity and actual hosted acceptance remain
+  unverified. Empty platform metrics are not evidence of adequate capacity.
+- An encrypted backup has operator-reported checksum/decryption/archive checks;
+  a real isolated database restoration has not been tested.
+- The current free database expires on **21 November 2026**. Continuity, coordinated
+  credential rotation and temporary-access cleanup are release blockers.
+- Invited-user access is the intended beta scope; this is not unrestricted public signup.
 
 ## Implemented features
 
@@ -34,10 +95,11 @@ here. See [validation and limitations](docs/VALIDATION.md).
 Categories: Business, Customer Support, Events & Invitations, Finance & Bills,
 Job Application, Newsletters, Personal, Promotions, Reminders, Travel & Bookings.
 
-## Classifier quick start
+## Install dependencies
 
-Python 3.11 is the validated interpreter. No database, Gmail credentials or web server
-is required for training, command-line prediction or evaluation.
+Python 3.11 is the validated interpreter. Application use also needs PostgreSQL,
+Google OAuth configuration and explicitly provisioned model artifacts. The optional
+research commands below do not require Gmail or a web server.
 
 ```powershell
 git clone --branch codex/inbox-nizer-release https://github.com/tala-bulids/inbox-nizer.git inbox-nizer
@@ -50,6 +112,12 @@ python -m pip install -r requirements.txt
 On Linux/macOS activate with `source env/bin/activate`. Direct Python dependencies
 are pinned to the tested environment; optional GGUF support is separate. CPU is supported.
 For CUDA-specific PyTorch packages, follow PyTorch's instructions for your hardware.
+
+## Optional classifier research workflow
+
+Training is not required to launch the app with an existing approved artifact, and
+is outside the current V1 closure scope. Continue to [application setup](#full-application-setup)
+when working on the product.
 
 ### Data and base model
 
@@ -110,12 +178,19 @@ and [model saving/loading](https://huggingface.co/docs/transformers/main_classes
 
 ## Full application setup
 
+Prerequisites: install dependencies above; obtain the approved classifier artifact
+and set `EMAIL_MODEL_PATH` for full/local use. Model weights and Google credentials
+are intentionally not distributed with this repository. There is currently no approved
+public classifier bundle, so a clean clone is not a turnkey hosted release. For
+render-free serving, use the separate checked-in recipe only after its approval gates.
+
 1. Install PostgreSQL with pgvector available. Provision an application database and a
    separate database ending in `_test`. Production needs distinct migration and
    restricted runtime roles.
 2. Copy `.env.example` to `.env` and replace database placeholders. Generate a key with
    `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-   and store it locally as `OAUTH_TOKEN_KEYS`.
+   and store it locally as `OAUTH_TOKEN_KEYS` for a new installation only. Preserve
+   all existing key generations when restoring or continuing an installation.
 3. For a **new empty development database**, run `python -m alembic upgrade head`.
    For an existing mailbox, first follow [backup, quarantine and ownership procedures](deploy/OPERATIONS.md).
    Maintenance/backfill scripts are not ordinary startup steps.
