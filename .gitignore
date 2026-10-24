@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.pyo
 
@@ -31,3 +32,29 @@ checkpoints/
 # OS Files
 .DS_Store
 Thumbs.db
+
+credentials.json
+token.json
+# Local GGUF generation models
+local_models/
+*.gguf
+
+# Private mailbox backups, local review exports and alternative secret files.
+*.dump
+*.backup
+backups/
+private_review/
+.env.*
+!.env.example
+!frontend/.env.example
+credentials*.json
+token*.json
+*.pem
+*.key
+
+# Local classifier artifacts and diagnostic outputs
+email_classifier/
+desktop.ini
+*.log
+.coverage
+htmlcov/

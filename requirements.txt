@@ -1,7 +1,29 @@
-torch
-transformers
-datasets
-accelerate
-huggingface_hub
-sentencepiece
-numpy
+# Tested with Python 3.11. Direct dependencies are pinned to the validated environment.
+# Optional local GGUF generation is installed separately from requirements-local.txt.
+torch==2.13.0
+transformers==5.14.1
+datasets==5.0.0
+accelerate==1.14.0
+huggingface_hub==1.24.0
+sentencepiece==0.2.2
+numpy==2.4.6
+onnxruntime==1.31.0
+scikit-learn==1.9.1
+
+fastapi[standard]==0.141.1
+pytest==9.1.1
+httpx==0.28.1
+
+google-auth-oauthlib==1.4.1
+google-api-python-client==2.200.0
+google-auth-httplib2==0.4.2
+beautifulsoup4==4.15.0
+
+SQLAlchemy==2.0.54
+psycopg[binary]==3.3.6
+python-dotenv==1.2.3
+cryptography==50.0.1
+alembic==1.20.0
+sentence-transformers==5.7.0
+pgvector==0.4.2
+geonamescache==3.0.0

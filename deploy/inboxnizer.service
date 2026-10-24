@@ -1,0 +1,37 @@
+# Linux systemd example; review paths, cache locations and memory on the host.
+[Unit]
+Description=Inbox+nizer API
+After=network-online.target postgresql.service
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=inboxnizer
+Group=inboxnizer
+WorkingDirectory=/srv/smart-inbox
+EnvironmentFile=/etc/inboxnizer/backend.env
+Environment=PYTHONUNBUFFERED=1
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=HF_HOME=/var/lib/inboxnizer/huggingface
+Environment=OMP_NUM_THREADS=2
+ExecStart=/srv/smart-inbox/env/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --root-path /api --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log --limit-concurrency 4 --timeout-keep-alive 5
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=330
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+StateDirectory=inboxnizer
+UMask=0077
+MemoryHigh=3G
+MemoryMax=4G
+CPUQuota=200%
+TasksMax=128
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

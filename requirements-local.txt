@@ -1,0 +1,3 @@
+# Optional Windows x64 CPU RAG backend. Never build from source.
+--only-binary=:all:
+llama-cpp-python @ https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.35/llama_cpp_python-0.3.35-py3-none-win_amd64.whl
