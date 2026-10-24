@@ -6,6 +6,11 @@ export type InboxFilters = NonNullable<
   operations["get_saved_emails_emails_get"]["parameters"]["query"]
 >;
 export const emails = {
+  retryEnrichment: (api: ApiClient, id: number) =>
+    api.request(`/emails/${id}/retry-enrichment`, {
+      method: "POST",
+      signal: AbortSignal.timeout(90_000),
+    }),
   list: async (api: ApiClient, filters: InboxFilters, signal?: AbortSignal) =>
     parse(
       inboxSchema,

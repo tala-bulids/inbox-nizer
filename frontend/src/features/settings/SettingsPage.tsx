@@ -100,6 +100,15 @@ export function SettingsPage() {
                     </p>
                   )}
                   <div className="account-actions">
+                    {!!account.enrichment_failed_count && (
+                      <p role="status">
+                        {t(
+                          "مزامنة Gmail منفصلة عن المعالجة المساعدة. رسائل تحتاج إعادة معالجة من صفحة التفاصيل:",
+                          "Gmail sync is separate from enrichment. Open email details to retry failed derived information:",
+                        )}{" "}
+                        {account.enrichment_failed_count}
+                      </p>
+                    )}
                     <button
                       disabled={syncing || account.status !== "connected"}
                       onClick={() => update(account.id)}

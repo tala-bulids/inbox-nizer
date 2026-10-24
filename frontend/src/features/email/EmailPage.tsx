@@ -1,5 +1,5 @@
 import { Link, useParams, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail, ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLocale } from "../../app/locale";
@@ -25,6 +25,18 @@ export function EmailPage() {
   const { api } = useAuth();
   const { t, language } = useLocale();
   const isEn = language === "en";
+  const qc = useQueryClient();
+  const retry = useMutation({
+    mutationFn: () => emails.retryEnrichment(api, id),
+    retry: false,
+    onSettled: async () => {
+      await Promise.all(
+        [keys.emails, keys.accounts, keys.tasks].map((queryKey) =>
+          qc.invalidateQueries({ queryKey }),
+        ),
+      );
+    },
+  });
   const query = useQuery({
     queryKey: keys.detail(id),
     queryFn: ({ signal }) => emails.detail(api, id, signal),
@@ -103,6 +115,27 @@ export function EmailPage() {
               "Some derived information is not available yet. You can still read the email below.",
             )}
           </p>
+        )}
+        {email.processing.some(
+          (item) => item.status === "failed" || item.status === "pending",
+        ) && (
+          <div>
+            <button disabled={retry.isPending} onClick={() => retry.mutate()}>
+              {retry.isPending
+                ? t("جاري إعادة المعالجة…", "Retrying…")
+                : t(
+                    "إعادة معالجة المعلومات المساعدة",
+                    "Retry derived information",
+                  )}
+            </button>
+            <p className="muted">
+              {t(
+                "محاولة واحدة لهذه الرسالة. إذا استمر الفشل، حاول بعد إصلاح الخدمة. نص البريد محفوظ.",
+                "One attempt for this email. If it still fails, retry after the service is repaired. Stored email is preserved.",
+              )}
+            </p>
+            {retry.isError && <ErrorState error={retry.error} />}
+          </div>
         )}
         <section className="derived">
           <h2>

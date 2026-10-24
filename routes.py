@@ -161,3 +161,9 @@ def classify(request: EmailRequest, principal=Depends(current_user)):
             status_code=500,
             detail="Email classification failed"
         )
+
+
+@router.post('/emails/{email_id}/retry-enrichment')
+def retry_email_enrichment(email_id: int, db: Session = Depends(get_db)):
+    from gmail_sync import retry_enrichment
+    return retry_enrichment(db, email_id)

@@ -99,7 +99,7 @@ def _tasks(email, db):
                         setattr(task, field, matches[0].get(field))
 
 
-def process_email(db, email, *, commit_stages=False, deadline=None):
+def process_email(db, email, *, commit_stages=False, deadline=None, retry_failed=False):
     from time import monotonic
     from types import SimpleNamespace
     stages = [('clean', 'clean-v1', lambda e, s: setattr(e, 'body', extract_email_body(e.raw_payload or {}))),
@@ -133,6 +133,11 @@ def process_email(db, email, *, commit_stages=False, deadline=None):
         state = db.scalar(select(ProcessingState).where(ProcessingState.email_id == email.id, ProcessingState.stage == stage))
         if state and state.status == 'complete' and state.input_hash == digest and state.version == version:
             continue
+        if (state and state.status == 'failed' and state.attempts >= 3
+                and state.input_hash == digest and state.version == version and not retry_failed):
+            if stage == 'clean':
+                break  # Never derive information from stale/unclean source.
+            continue  # Another pending stage must not bypass the retry budget.
         changed = state is not None and (state.input_hash != digest or state.version != version
                                          or state.status != 'complete')
         if state is None:

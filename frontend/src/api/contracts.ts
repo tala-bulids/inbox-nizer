@@ -68,6 +68,7 @@ export const accountsSchema = z.object({
       sync_pending: z.boolean().optional(),
       initial_sync_pending: z.boolean().optional(),
       message_count: z.number().optional(),
+      enrichment_failed_count: z.number().optional(),
     }),
   ),
   sync_interval_seconds: z.number().optional(),

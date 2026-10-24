@@ -30,6 +30,9 @@ def accounts(db=Depends(get_db)):
                               last_synced_at=a.last_synced_at, sync_error=a.sync_error,
                               initial_sync_pending=a.history_id is None,
                               message_count=db.scalar(select(func.count(Email.id)).where(Email.account_id == a.id)),
+                              enrichment_failed_count=db.scalar(select(func.count(func.distinct(ProcessingState.email_id)))
+                                  .join(Email, Email.id == ProcessingState.email_id)
+                                  .where(Email.account_id == a.id, ProcessingState.status == 'failed')),
                               sync_pending=(db.get(GmailSyncState, a.id) is not None or
                                   db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
                                     .where(Email.account_id == a.id,

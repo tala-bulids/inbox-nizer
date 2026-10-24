@@ -35,6 +35,69 @@ async function open(path = "/") {
   return user;
 }
 
+test("failed enrichment retries once, preserves source and refreshes persisted results", async () => {
+  let repaired = false;
+  let calls = 0;
+  server.use(
+    http.get(base + "/emails/11", () =>
+      HttpResponse.json({
+        ...email,
+        predictions: repaired ? [{ category: "Business" }] : [],
+        processing: [{ status: repaired ? "complete" : "failed" }],
+      }),
+    ),
+    http.post(base + "/emails/11/retry-enrichment", async () => {
+      calls++;
+      await delay(150);
+      repaired = true;
+      return HttpResponse.json({ failed_stages: [] });
+    }),
+  );
+  const user = await open("/email/11");
+  await user.click(
+    await screen.findByRole("button", {
+      name: "إعادة معالجة المعلومات المساعدة",
+    }),
+  );
+  expect(
+    screen.getByRole("button", { name: "جاري إعادة المعالجة…" }),
+  ).toBeDisabled();
+  expect(screen.getByText(email.body)).toBeVisible();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "إعادة معالجة المعلومات المساعدة" }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(calls).toBe(1);
+  expect(await screen.findByText("أعمال")).toBeVisible();
+});
+
+test("failed retry stays actionable without automatic retry requests", async () => {
+  let calls = 0;
+  server.use(
+    http.get(base + "/emails/11", () =>
+      HttpResponse.json({ ...email, processing: [{ status: "failed" }] }),
+    ),
+    http.post(base + "/emails/11/retry-enrichment", () => {
+      calls++;
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  const user = await open("/email/11");
+  await user.click(
+    await screen.findByRole("button", {
+      name: "إعادة معالجة المعلومات المساعدة",
+    }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "إعادة معالجة المعلومات المساعدة" }),
+    ).toBeEnabled(),
+  );
+  expect(calls).toBe(1);
+  expect(screen.getByText(email.body)).toBeVisible();
+});
+
 test("canonical category badges follow the selected language in Inbox and detail", async () => {
   const categorized = {
     ...email,

@@ -246,6 +246,24 @@ def _batch(db, account_id):
 
 
 def sync_account(db, account_id):
+    return _locked_account_work(db, account_id, _batch)
+
+
+def retry_enrichment(db, email_id):
+    email = db.get(Email, email_id)
+    if email is None:
+        raise HTTPException(404, 'Email not found')
+    def repair(worker, account_id):
+        stored = worker.get(Email, email_id)
+        if stored is None:
+            raise HTTPException(404, 'Email not found')
+        failures = process_email(worker, stored, commit_stages=True,
+                                 deadline=monotonic() + TIME_BUDGET, retry_failed=True)
+        return {'failed_stages': failures}
+    return _locked_account_work(db, email.account_id, repair)
+
+
+def _locked_account_work(db, account_id, operation):
     if db.scalar(select(GmailAccount.id).where(GmailAccount.id == account_id)) is None:
         raise HTTPException(404, 'Gmail account not found')
     user_id = db.user_id
@@ -269,7 +287,7 @@ def sync_account(db, account_id):
                 raise HTTPException(409, 'Sync already in progress')
             with OwnedSession(bind=connection, user_id=user_id, expire_on_commit=False,
                               autoflush=False, join_transaction_mode='create_savepoint') as worker:
-                return _batch(worker, account_id)
+                return operation(worker, account_id)
         finally:
             if locked:
                 try:
