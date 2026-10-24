@@ -50,10 +50,50 @@ test("canonical category badges follow the selected language in Inbox and detail
   expect(await screen.findByText("مالية وفواتير")).toBeVisible();
   expect(screen.queryByText("Finance & Bills")).not.toBeInTheDocument();
   await user.click(screen.getByRole("heading", { name: email.subject }));
+  await screen.findByRole("heading", { name: "نص البريد الأصلي المخزن" });
   expect(await screen.findByText("مالية وفواتير")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Switch to English" }));
   expect(screen.getByText("Finance & Bills")).toBeVisible();
   expect(screen.queryByText("مالية وفواتير")).not.toBeInTheDocument();
+});
+
+test("inbox preserves server message chronology despite reverse import dates", async () => {
+  const items = [
+    {
+      ...email,
+      id: 21,
+      subject: "Newest sent",
+      sent_at: "2026-10-12T00:00:00Z",
+      created_at: "2026-10-01",
+    },
+    {
+      ...email,
+      id: 22,
+      subject: "Older sent",
+      sent_at: "2026-10-10T00:00:00Z",
+      created_at: "2026-10-15",
+    },
+    {
+      ...email,
+      id: 23,
+      subject: "Undated",
+      date: "",
+      created_at: "2026-10-20",
+    },
+  ];
+  server.use(
+    http.get(base + "/emails", () =>
+      HttpResponse.json({ ...inbox, count: 3, total: 3, emails: items }),
+    ),
+  );
+  await open();
+  await screen.findByText("Undated");
+  expect(
+    screen.getAllByRole("heading", { level: 2 }).map((e) => e.textContent),
+  ).toEqual(items.map((e) => e.subject));
+  expect(readInboxState(new URLSearchParams("sort=created_at")).sort_by).toBe(
+    "created_at",
+  );
 });
 test("filtered empty clears filters and resets offset but preserves sort", async () => {
   server.use(
@@ -103,7 +143,7 @@ test("only priority and multi-select category controls remain and reset paginati
   expect(screen.queryByLabelText("الاتجاه")).not.toBeInTheDocument();
   expect(last.has("has_tasks")).toBe(false);
   expect(last.has("has_deadline")).toBe(false);
-  expect(last.get("sort_by")).toBe("created_at");
+  expect(last.get("sort_by")).toBe("message_date");
   expect(last.get("limit")).toBe("20");
 });
 test("next previous and browser back forward restore URL and controls", async () => {
@@ -244,7 +284,7 @@ test("invalid URL state is bounded and return path cannot escape inbox", () => {
     ),
   ).toMatchObject({
     offset: 0,
-    sort_by: "created_at",
+    sort_by: "message_date",
     sort_order: "desc",
     priority_level: undefined,
   });

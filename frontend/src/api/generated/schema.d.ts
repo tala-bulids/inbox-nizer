@@ -767,7 +767,7 @@ export interface operations {
                 has_deadline?: boolean | null;
                 limit?: number;
                 offset?: number;
-                sort_by?: "created_at" | "priority_score" | "id";
+                sort_by?: "message_date" | "created_at" | "priority_score" | "id";
                 sort_order?: "asc" | "desc";
             };
             header?: never;

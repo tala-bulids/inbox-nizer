@@ -70,7 +70,7 @@ def get_saved_emails(
     has_deadline: bool | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    sort_by: Literal['created_at', 'priority_score', 'id'] = 'created_at',
+    sort_by: Literal['message_date', 'created_at', 'priority_score', 'id'] = 'message_date',
     sort_order: Literal['asc', 'desc'] = 'desc',
     db: Session = Depends(get_db)
 ):
@@ -101,7 +101,10 @@ def get_saved_emails(
         query = query.filter(deadline_exists if has_deadline else ~deadline_exists)
 
     total = query.with_entities(func.count(Email.id)).scalar()
-    sort_columns = {'created_at': Email.created_at, 'priority_score': Email.priority_score, 'id': Email.id}
+    # Parsed sent date, then Gmail internal date. Unknown dates stay last;
+    # import time is available only through the explicit legacy sort option.
+    sort_columns = {'message_date': func.coalesce(Email.sent_at, Email.message_at),
+                    'created_at': Email.created_at, 'priority_score': Email.priority_score, 'id': Email.id}
     column = sort_columns[sort_by]
     ordering = column.asc() if sort_order == 'asc' else column.desc()
     # Keep ties stable and unknown priorities last in either direction.

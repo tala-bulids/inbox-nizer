@@ -559,12 +559,13 @@
             "required": false,
             "schema": {
               "enum": [
+                "message_date",
                 "created_at",
                 "priority_score",
                 "id"
               ],
               "type": "string",
-              "default": "created_at",
+              "default": "message_date",
               "title": "Sort By"
             }
           },

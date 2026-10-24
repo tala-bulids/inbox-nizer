@@ -14,7 +14,10 @@ export function readInboxState(params: URLSearchParams): InboxFilters {
         ? priority
         : undefined,
     categories: params.getAll("category").filter(Boolean),
-    sort_by: sort === "priority_score" || sort === "id" ? sort : "created_at",
+    sort_by:
+      sort === "priority_score" || sort === "id" || sort === "created_at"
+        ? sort
+        : "message_date",
     sort_order: params.get("order") === "asc" ? "asc" : "desc",
   };
 }

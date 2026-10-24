@@ -31,10 +31,30 @@ def _get(params=None):
         return client.get('/emails', params=params)
 
 
+@pytest.mark.parametrize('order', ['asc', 'desc'])
+def test_message_date_order_filter_and_pages(test_database, order):
+    stamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = []
+    for i, day in enumerate([3, 1, 2, 2, None]):
+        row = Email(message_id=f'dates-{i}', priority_level='high',
+                    created_at=stamp + timedelta(days=10-i),
+                    sent_at=stamp + timedelta(days=day) if day and i != 2 else None,
+                    message_at=stamp + timedelta(days=day) if i == 2 else None)
+        test_database.add(row)
+        rows.append(row)
+    test_database.add(Email(message_id='excluded', priority_level='low', sent_at=stamp + timedelta(days=100)))
+    test_database.commit()
+    known = sorted(rows[:4], key=lambda e: (e.sent_at or e.message_at, e.id), reverse=order == 'desc')
+    params = {'priority_level': 'high', 'sort_order': order, 'limit': 2}
+    pages = [_get({**params, 'offset': offset}).json() for offset in (0, 2, 4)]
+    assert all(page['total'] == 5 for page in pages)
+    assert [e['id'] for page in pages for e in page['emails']] == [e.id for e in known + rows[4:]]
+
+
 def test_default_pagination(inbox):
     data = _get().json()
     assert (data['count'], data['total'], data['limit'], data['offset']) == (20, 25, 20, 0)
-    expected = sorted(inbox, key=lambda e: (e.created_at, e.id), reverse=True)[:20]
+    expected = sorted(inbox, key=lambda e: e.id, reverse=True)[:20]  # All dates unknown.
     assert [e['id'] for e in data['emails']] == [e.id for e in expected]
     assert all('body' not in email and 'summary' in email for email in data['emails'])
 
