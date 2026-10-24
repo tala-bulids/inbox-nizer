@@ -2,7 +2,9 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
-**Stabilize complete, 24 October:** V05–V09 are implemented in local commits `8037691`, `9c13764`, `3977d52`, `bd45e46`, `0f3b1ee`. Final validation at `0f3b1ee`: **1,370 backend tests passed, 5 opt-in checks skipped, 2 subtests passed; 162 frontend tests passed; lint, typecheck, build and API contract checks passed**. These commits are not pushed or deployed. The audit baseline above remains the reference for before/after findings. Stop here; deployment and the remaining V1 release gates are not part of Stabilize.
+**Verify & Deploy preparation, 24 October:** code candidate **`b3225fa0b6e2863aae1c445f1789d3303fabd8e1`** on `codex/inbox-nizer-release`; preparation commits `3405cf0`, `5ed8b46`, `b3225fa` preserve every Stabilize commit. **NO-GO for production.** Live Render remains `f53e22c`; no deployment, migration, configuration or credential changes were made. The current evidence and exact unblock steps are in the final section of this document and [the Render release runbook](deploy/RENDER_RELEASE.md). Earlier audit statements below are historical unless superseded by that evidence.
+
+**Stabilize complete, 24 October:** V05–V09 are implemented in local commits `8037691`, `9c13764`, `3977d52`, `bd45e46`, `0f3b1ee`. Final validation at `0f3b1ee`: **1,370 backend tests passed, 5 opt-in checks skipped, 2 subtests passed; 162 frontend tests passed; lint, typecheck, build and API contract checks passed**. These commits are not pushed or deployed. The audit baseline above remains the reference for before/after findings. That phase ended here; the subsequent user-authorized Verify & Deploy preparation is recorded below.
 
 This is the single source of truth for current product scope, release blockers and remaining work. Historical reports describe their dated experiments, not current release approval. Update this file when a checklist item is verified; include the tested commit, environment and evidence. Do not mark work complete merely because code exists.
 
@@ -55,7 +57,7 @@ Important differences needing an explicit disposition:
 - The original workspace has stronger candidate database-role checks in `deployment_health.py` and associated tests. Review those narrowly during the security gate; neither discard them nor assume all original-workspace changes are newer/better.
 - `docs/history/legacy-workspace.patch` archives the old accidental `t_gmail.py` diff. It is historical material, not a migration or a script to execute.
 
-The audit baseline `05f452a` was pushed with **`[skip render]`**, but its migration and model artifact were not deployed in the preceding work. Stabilize commits also use that marker and remain local. Do not push an unmarked follow-up commit to an auto-deploying service before those prerequisites are ready. Live deployed SHA, service configuration, database provider/revision, and current plan limits remain **unverified**.
+The audit baseline `05f452a` was pushed with **`[skip render]`**, but its migration and model artifact were not deployed in the preceding work. Stabilize commits also use that marker and remain local. Do not push an unmarked follow-up commit to an auto-deploying service before those prerequisites are ready. The subsequent read-only Render inventory is recorded below. Live schema, runtime role and connection configuration remain unverified.
 
 ## 3. Architecture as implemented
 
@@ -240,20 +242,20 @@ V05–V09 are implemented and individually tested in Stabilize; their final veri
 
 | Order | Priority / item | Depends on | Done when |
 | --- | --- | --- | --- |
-| V01 | MUST — disposition the remaining alternate-worktree deployment/security changes | This audit | A short include/archive decision exists for the deployment scripts, experimental ONNX/RAG guards and stronger role checks; release source remains on the requested branch, without a bulk merge. |
-| V02 | MUST — inventory the existing hosted setup | V01 | Record service/frontend URLs, deployed SHA/branch, build/start/proxy, runtime profile, DB provider/revision/connection mode and free-plan selection; record secret **names only**. |
-| V03 | MUST — identify the approved existing classifier | V01 | Source checkpoint, tokenizer/config/weight hashes and intended languages are recorded; the ONNX export matches that source and no model is silently promoted. |
-| V04 | MUST — commit one reproducible Render build/start recipe | V02, V03 | Fresh build installs required dependencies and hash-verified artifact; startup performs no training/download/migration; proxy/callback and one-worker settings are reproducible. |
+| V01 | DONE — narrow alternate-worktree disposition | This audit | A short include/archive decision exists for the deployment scripts, experimental ONNX/RAG guards and stronger role checks; release source remains on the requested branch, without a bulk merge. |
+| V02 | PARTIAL — service/deploy/plan known; live variables/schema/role blocked | V01 | Record service/frontend URLs, deployed SHA/branch, build/start/proxy, runtime profile, DB provider/revision/connection mode and free-plan selection; record secret **names only**. |
+| V03 | BLOCKED — current checkpoint/export provenance differ; approval missing | V01 | Source checkpoint, tokenizer/config/weight hashes and intended languages are recorded; the ONNX export matches that source and no model is silently promoted. |
+| V04 | PREPARED — committed and locally tested; approved artifact/Linux build pending | V02, V03 | Fresh build installs required dependencies and hash-verified artifact; startup performs no training/download/migration; proxy/callback and one-worker settings are reproducible. |
 | V05 | DONE locally — gate unsupported hosted Search/Ask paths | Hosted verification remains V02/V17 | `8037691`: navigation/direct routes agree with backend rejection before retrieval; full/local tests preserved. |
 | V06 | DONE locally — fix inbox chronological ordering | None | `9c13764`: out-of-import-order dates, missing dates, ties, filters, pagination and legacy sort verified. |
 | V07 | DONE locally — make failed enrichment recoverable and status truthful | Actual artifact qualification remains V03/V12 | `3977d52`: exhausted classifier is recoverable through a bounded user action; persisted result, source retention, ownership and retry limits verified. |
 | V08 | DONE locally — resolve persistent source-failure recovery | None | `bd45e46`: later pages progress, failures remain durable, retries are capped, reopening does not restart exhausted work, and History advances only after resolution. |
 | V09 | DONE locally — expose existing disconnect and retention behavior | None | `0f3b1ee`: Settings disconnect/retention guidance, credential removal, preserved source/checkpoint, same-account reconnect, CSRF/isolation and cascade behavior verified with disposable data. |
-| V10 | MUST — run one finite core-quality review | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
-| V11 | MUST — verify deployment security controls | V02, V04 | Runtime/owner roles and assumable privileges are verified; auth/CSRF/isolation, TLS/cookies, safe logging and request/admission limits work on the actual proxy topology. Document disconnect/deletion and invited access. |
-| V12 | MUST — qualify Linux resource and timing limits | V04, V05 | Cold/warm classification, long messages, a five-message sync and concurrent inbox read stay within the actual RAM/admission budget with headroom, no OOM and no ordinary batch exceeding the client's 90-second deadline. Record measurements; Windows RSS is not acceptance. |
-| V13 | MUST — pass the final automated candidate checks | V05–V09 | Targeted regressions then backend/frontend suites, API drift, lint, build and relevant browser smoke pass at one candidate SHA; every skipped check is either executed separately or justified by excluded scope. Remote CI is checked. |
-| V14 | MUST — prove backup restoration before migrating real mail | V02 | A protected backup restores into a separate database; aggregate counts, constraints, schema and credential decryption are checked without exposing data; rollback path is recorded. |
+| V10 | FAILED GATE — diagnostic complete; representative holdout missing | V03 | Freeze one artifact and review a fixed, recorded sample with existing tools. Set acceptance thresholds before scoring, report category/language coverage and task/summary errors; either approve the limited beta or record a specific failed gate. No invented accuracy claim. |
+| V11 | PARTIAL — local security tests pass; actual host controls unverified | V02, V04 | Runtime/owner roles and assumable privileges are verified; auth/CSRF/isolation, TLS/cookies, safe logging and request/admission limits work on the actual proxy topology. Document disconnect/deletion and invited access. |
+| V12 | BLOCKED — Windows diagnostics only; target Linux access unavailable | V04, V05 | Cold/warm classification, long messages, a five-message sync and concurrent inbox read stay within the actual RAM/admission budget with headroom, no OOM and no ordinary batch exceeding the client's 90-second deadline. Record measurements; Windows RSS is not acceptance. |
+| V13 | LOCAL PASS — final checks recorded below; remote candidate CI pending publication | V05–V09 | Targeted regressions then backend/frontend suites, API drift, lint, build and relevant browser smoke pass at one candidate SHA; every skipped check is either executed separately or justified by excluded scope. Remote CI is checked. |
+| V14 | BLOCKED — protected live database access/restore evidence unavailable | V02 | A protected backup restores into a separate database; aggregate counts, constraints, schema and credential decryption are checked without exposing data; rollback path is recorded. |
 | V15 | MUST — apply the additive migration safely | V13, V14 | Migration owner applies through `e6fb80357cd1`; existing accounts, emails and progress remain intact; restricted runtime readiness passes. No destructive downgrade or mailbox rebuild. |
 | V16 | MUST — deploy one pinned candidate | V11–V15 | Actual hosted SHA equals the tested candidate, artifact is verified, correct origin works, health succeeds and a real new email receives a saved category. |
 | V17 | MUST — complete live journey/recovery acceptance | V16 | Connect/returning account, multi-page import, usable inbox during sync, refresh/reopen, new-mail History update, no-change update, timestamp, duplicates, token reconnect, disconnect and two-tab cases have recorded results. Use approved test accounts/content only. |
@@ -400,3 +402,193 @@ Paths below are relative to the canonical release checkout. Tests, generated con
 | `frontend/src/test/auto-gmail.test.tsx` | Verify exhausted checkpoints stay stopped on reopen and disconnected accounts never auto-sync. |
 | `frontend/src/test/tasks-settings.test.tsx` | Verify disconnect/reconnect/retained Inbox, failed disconnect and accurate recovery wording. |
 | `deploy/OPERATIONS.md` | Document existing disconnect, retention, reconnection and operator deletion scope; no host configuration changes. |
+
+
+## Verify & Deploy evidence — 24 October 2026
+
+### Candidate, source consolidation and hosting
+
+Code/test candidate: `b3225fa0b6e2863aae1c445f1789d3303fabd8e1`. This report's
+subsequent commit changes documentation only. Branch remains
+`codex/inbox-nizer-release`; no reset, main merge, model replacement or bulk
+worktree merge. Original and experimental dirty worktrees were not edited.
+
+- `3405cf0`: narrowly adopted stronger readiness checks from the original worktree.
+  Owner and admin role membership is rejected even when NOINHERIT hides immediate
+  privileges; database/schema/table ownership and DDL checks remain read-only.
+  This is conservative and may reject roles with unusable memberships. It does
+  not claim PostgreSQL RLS or verify the actual hosted runtime role.
+- `5ed8b46`: committed the existing one-process SPA + `/api` topology as
+  `deploy/render_app.py`, build/start scripts, serving-only direct requirements
+  and 63 transitive constraints. Build checks reject heavy packages and smoke
+  the provisioned ONNX artifact offline. Startup requires production settings,
+  uses one worker, suppresses access logs and performs no migration/download.
+  Added a finite, text-free diagnostic report tool. Public example labels now
+  import the shared contract directly, avoiding an unnecessary sklearn import.
+- `b3225fa`: corrected outdated browser test expectations for Update now,
+  disconnect/reconnect and successful OAuth redirect; added the hosted profile
+  browser flow. No frontend product code or design changed in this phase.
+
+Experimental int8 classifier/embedding loading, render_models.py, independent
+API-only start command, RAG feature flag and presentation changes remain excluded.
+Existing full-runtime and training dependencies are unchanged. No checkpoint,
+artifact, Gmail source, OAuth credential or saved continuation was overwritten.
+
+User-confirmed read-only workspace: **Tala's workspace**, `tea-d5domjogjchc73dquke0`.
+Service `srv-dbcqvja9lscs73er2pu0` is Python/Free/Frankfurt, one instance, repository
+release branch, auto-deploy off, no health-check path. Live deploy
+`dep-dbdg1abncjis73a2vvg0` runs **`f53e22cd3c4a881671e06ab6a00b3bd2b9d393c0`**.
+Its build generates a wrapper serving the SPA and mounted API on
+`https://inbox-nizer-beta.onrender.com`; startup still automatically migrates.
+The proposed replacement in the runbook has **not** been applied.
+
+Database `dpg-dbcquaa9lscs73eqtki0-a` is Free PostgreSQL 18 in Frankfurt, with no
+managed pool/replicas/HA and no allowed external IPs. Render reports expiration
+**21 November 2026 at 06:37:29 UTC**. Durable zero-cost operation is unresolved.
+Hosted MCP's read-only SQL query was blocked by that access policy; we did not
+open the firewall. The app's actual role, revision, connection/session affinity,
+counts, credential decryptability and backup capability remain unknown.
+
+Required variable **names** and exact proposed build/start/health commands are
+listed in `deploy/RENDER_RELEASE.md`; live values/names were not inspected because
+no read-environment MCP operation was available. Browser fallback failed to
+initialize (local CUA kernel assets unavailable). No secret values were printed.
+Public HTTPS requests to `/`, `/api/health/live`, `/api/health/ready` and
+`/api/auth/session` each timed out from this workstation after 35 seconds;
+this is an inconclusive network observation, not proof of an application outage.
+Render memory/latency metrics returned no samples. Actual TLS/cookies/proxy trust,
+request admission and platform logging still require hosted evidence.
+
+### Artifact identity and finite quality result
+
+Existing `private_review/gmail-classifier-export` is FP32 with external weights.
+Its recorded source safetensors SHA-256 starts `97a26b67`; the current local source
+checkpoint hash is **`1686c767582eab051298eb82fa048822b9c6142842f61b3a384f55e204f6902b`**.
+Config source hash still matches, but weights do not. The historical 19 October
+report says `selected_release_model: null`, `decision: BLOCKED`, and final holdout
+not ready. No model was silently approved, repacked, uploaded, activated or trained.
+The user was asked to identify the approved existing checkpoint; unresolved here.
+
+The existing export passed its ten-reference top-label/confidence parity check
+(tolerance 0.0001), session reuse and long-input test in the isolated serving
+runtime. This demonstrates parity with its saved references, **not with the
+changed current source checkpoint**. The source mismatch remains a release blocker.
+Runtime file hashes and diagnostic output are recorded in
+[the sanitized artifact evidence](docs/release/verify-20261024-classifier.json).
+
+Predefined classifier-release-v1 acceptance remains >=300 human-reviewed examples,
+>=20/class, >=50/language, accuracy >=90%, macro-F1 >=85%, and existing per-class,
+Finance, calibration, ambiguity and language-gap limits. No threshold was weakened.
+Status mode inspected 100 development review attestations, found no holdout in that
+review directory, and returned **failed, rating C: representative human-reviewed
+final holdout evaluation missing**. It did not open or consume a final holdout.
+
+Finite public diagnostic: **20 examples**, ten English and ten Arabic, one per
+language/category; **English 7/10 (70%), Arabic 1/10 (10%), combined 8/20 (40%)**.
+These are tiny synthetic diagnostics, not representative mailbox accuracy. They
+provide no basis for an Arabic quality claim. Task/summary regressions passed in
+the suite; a representative core-quality review is still missing. We did not select
+another model or retrain to improve these scores.
+
+### Performance evidence and limitations
+
+Windows 3.11.9, existing FP32 export, fresh isolated process: cold classification
+**0.398 s**, warm p95 **0.053 s** (20 examples), long-input p95 **0.649 s** (10 calls,
+2,000 synthetic words each). Fixed diagnostic limits were cold <=10 s, warm p95
+<=1 s, long p95 <=2 s, classifier process peak <=384 MiB. Windows memory was
+intentionally not recorded by the Linux RSS probe; its performance gate is false.
+No Linux distro was listed by WSL; no target Linux execution access was available.
+These timings are **not V12 acceptance** or whole-service memory/concurrency proof.
+
+Additional opt-in tests used guarded isolated PostgreSQL and synthetic providers:
+- Server-only login p95 21.155 ms (20 samples), session restore 5.979 ms (30).
+- Inbox first/later pages p95 24.009 / 32.770 ms (30 each), Tasks 46.386 ms (30).
+- No-change incremental sync p95 40.308 ms (30), with mocked Gmail history.
+- Bounded import: 12 synthetic messages over **5 + 5 + 2** requests, taking
+  **0.5465 / 0.4637 / 0.2742 seconds**, final has_more=false.
+No Google network, real provider failures, whole-server model memory, TLS or
+concurrent inbox workload is measured by those tests. Target Linux mixed-load
+qualification and the client's 90-second request budget remain open gates.
+
+### Automated verification
+
+The final candidate's application changes passed these checks; docs-only updates
+follow. Python was 3.11.9, Node 24.11.1. Test DB guards blocked production access.
+
+| Command/check | Result |
+| --- | --- |
+| Targeted wrapper/security/hosted-capability/Render-sync pytest | **48 passed**, 3.52 s |
+| Full backend `python -m pytest -q --tb=short -ra --basetemp private_review/pytest-verify-final` | **1,380 passed, 5 skipped, 2 subtests passed**, 64.01 s (final rerun at b3225fa; initial run 107.61 s) |
+| Isolated serving environment, same targeted tests plus `test_onnx_classifier.py` with explicit export | **49 passed**, 4.20 s; parity/long input/session reuse included |
+| `test_quality_data.py test_quality_regressions.py test_classifier_release.py` | **115 passed**, 14.89 s |
+| Opt-in `test_runtime_performance.py` | **1 passed**, 5.91 s |
+| Opt-in `test_sync_batches.py::test_bounded_batch_measurement` | **1 passed**, 1.47 s |
+| `npm test` | **162 passed, 10 files**, 140.99 s |
+| `npm run lint`, `npm run typecheck`, `npm run build` | Passed; lint repeated after browser-script edits |
+| `npm run api:generate` + generated-schema git diff | Passed, no drift |
+| Isolated runtime `main.app.openapi()` vs frontend snapshot | Exact equality |
+| Isolated serving dependency install, `pip check`, offline classifier smoke | Passed; no Torch/Transformers/SentenceTransformer/llama-cpp installed |
+| Isolated real wrapper requests with synthetic auth and DB connection blocker | Liveness/categories/SPA pass; Search/Ask reject 403 without heavy imports |
+| `UI_BROWSER_AUTH=1 npm run ui:check` against production SPA through new wrapper | Passed at **1440, 820, 390 px**, Arabic/English, no overflow/page errors, empty private browser storage |
+| `node scripts/check-hosted.mjs` against same wrapper | Passed at **1440, 390 px**: one click, 3 pages / 15 messages, timestamp change, reload, retained messages, disconnect/reconnect, direct Search/Ask rejection |
+| Bash syntax for both scripts; `git diff --check` | Passed |
+
+The browser APIs/Google redirects were synthetic; live DB access was blocked.
+Browser evidence does not claim real consent, Gmail sync or production acceptance.
+The full-suite skips were artifact parity and two benchmarks (executed separately
+above), plus the offline classifier-review UI and full-runtime Ask browser integration
+(outside hosted V1). Full-runtime SPA visual behavior was nevertheless smoke-tested.
+Remote CI for this unpushed candidate remains unverified.
+
+Resolved verification failures are retained here: default pytest temp-directory
+access denied (workspace-local basetemp fixed it); the development environment
+lacked ONNX Runtime (parity passed in the dedicated serving environment); diagnostic
+examples initially imported sklearn transitively (now import the same LABELS from
+the lightweight contract); exploratory mounted API checks lacked synthetic auth
+(corrected without relaxing production auth); browser smoke initially used obsolete
+sync/reconnect/callback expectations (updated and passed). No production behavior
+was changed to satisfy obsolete test wording. Non-failing dependency warnings:
+google-api-core Python 3.11 future support, Starlette/httpx deprecation, two Rollup
+comment annotations. No comprehensive dependency-advisory audit is claimed.
+
+### Database recovery, decision and exact unblock sequence
+
+**V14 is NOT passed.** No live dump, restore, schema inspection, row-count comparison,
+constraint validation or credential-decryption validation could be performed with
+the available access. Local migration tests passing is not restoration evidence.
+The runbook now specifies protected PostgreSQL 18 dump/restore commands, separate
+isolated target checks, count/constraint/key validation and owner-only additive
+migration to `e6fb80357cd1`. Nothing was executed against the real database.
+
+The old live f53e22c code must not be restarted against pending checkpoint objects
+written by Stabilize (`{id, attempts}`). Keep a compatible forward-fix path; otherwise
+an explicitly approved rollback needs the verified pre-activation database/key/code
+snapshot together in an isolated replacement, with post-snapshot-write loss addressed.
+Never erase failed IDs or advance History cursors as a rollback shortcut.
+
+**NO-GO for production and V1 completion.** Finite remaining gates:
+1. Identify the approved existing checkpoint; reconcile its exact config/tokenizer/
+   weights with a parity-verified FP32 export and protected bundle checksum. The
+   missing model approval is not permission to choose an experiment.
+2. Supply a genuine representative human-reviewed holdout under the unchanged
+   quality policy; freeze the approved artifact and evaluate once. Record an
+   honest failed gate if it misses criteria. No retraining is authorized here.
+3. Resolve Free Postgres expiration before claiming a durable beta. The current
+   zero-cost/no-hosting-migration contract does not authorize a paid upgrade or
+   new provider; an operator decision is required, with protected backup first.
+4. Provide an approved database access path and protected keys to the operator;
+   inspect schema/runtime role/session-affinity and perform the isolated restore
+   rehearsal in the runbook. Do not expose the DB publicly to unblock hosted MCP.
+5. Obtain target Linux execution/access and privately inspect required live variable
+   names/settings; qualify full-process memory, cold/warm/long inference, five-message
+   sync plus concurrent inbox, proxy/TLS/cookies/logging/admission behavior. Public
+   probes/empty metrics in this session were insufficient.
+6. Publish the exact candidate to the authorized release branch when ready, inspect
+   its remote CI, then present the exact migration/configuration/deploy actions,
+   immutable artifact and verified backup identity for explicit user approval.
+7. Only after that approval execute activation, actual invited-user hosted acceptance
+   and bounded portfolio publication. Do not merge main/change default branch.
+
+The existing running deployment and all source/stored user data were left untouched.
+No paid resource, live migration, credential rotation, push or deployment occurred.
+Stop here at the access/evidence boundary; do not treat local preparation as V1 done.

@@ -1,0 +1,41 @@
+{
+  "platform": "Windows",
+  "python": "3.11.9",
+  "artifact_sha256": {
+    "model.onnx": "bdbba9a5946e4913c422cfcc7cc3eae762b75646a63c9ea53d2f47dcca363043",
+    "weights.bin": "a14f1c89a38aa4d42fa21437095d185b1178c988474c3d1f5c3450eb8cbdd9c7",
+    "config.json": "2d12a75c7d4f06922a3a71a6c712e8889c8d321d49f4209c2a7561946ed6173b",
+    "tokenizer.json": "435667fab0c06c165b1283ecb422497c37124f2d6a35b2ac73dc876332fc9518"
+  },
+  "limits": {
+    "cold_seconds": 10,
+    "warm_p95_seconds": 1,
+    "long_p95_seconds": 2,
+    "classifier_process_peak_mib": 384
+  },
+  "measurements": {
+    "cold_seconds": 0.3978530999738723,
+    "warm_p95_seconds": 0.05321540008299053,
+    "warm_median_seconds": 0.0330953499651514,
+    "long_p95_seconds": 0.6489630999276415,
+    "classifier_process_peak_mib": null
+  },
+  "performance_gate": false,
+  "by_language": {
+    "en": {
+      "n": 10,
+      "correct": 7,
+      "accuracy": 0.7
+    },
+    "ar": {
+      "n": 10,
+      "correct": 1,
+      "accuracy": 0.1
+    }
+  },
+  "examples": 20,
+  "long_calls": 10,
+  "representative_quality": false,
+  "release_approved": false,
+  "limitations": "Public synthetic examples; no human-reviewed holdout, Google network, DB, concurrent inbox workload or full server memory. Linux results qualify only the machine that ran this command."
+}

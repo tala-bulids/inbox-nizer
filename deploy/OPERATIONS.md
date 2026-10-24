@@ -1,5 +1,7 @@
 # Deployment and recovery runbook
 
+For the current Render service, use [RENDER_RELEASE.md](RENDER_RELEASE.md). The nginx/systemd instructions below are historical self-managed/full-runtime examples, not the live Render topology.
+
 These are operator procedures, not claims that deployment, backups or recovery have run. The local audit on 15 October 2026 found a development environment, a current `c4d9e6f135ab` schema, and a runtime DB role without superuser, role/database creation, RLS bypass, database ownership or ownership of public tables. Production data was queried read-only. No production migration, grant, backup, service installation or reprocessing was performed.
 
 ## Install and acceptance

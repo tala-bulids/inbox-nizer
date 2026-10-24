@@ -3,7 +3,9 @@
 **Current status and release scope:** [PROJECT_STATUS.md](PROJECT_STATUS.md) is the
 source of truth for the V1 checklist, known blockers and verified capabilities.
 The hosted release is still being qualified; full/local features are not all
-available in the Render Free runtime.
+available in the Render Free runtime. The [existing Render release recipe](deploy/RENDER_RELEASE.md)
+records the verified topology, proposed commands and outstanding approval/recovery gates;
+it is not a claim that this candidate is live.
 
 An email organization project built with Python, FastAPI, PostgreSQL and a bilingual
 Arabic/English React interface. It started with DistilBERT fine-tuning and now includes
@@ -38,7 +40,7 @@ Python 3.11 is the validated interpreter. No database, Gmail credentials or web 
 is required for training, command-line prediction or evaluation.
 
 ```powershell
-git clone https://github.com/tala-bulids/inbox-nizer.git inbox-nizer
+git clone --branch codex/inbox-nizer-release https://github.com/tala-bulids/inbox-nizer.git inbox-nizer
 cd inbox-nizer
 python -m venv env
 .\env\Scripts\Activate.ps1
