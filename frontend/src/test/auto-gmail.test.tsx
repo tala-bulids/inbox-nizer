@@ -13,6 +13,7 @@ let lastSync: string | null;
 let pending: boolean;
 let status: string;
 let calls: number;
+let sourceFailed: number;
 function Harness() {
   const { states, update } = useGmailSync();
   return (
@@ -47,6 +48,7 @@ function accountResponse() {
         sync_pending: pending,
         initial_sync_pending: !lastSync,
         message_count: 0,
+        source_failed_count: sourceFailed,
       },
     ],
   };
@@ -57,8 +59,9 @@ beforeEach(() => {
   pending = false;
   status = "connected";
   calls = 0;
+  sourceFailed = 0;
   api.request.mockReset().mockImplementation(async (path: string) => {
-    if (path.endsWith("/sync")) {
+    if (path.includes("/sync")) {
       calls++;
       lastSync = new Date().toISOString();
       pending = false;
@@ -83,6 +86,24 @@ const settle = async () => {
   });
 };
 
+test("exhausted source failures stay stopped on reopen and allow an explicit retry", async () => {
+  sourceFailed = 1;
+  lastSync = null;
+  const view = mount();
+  await settle();
+  expect(calls).toBe(0);
+  view.unmount();
+  mount();
+  await settle();
+  expect(calls).toBe(0);
+  fireEvent.click(screen.getByText("update"));
+  await settle();
+  expect(calls).toBe(1);
+  expect(
+    api.request.mock.calls.some(([path]) => path.includes("retry_failed=true")),
+  ).toBe(true);
+});
+
 test("fresh account auto starts and a resumed checkpoint also starts on reopen", async () => {
   lastSync = null;
   const view = mount();
@@ -99,7 +120,7 @@ test("fresh account auto starts and a resumed checkpoint also starts on reopen",
 test("five consecutive failures stop automatic retries until a new session or manual update", async () => {
   lastSync = null;
   api.request.mockImplementation(async (path: string) => {
-    if (!path.endsWith("/sync")) return accountResponse();
+    if (!path.includes("/sync")) return accountResponse();
     calls++;
     throw new ApiError(503);
   });
@@ -154,7 +175,7 @@ test("revoked connection never auto-syncs and repeated manual clicks stay serial
     release = resolve;
   });
   api.request.mockImplementation(async (path: string) => {
-    if (!path.endsWith("/sync")) return accountResponse();
+    if (!path.includes("/sync")) return accountResponse();
     calls++;
     await held;
     return {
@@ -179,7 +200,7 @@ test("revoked connection never auto-syncs and repeated manual clicks stay serial
 test("temporary errors back off instead of creating a repeated auto-sync loop", async () => {
   lastSync = null;
   api.request.mockImplementation(async (path: string) => {
-    if (!path.endsWith("/sync")) return accountResponse();
+    if (!path.includes("/sync")) return accountResponse();
     calls++;
     throw new ApiError(429);
   });

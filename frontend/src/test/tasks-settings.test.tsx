@@ -108,7 +108,7 @@ test.each([409, 503, "network"])(
     );
     const user = await open("/settings");
     await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
-    await screen.findByText(/تعذر إكمال التحديث الآن/);
+    await screen.findByText(/لم يكتمل التحديث/);
     expect(calls).toBe(2);
     expect(document.body).not.toHaveTextContent("PRIVATE");
     await user.click(screen.getByRole("button", { name: "تحديث الآن" }));
@@ -134,7 +134,7 @@ test.each(["partial", "stalled"])(
     );
     const user = await open("/settings");
     await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
-    await screen.findByText(/تعذر إكمال التحديث الآن/);
+    await screen.findByText(/لم يكتمل التحديث/);
     expect(calls).toBe(reason === "partial" ? 1 : 2);
     expect(screen.getByRole("button", { name: "تحديث الآن" })).toBeEnabled();
   },
@@ -363,9 +363,9 @@ test.each([409, 503])(
     );
     const user = await open("/settings");
     await user.click(await screen.findByRole("button", { name: "تحديث الآن" }));
-    expect(
-      await screen.findByText(/تعذر إكمال التحديث الآن/),
-    ).not.toHaveTextContent("PRIVATE");
+    expect(await screen.findByText(/لم يكتمل التحديث/)).not.toHaveTextContent(
+      "PRIVATE",
+    );
     expect(calls).toBe(1);
   },
 );

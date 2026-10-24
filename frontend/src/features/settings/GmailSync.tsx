@@ -104,6 +104,7 @@ export function GmailSyncProvider({ children }: { children: ReactNode }) {
             show("running");
             if (document.visibilityState === "hidden") controller.abort();
           },
+          manual,
         );
         if (result.reason === "complete") {
           failures.current.delete(account.id);
@@ -194,6 +195,7 @@ export function GmailSyncProvider({ children }: { children: ReactNode }) {
           }));
         if (!latest) return;
         for (const account of latest.accounts) {
+          if (account.source_failed_count && !account.sync_pending) continue;
           const stale =
             !account.last_synced_at ||
             Date.now() - Date.parse(account.last_synced_at) >= interval;
@@ -243,8 +245,8 @@ export function GmailSyncNotice() {
       {preparing.phase === "running"
         ? t("جاري تجهيز بريدك", "Preparing your inbox")
         : t(
-            "سنكمل تجهيز البريد تلقائيًا عند فتح التطبيق.",
-            "We will resume preparing your inbox when you open the app.",
+            "التقدم محفوظ. راجع الإعدادات لإعادة المحاولة عند الحاجة.",
+            "Progress is saved. Check Settings to retry if needed.",
           )}{" "}
       {t("تم تجهيز", "Prepared")} {preparing.count} {t("رسالة.", "messages.")}{" "}
       {t(

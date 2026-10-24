@@ -88,6 +88,16 @@
               "type": "integer",
               "title": "Account Id"
             }
+          },
+          {
+            "name": "retry_failed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Retry Failed"
+            }
           }
         ],
         "responses": {

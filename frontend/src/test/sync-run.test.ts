@@ -14,6 +14,34 @@ const batch = {
 };
 afterEach(() => vi.restoreAllMocks());
 
+test("durable source failures do not block later pages; explicit retry is one batch only", async () => {
+  const sync = vi
+    .spyOn(accounts, "sync")
+    .mockResolvedValueOnce({
+      ...batch,
+      failed_count: 1,
+      source_failed_count: 1,
+      progress_token: "next-page",
+    })
+    .mockResolvedValueOnce({
+      ...batch,
+      source_failed_count: 1,
+      recovery_required: true,
+      has_more: false,
+    });
+  const result = await syncAll(
+    api,
+    2,
+    new AbortController().signal,
+    () => {},
+    true,
+  );
+  expect(sync).toHaveBeenCalledTimes(2);
+  expect(sync.mock.calls[0]?.[3]).toBe(true);
+  expect(sync.mock.calls[1]?.[3]).toBe(false);
+  expect(result.reason).toBe("partial");
+});
+
 test("safety cap bounds a server that always claims new progress", async () => {
   let calls = 0;
   vi.spyOn(accounts, "sync").mockImplementation(async () => ({

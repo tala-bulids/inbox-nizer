@@ -24,6 +24,25 @@ PAGE_SIZE = 50
 TIME_BUDGET = 20  # Soft: checked between operations; Render uses bounded CPU inference.
 
 
+def source_id(item):
+    # Existing checkpoints contain strings. Failed entries additionally persist
+    # attempt counts in the existing JSON column; no source ID is discarded.
+    return item['id'] if isinstance(item, dict) else item
+
+
+def source_attempts(item):
+    return item.get('attempts', 0) if isinstance(item, dict) else 0
+
+
+def source_has_more(state):
+    return state is not None and (not state.listing_done or not state.pending or
+                                 any(source_attempts(item) < 3 for item in state.pending))
+
+
+def source_failure_count(state):
+    return sum(source_attempts(item) > 0 for item in state.pending) if state else 0
+
+
 def initial_query():
     days = int(os.getenv('GMAIL_INITIAL_SYNC_DAYS', '90'))
     if not 0 <= days <= 3650:
@@ -64,7 +83,8 @@ def _page(service, state):
     next_page = result.get('nextPageToken')
     if next_page and next_page == state.page_token:
         raise RuntimeError('Gmail pagination did not advance')
-    state.pending = list(dict.fromkeys(ids))
+    existing_ids = {source_id(item) for item in state.pending}
+    state.pending = state.pending + [ident for ident in dict.fromkeys(ids) if ident not in existing_ids]
     state.page_token = next_page
     state.listing_done = not state.page_token
 
@@ -95,13 +115,14 @@ def _progress_token(db, account_id, state):
             .order_by(Email.id).limit(1))
     checkpoint = dict(
         source=[state.generation, state.mode, state.anchor, state.target, state.page_token,
-                state.pending, state.listing_done] if state else None,
+                [[source_id(item), source_attempts(item) >= 3] for item in state.pending],
+                state.listing_done] if state else None,
         retry=[retry.id, retry.status, retry.input_hash, retry.version] if retry else None,
         missing=missing)
     return hashlib.sha256(json.dumps(checkpoint, sort_keys=True).encode()).hexdigest()
 
 
-def _batch(db, account_id):
+def _batch(db, account_id, retry_failed=False):
     deadline = monotonic() + TIME_BUDGET
     account = db.get(GmailAccount, account_id)
     if account is None:
@@ -126,8 +147,10 @@ def _batch(db, account_id):
             db.commit()
         pages = 0
         while result['count'] < MESSAGE_LIMIT and monotonic() < deadline:
-            if not state.pending:
-                if state.listing_done or pages >= PAGE_LIMIT:
+            # Listing later pages takes precedence over retrying failed bodies.
+            # Persist failures alongside fresh IDs, keeping the original anchor.
+            if not any(source_attempts(item) == 0 for item in state.pending) and not state.listing_done:
+                if pages >= PAGE_LIMIT:
                     break
                 db.commit()
                 try:
@@ -142,7 +165,7 @@ def _batch(db, account_id):
                             state.generation, state.anchor, state.target = str(uuid4()), None, None
                     else:
                         raise
-                    state.page_token, state.pending, state.listing_done = None, [], False
+                    state.page_token, state.listing_done = None, False
                     db.commit()
                     result['has_more'] = True
                     result['progress_token'] = _progress_token(db, account_id, state)
@@ -153,9 +176,12 @@ def _batch(db, account_id):
                     continue
             if monotonic() >= deadline:
                 break  # Listing may have consumed the remaining request budget.
-            message_id = state.pending[0]
-            if message_id in failed_ids:
-                break  # One attempt per failed source ID per request.
+            candidate = next((item for item in sorted(state.pending, key=lambda item: source_attempts(item) > 0)
+                              if source_id(item) not in failed_ids and
+                              (source_attempts(item) < 3 or retry_failed)), None)
+            if candidate is None:
+                break  # Exhausted IDs remain durable for explicit recovery.
+            message_id = source_id(candidate)
             result['count'] += 1
             try:
                 existing = db.scalar(select(Email).where(Email.account_id == account_id, Email.message_id == message_id))
@@ -182,7 +208,7 @@ def _batch(db, account_id):
                         result['emails'].append(dict(id=message_id, **{'from': email.sender}, date=email.email_date,
                             subject=email.subject, body=email.body,
                             predictions=[dict(category=p.category, confidence=p.confidence) for p in email.predictions]))
-                state.pending = state.pending[1:]
+                state.pending = [item for item in state.pending if source_id(item) != message_id]
                 db.commit()  # Atomic acknowledgement; replay is idempotent.
             except HTTPException:
                 db.commit()  # Persist a provider-triggered reconnect requirement.
@@ -194,7 +220,9 @@ def _batch(db, account_id):
                 failed_ids.add(message_id)
                 # Keep failures durable, but allow other IDs on this page to
                 # succeed. The cursor cannot advance while any failed ID remains.
-                state.pending = state.pending[1:] + [message_id]
+                attempts = source_attempts(candidate) + 1
+                state.pending = [item for item in state.pending if source_id(item) != message_id] + [
+                    {'id': message_id, 'attempts': attempts}]
                 db.commit()
 
         if not state.pending and state.listing_done:
@@ -224,8 +252,11 @@ def _batch(db, account_id):
             result['enrichment_failed'] += bool(failures)
         enrichment_pending = db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
             .where(Email.account_id == account_id, retryable_stages()).limit(1)) is not None
-        result['has_more'] = state is not None or enrichment_pending
-        account.sync_error = 'partial_failure' if result['failed_count'] or enrichment_pending else None
+        result['source_failed_count'] = source_failure_count(state)
+        result['recovery_required'] = bool(state and any(source_attempts(item) >= 3 for item in state.pending))
+        result['has_more'] = source_has_more(state) or enrichment_pending
+        account.sync_error = ('source_recovery_required' if result['recovery_required'] else
+                              'partial_failure' if result['source_failed_count'] or enrichment_pending else None)
         # Last successful Gmail contact with committed source progress, not the
         # completion time of optional classification/backfill work.
         if result['success_count'] or result['deleted'] or (state is None and not result['failed_count']):
@@ -245,8 +276,8 @@ def _batch(db, account_id):
         raise HTTPException(503, 'Gmail sync temporarily unavailable; retry safely') from error
 
 
-def sync_account(db, account_id):
-    return _locked_account_work(db, account_id, _batch)
+def sync_account(db, account_id, *, retry_failed=False):
+    return _locked_account_work(db, account_id, lambda worker, ident: _batch(worker, ident, retry_failed))
 
 
 def retry_enrichment(db, email_id):

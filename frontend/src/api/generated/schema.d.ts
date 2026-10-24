@@ -546,7 +546,9 @@ export interface operations {
     };
     sync_gmail_accounts__account_id__sync_post: {
         parameters: {
-            query?: never;
+            query?: {
+                retry_failed?: boolean;
+            };
             header?: never;
             path: {
                 account_id: number;

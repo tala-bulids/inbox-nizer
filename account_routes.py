@@ -17,7 +17,7 @@ from gmail_service import save_credentials
 from googleapiclient.discovery import build
 from google_auth_httplib2 import AuthorizedHttp
 from httplib2 import Http
-from gmail_sync import sync_account, connection_guard
+from gmail_sync import sync_account, connection_guard, source_has_more, source_failure_count
 from email_pipeline import retryable_stages
 from runtime_capabilities import runtime_profile
 
@@ -33,7 +33,8 @@ def accounts(db=Depends(get_db)):
                               enrichment_failed_count=db.scalar(select(func.count(func.distinct(ProcessingState.email_id)))
                                   .join(Email, Email.id == ProcessingState.email_id)
                                   .where(Email.account_id == a.id, ProcessingState.status == 'failed')),
-                              sync_pending=(db.get(GmailSyncState, a.id) is not None or
+                              source_failed_count=source_failure_count(db.get(GmailSyncState, a.id)),
+                              sync_pending=(source_has_more(db.get(GmailSyncState, a.id)) or
                                   db.scalar(select(ProcessingState.id).join(Email, Email.id == ProcessingState.email_id)
                                     .where(Email.account_id == a.id,
                                            retryable_stages()).limit(1)) is not None))
@@ -42,8 +43,8 @@ def accounts(db=Depends(get_db)):
 
 
 @router.post('/gmail/accounts/{account_id}/sync')
-def sync(account_id: int, db=Depends(get_db)):
-    return sync_account(db, account_id)
+def sync(account_id: int, retry_failed: bool = False, db=Depends(get_db)):
+    return sync_account(db, account_id, retry_failed=retry_failed)
 
 
 @router.post('/gmail/messages')

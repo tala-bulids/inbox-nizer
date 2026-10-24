@@ -94,12 +94,25 @@ export function SettingsPage() {
                   {account.sync_error && (
                     <p className="muted">
                       {t(
-                        "تعذر تحديث البريد مؤقتًا. سنحاول لاحقًا.",
-                        "Mail could not be updated temporarily. We will try again later.",
+                        "لم يكتمل تحديث البريد. التقدم محفوظ؛ استخدم تحديث الآن لإعادة المحاولة.",
+                        "Mail update is incomplete. Progress is saved; use Update now to retry.",
                       )}
                     </p>
                   )}
                   <div className="account-actions">
+                    {!!account.source_failed_count && (
+                      <p role="status">
+                        {t(
+                          "رسائل تعذر جلبها:",
+                          "Messages that could not be fetched:",
+                        )}{" "}
+                        {account.source_failed_count}.{" "}
+                        {t(
+                          "الرسائل الناجحة محفوظة. تحديث الآن يعيد محاولة عدد محدود من الرسائل المتعثرة؛ إذا استمر الفشل تواصل مع المسؤول.",
+                          "Successful messages are saved. Update now retries a bounded batch of failed messages; contact the administrator if failures persist.",
+                        )}
+                      </p>
+                    )}
                     {!!account.enrichment_failed_count && (
                       <p role="status">
                         {t(
@@ -136,8 +149,8 @@ export function SettingsPage() {
                   ) && (
                     <p role="status" className="muted">
                       {t(
-                        "تعذر إكمال التحديث الآن. التقدم محفوظ وسنحاول تلقائيًا لاحقًا.",
-                        "The update could not finish now. Progress is saved and we will retry automatically later.",
+                        "لم يكتمل التحديث. التقدم محفوظ؛ يمكنك استخدام تحديث الآن لإعادة المحاولة.",
+                        "The update is incomplete. Progress is saved; use Update now to retry.",
                       )}
                     </p>
                   )}

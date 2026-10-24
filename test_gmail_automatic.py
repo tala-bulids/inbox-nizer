@@ -16,7 +16,7 @@ def test_bad_source_does_not_block_other_ids_but_cursor_stays_safe(sync_env):
     service.users().messages().get.return_value.execute.side_effect = [ValueError('malformed'), message()]
     result = gmail_sync.sync_account(db, account)
     assert result['success_count'] == 1 and result['failed_count'] == 1
-    assert db.get(GmailSyncState, account).pending == ['bad']
+    assert db.get(GmailSyncState, account).pending == [{'id': 'bad', 'attempts': 1}]
     assert db.get(GmailAccount, account).history_id is None
     assert db.query(Email).one().message_id == 'good'
     service.users().messages().get.return_value.execute.side_effect = None

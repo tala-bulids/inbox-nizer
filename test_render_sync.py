@@ -208,7 +208,7 @@ def test_real_engine_releases_lock_and_connection(test_database, monkeypatch, ou
         elif outcome == 'interrupt':
             monkeypatch.setattr(gmail_sync, 'process_email', Mock(side_effect=KeyboardInterrupt))
         elif outcome == 'sql_error':
-            def aborted_transaction(worker, account_id):
+            def aborted_transaction(worker, account_id, retry_failed=False):
                 worker.get_bind().execute(text('SELECT 1 / 0'))
             monkeypatch.setattr(gmail_sync, '_batch', aborted_transaction)
         with OwnedSession(bind=test_engine, user_id=user_id) as db:

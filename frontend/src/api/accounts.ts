@@ -4,13 +4,21 @@ import { accountsSchema, oauthSchema, syncSchema, parse } from "./contracts";
 export const accounts = {
   list: async (api: ApiClient, signal?: AbortSignal) =>
     parse(accountsSchema, await api.request("/gmail/accounts", { signal })),
-  sync: async (api: ApiClient, id: number, signal?: AbortSignal) =>
+  sync: async (
+    api: ApiClient,
+    id: number,
+    signal?: AbortSignal,
+    retryFailed = false,
+  ) =>
     parse(
       syncSchema,
-      await api.request(`/gmail/accounts/${id}/sync`, {
-        method: "POST",
-        signal,
-      }),
+      await api.request(
+        `/gmail/accounts/${id}/sync${retryFailed ? "?retry_failed=true" : ""}`,
+        {
+          method: "POST",
+          signal,
+        },
+      ),
     ),
   signIn: async (api: ApiClient) =>
     googleRedirect(api, "/auth/google/login/start"),
@@ -34,6 +42,7 @@ export async function syncAll(
   id: number,
   signal: AbortSignal,
   onProgress: (progress: SyncProgress) => void | Promise<void>,
+  retryFailed = false,
 ): Promise<SyncRun> {
   const totals: SyncProgress = {
     success_count: 0,
@@ -48,14 +57,25 @@ export async function syncAll(
       api,
       id,
       AbortSignal.any([signal, AbortSignal.timeout(90_000)]),
+      retryFailed && batch === 0,
     );
     signal.throwIfAborted();
     totals.success_count += result.success_count;
     totals.failed_count += result.failed_count;
     totals.enrichment_failed += result.enrichment_failed;
     await onProgress({ ...totals });
-    if (result.failed_count) return { ...totals, reason: "partial" };
-    if (!result.has_more) return { ...totals, reason: "complete" };
+    // New servers keep failed IDs durably while allowing later pages to finish.
+    // Old servers retain the conservative stop-on-failure behavior.
+    if (result.failed_count && result.source_failed_count === undefined)
+      return { ...totals, reason: "partial" };
+    if (!result.has_more)
+      return {
+        ...totals,
+        reason:
+          result.source_failed_count || result.recovery_required
+            ? "partial"
+            : "complete",
+      };
     if (!result.progress_token || seen.has(result.progress_token))
       return { ...totals, reason: "stalled" };
     seen.add(result.progress_token);

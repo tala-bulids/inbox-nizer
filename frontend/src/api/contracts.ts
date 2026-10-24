@@ -69,6 +69,7 @@ export const accountsSchema = z.object({
       initial_sync_pending: z.boolean().optional(),
       message_count: z.number().optional(),
       enrichment_failed_count: z.number().optional(),
+      source_failed_count: z.number().optional(),
     }),
   ),
   sync_interval_seconds: z.number().optional(),
@@ -82,6 +83,8 @@ export const syncSchema = z.object({
   enrichment_failed: z.number(),
   has_more: z.boolean().optional(),
   progress_token: z.string().optional(),
+  source_failed_count: z.number().optional(),
+  recovery_required: z.boolean().optional(),
 });
 export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
