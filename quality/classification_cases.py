@@ -1,5 +1,5 @@
 """Generic bilingual intent pairs. No real senders or private mailbox text."""
-from .dataset import LABELS
+from classifier_contract import LABELS
 # Dev examples are eligible for training. Test examples are never used for selection.
 DEV = [
  ('Your colleague sent you a professional connection request. Connect with your network.', 'لديك طلب تواصل مهني من زميل. تابع أخبار شبكتك المهنية.'),
