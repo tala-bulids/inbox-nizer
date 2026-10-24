@@ -77,6 +77,8 @@ def test_cookie_mutations_require_origin_and_csrf(browser, extra):
     client,_=browser
     login(browser)
     assert client.post('/gmail/accounts/1/sync',headers=extra).status_code == 403
+    assert client.delete('/gmail/accounts/1/connection',headers=extra).status_code == 403
+    assert client.post('/emails/1/retry-enrichment',headers=extra).status_code == 403
     assert client.delete('/auth/session',headers=extra).status_code == 403
     assert client.get('/auth/google').status_code == 403
 

@@ -161,41 +161,44 @@ test("focus after an idle interval catches new mail without waiting for the time
   expect(calls).toBe(1);
 });
 
-test("revoked connection never auto-syncs and repeated manual clicks stay serialized", async () => {
-  status = "reconnect_required";
-  lastSync = null;
-  const view = mount();
-  await settle();
-  expect(calls).toBe(0);
-  view.unmount();
-  status = "connected";
-  lastSync = new Date().toISOString();
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  api.request.mockImplementation(async (path: string) => {
-    if (!path.includes("/sync")) return accountResponse();
-    calls++;
-    await held;
-    return {
-      count: 0,
-      success_count: 0,
-      failed_count: 0,
-      enrichment_failed: 0,
-      has_more: false,
-    };
-  });
-  mount();
-  await settle();
-  fireEvent.click(screen.getByText("update"));
-  fireEvent.click(screen.getByText("update"));
-  await settle();
-  expect(calls).toBe(1);
-  await act(async () => {
-    release();
-  });
-});
+test.each(["reconnect_required", "disconnected"])(
+  "%s never auto-syncs and repeated manual clicks stay serialized",
+  async (connectionStatus) => {
+    status = connectionStatus;
+    lastSync = null;
+    const view = mount();
+    await settle();
+    expect(calls).toBe(0);
+    view.unmount();
+    status = "connected";
+    lastSync = new Date().toISOString();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    api.request.mockImplementation(async (path: string) => {
+      if (!path.includes("/sync")) return accountResponse();
+      calls++;
+      await held;
+      return {
+        count: 0,
+        success_count: 0,
+        failed_count: 0,
+        enrichment_failed: 0,
+        has_more: false,
+      };
+    });
+    mount();
+    await settle();
+    fireEvent.click(screen.getByText("update"));
+    fireEvent.click(screen.getByText("update"));
+    await settle();
+    expect(calls).toBe(1);
+    await act(async () => {
+      release();
+    });
+  },
+);
 
 test("temporary errors back off instead of creating a repeated auto-sync loop", async () => {
   lastSync = null;

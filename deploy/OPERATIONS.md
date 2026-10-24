@@ -20,7 +20,27 @@ Sync now persists continuation and limits each request to five message IDs, two 
 
 The opt-in `test_runtime_performance.py` benchmark uses only the guarded `_test` database and rolled-back synthetic data. Set `INBOX_BENCHMARK_OUTPUT=results/release-readiness-20261015/runtime-performance.json`, then run `python -m pytest test_runtime_performance.py -q`. It measures sequential Google-session server work with a mocked provider, session restore, Inbox/Tasks and no-change incremental sync with mocked history. Its sample counts, warmups, nearest-rank p95 and exclusions are written into the output. It provides no Google network, model inference, production DB-pool, TLS/proxy or concurrent-load measurement.
 
-## Backup and restore
+## Gmail disconnect and invited-beta data deletion
+
+Settings exposes **Disconnect Gmail**. It deletes this account's stored OAuth
+credential and stops future Gmail access from this app. It does not delete the
+Gmail account row, imported mail, derived information, History cursor or saved
+checkpoint. This is not a Google-wide grant revocation. Reconnect through the
+existing consent flow using the same Gmail address to resume that account.
+An active sync holds the account lock; wait for the bounded request to finish
+and retry if another tab returns a conflict. Do not clear checkpoints to resolve it.
+
+Invited testers request deletion from the beta administrator. After verifying
+the request and exact app user ID, stop that user's activity and use the existing
+operator command `python backend_admin.py delete-user --user-id <id> --confirm-delete`
+with the operator database connection. This deletes the whole app user's data
+through the existing foreign-key cascades, not just one Gmail connection.
+Verify the affected scope first; this command is irreversible and is never part
+of ordinary disconnect or deployment. Record deletion without private email
+content and handle retained backups under the documented retention policy.
+The disconnect/cascade/ownership tests use disposable `_test` data only.
+
+## Backup and restore procedure
 
 - Before migration or activation, pause sync/reprocessing and record schema revision, selected model/extractor manifests, aggregate row counts and checksums. Use a dedicated backup role and a custom-format `pg_dump` from a matching PostgreSQL client. Supply credentials through a protected service/password file; do not place passwords in command arguments or shell history. Write backups outside the repository/web root with restrictive permissions and encrypt them at rest.
 - Keep an encrypted off-host copy, with separate protected copies of every required `OAUTH_TOKEN_KEYS` generation and model/config manifests. Database backups contain private mailbox data; `.gitignore` is an accident guard, not encryption. Existing local backups are preserved and ignored. Decide and record retention, deletion propagation, RPO and RTO with the operator; no unverified schedule is asserted here.

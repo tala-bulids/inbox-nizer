@@ -2,6 +2,8 @@ import type { ApiClient } from "./client";
 import { ApiError } from "./client";
 import { accountsSchema, oauthSchema, syncSchema, parse } from "./contracts";
 export const accounts = {
+  disconnect: (api: ApiClient, id: number) =>
+    api.request(`/gmail/accounts/${id}/connection`, { method: "DELETE" }),
   list: async (api: ApiClient, signal?: AbortSignal) =>
     parse(accountsSchema, await api.request("/gmail/accounts", { signal })),
   sync: async (

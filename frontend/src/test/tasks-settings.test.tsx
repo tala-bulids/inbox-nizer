@@ -39,6 +39,77 @@ const syncResult = {
   emails: [{ body: "PRIVATE_BODY" }],
 };
 
+test("disconnect retains mail, disables sync and offers the existing reconnect flow", async () => {
+  let disconnected = false;
+  let calls = 0;
+  server.use(
+    http.get(base + "/gmail/accounts", () =>
+      HttpResponse.json({
+        ...accountData,
+        accounts: [
+          {
+            ...accountData.accounts[0],
+            status: disconnected ? "disconnected" : "connected",
+          },
+        ],
+      }),
+    ),
+    http.delete(base + "/gmail/accounts/2/connection", async () => {
+      calls++;
+      await delay(100);
+      disconnected = true;
+      return HttpResponse.json({ status: "disconnected" });
+    }),
+    http.post(base + "/auth/google/start", () =>
+      HttpResponse.json({
+        authorization_url:
+          "https://accounts.google.com/o/oauth2/auth?state=reconnect",
+      }),
+    ),
+  );
+  const user = await open("/settings");
+  await user.click(
+    await screen.findByRole("button", { name: "قطع اتصال Gmail" }),
+  );
+  expect(
+    screen.getByRole("button", { name: "جاري قطع الاتصال…" }),
+  ).toBeDisabled();
+  expect(await screen.findByText("غير متصل")).toBeVisible();
+  expect(screen.getByRole("button", { name: "تحديث الآن" })).toBeDisabled();
+  expect(screen.getByText(/تبقى الرسائل المحفوظة/)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "إعادة الاتصال" }));
+  expect(
+    await screen.findByRole("link", { name: "متابعة إلى Google" }),
+  ).toHaveAttribute(
+    "href",
+    "https://accounts.google.com/o/oauth2/auth?state=reconnect",
+  );
+  expect(calls).toBe(1);
+  await user.click(screen.getByRole("link", { name: "البريد الوارد" }));
+  expect(await screen.findByText(email.subject)).toBeVisible();
+});
+
+test("failed disconnect keeps connected state and offers retry without automatic DELETE", async () => {
+  let calls = 0;
+  server.use(
+    http.delete(base + "/gmail/accounts/2/connection", () => {
+      calls++;
+      return new HttpResponse(null, { status: 409 });
+    }),
+  );
+  const user = await open("/settings");
+  await user.click(
+    await screen.findByRole("button", { name: "قطع اتصال Gmail" }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "قطع اتصال Gmail" }),
+    ).toBeEnabled(),
+  );
+  expect(screen.getByText("متصل")).toBeVisible();
+  expect(calls).toBe(1);
+});
+
 test("initial connection automatically syncs sequential batches and refreshes completion timestamp", async () => {
   let calls = 0;
   let active = 0;

@@ -1,5 +1,11 @@
 import { useRef } from "react";
-import { useMutation, useQuery, useIsMutating } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useIsMutating,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type { Accounts } from "../../api/contracts";
 import { Settings } from "lucide-react";
 import { accounts } from "../../api/accounts";
 import { useGmailSync } from "./GmailSync";
@@ -16,6 +22,24 @@ export function SettingsPage() {
   const { t } = useLocale();
   const { states, update } = useGmailSync();
   const connectLock = useRef(false);
+  const qc = useQueryClient();
+  const disconnect = useMutation({
+    mutationFn: (id: number) => accounts.disconnect(api, id),
+    retry: false,
+    onSuccess: async (_, id) => {
+      qc.setQueryData<Accounts>(keys.accounts, (old) =>
+        old
+          ? {
+              ...old,
+              accounts: old.accounts.map((a) =>
+                a.id === id ? { ...a, status: "disconnected" } : a,
+              ),
+            }
+          : old,
+      );
+      await qc.invalidateQueries({ queryKey: keys.accounts });
+    },
+  });
   const syncing = Object.values(states).some(
     (state) => state.phase === "running",
   );
@@ -91,7 +115,7 @@ export function SettingsPage() {
                       t("جاري تجهيز البريد", "Preparing your inbox")
                     )}
                   </p>
-                  {account.sync_error && (
+                  {account.status === "connected" && account.sync_error && (
                     <p className="muted">
                       {t(
                         "لم يكتمل تحديث البريد. التقدم محفوظ؛ استخدم تحديث الآن لإعادة المحاولة.",
@@ -123,37 +147,64 @@ export function SettingsPage() {
                       </p>
                     )}
                     <button
-                      disabled={syncing || account.status !== "connected"}
+                      disabled={
+                        syncing ||
+                        disconnect.isPending ||
+                        account.status !== "connected"
+                      }
                       onClick={() => update(account.id)}
                     >
                       {states[account.id]?.phase === "running"
                         ? t("جاري التحديث...", "Updating…")
                         : t("تحديث الآن", "Update now")}
                     </button>
+                    {account.status !== "disconnected" && (
+                      <button
+                        disabled={syncing || connecting || disconnect.isPending}
+                        onClick={() => disconnect.mutate(account.id)}
+                      >
+                        {disconnect.isPending &&
+                        disconnect.variables === account.id
+                          ? t("جاري قطع الاتصال…", "Disconnecting…")
+                          : t("قطع اتصال Gmail", "Disconnect Gmail")}
+                      </button>
+                    )}
                     {account.status !== "connected" && (
                       <button
-                        disabled={connecting || syncing}
+                        disabled={connecting || syncing || disconnect.isPending}
                         onClick={startConnect}
                       >
                         {t("إعادة الاتصال", "Reconnect")}
                       </button>
                     )}
                   </div>
-                  {states[account.id]?.phase === "complete" && (
-                    <p role="status" className="muted">
-                      {t("تم تحديث البريد", "Mail updated")}
-                    </p>
-                  )}
-                  {["paused", "error"].includes(
-                    states[account.id]?.phase ?? "",
-                  ) && (
-                    <p role="status" className="muted">
-                      {t(
-                        "لم يكتمل التحديث. التقدم محفوظ؛ يمكنك استخدام تحديث الآن لإعادة المحاولة.",
-                        "The update is incomplete. Progress is saved; use Update now to retry.",
-                      )}
-                    </p>
-                  )}
+                  <p className="muted">
+                    {t(
+                      "قطع الاتصال يوقف الوصول إلى Gmail من التطبيق. تبقى الرسائل المحفوظة والمعلومات المستخرجة والتقدم محفوظة. لإعادة الاتصال اختر حساب Gmail نفسه. لحذف بياناتك تواصل مع مسؤول النسخة التجريبية.",
+                      "Disconnect stops this app's Gmail access. Saved emails, derived information and sync progress are retained. Reconnect using the same Gmail account. Contact the beta administrator to delete your data.",
+                    )}
+                  </p>
+                  {disconnect.isError &&
+                    disconnect.variables === account.id && (
+                      <ErrorState error={disconnect.error} />
+                    )}
+                  {account.status === "connected" &&
+                    states[account.id]?.phase === "complete" && (
+                      <p role="status" className="muted">
+                        {t("تم تحديث البريد", "Mail updated")}
+                      </p>
+                    )}
+                  {account.status === "connected" &&
+                    ["paused", "error"].includes(
+                      states[account.id]?.phase ?? "",
+                    ) && (
+                      <p role="status" className="muted">
+                        {t(
+                          "لم يكتمل التحديث. التقدم محفوظ؛ يمكنك استخدام تحديث الآن لإعادة المحاولة.",
+                          "The update is incomplete. Progress is saved; use Update now to retry.",
+                        )}
+                      </p>
+                    )}
                 </article>
               ))
             ) : (
@@ -172,7 +223,7 @@ export function SettingsPage() {
               </p>
               <button
                 className="primary"
-                disabled={connecting || syncing}
+                disabled={connecting || syncing || disconnect.isPending}
                 onClick={startConnect}
               >
                 {t(
