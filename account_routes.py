@@ -19,13 +19,14 @@ from google_auth_httplib2 import AuthorizedHttp
 from httplib2 import Http
 from gmail_sync import sync_account, connection_guard
 from email_pipeline import retryable_stages
+from runtime_capabilities import runtime_profile
 
 router = APIRouter()
 
 
 @router.get('/gmail/accounts')
 def accounts(db=Depends(get_db)):
-    return {'accounts': [dict(id=a.id, address=a.address, status=a.status,
+    return {'runtime_profile': runtime_profile(), 'accounts': [dict(id=a.id, address=a.address, status=a.status,
                               last_synced_at=a.last_synced_at, sync_error=a.sync_error,
                               initial_sync_pending=a.history_id is None,
                               message_count=db.scalar(select(func.count(Email.id)).where(Email.account_id == a.id)),

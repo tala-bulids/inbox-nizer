@@ -1,4 +1,5 @@
-import { lazy } from "react";
+import { lazy, type ReactNode } from "react";
+import { useRetrievalEnabled } from "./capabilities";
 import { AppBoundary } from "../components/shared/AppBoundary";
 import { NotFound } from "../components/shared/NotFound";
 import { OAuthComplete } from "../features/settings/OAuthComplete";
@@ -46,6 +47,9 @@ function InboxEntry() {
     return <Navigate to="/settings" replace />;
   return <InboxPage />;
 }
+function RetrievalRoute({ children }: { children: ReactNode }) {
+  return useRetrievalEnabled() ? children : <NotFound />;
+}
 export function App() {
   const location = useLocation();
   return (
@@ -63,8 +67,22 @@ export function App() {
                       <Route element={<Shell />}>
                         <Route index element={<InboxEntry />} />
                         <Route path="email/:id" element={<EmailPage />} />
-                        <Route path="search" element={<SearchPage />} />
-                        <Route path="ask" element={<AskPage />} />
+                        <Route
+                          path="search"
+                          element={
+                            <RetrievalRoute>
+                              <SearchPage />
+                            </RetrievalRoute>
+                          }
+                        />
+                        <Route
+                          path="ask"
+                          element={
+                            <RetrievalRoute>
+                              <AskPage />
+                            </RetrievalRoute>
+                          }
+                        />
                         <Route path="tasks" element={<TasksPage />} />
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="*" element={<NotFound />} />

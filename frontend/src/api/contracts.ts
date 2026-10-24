@@ -57,6 +57,7 @@ export const searchSchema = z.object({
 });
 export type SearchResult = z.infer<typeof searchSchema>["results"][number];
 export const accountsSchema = z.object({
+  runtime_profile: z.string().default("full"),
   accounts: z.array(
     z.object({
       id: z.number(),

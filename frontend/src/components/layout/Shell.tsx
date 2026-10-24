@@ -15,8 +15,10 @@ import { useLocale } from "../../app/locale";
 import { Loading } from "../shared/States";
 import { DesktopTopBar } from "../ui/DesktopTopBar";
 import { GmailSyncNotice } from "../../features/settings/GmailSync";
+import { useRetrievalEnabled } from "../../app/capabilities";
 
 export function Shell() {
+  const retrievalEnabled = useRetrievalEnabled();
   const logout = useSignOut();
   const { t, toggle, language } = useLocale();
   const [open, setOpen] = useState(false);
@@ -32,7 +34,9 @@ export function Shell() {
     { path: "/ask", ar: "اسأل البريد", en: "Ask Mail", icon: Sparkles },
     { path: "/tasks", ar: "المهام", en: "Tasks", icon: ListChecks },
     { path: "/settings", ar: "الإعدادات", en: "Settings", icon: Settings },
-  ];
+  ].filter(
+    (item) => retrievalEnabled || !["/search", "/ask"].includes(item.path),
+  );
 
   const nav = (
     <nav aria-label={t("التنقل الرئيسي", "Main navigation")}>

@@ -1,5 +1,10 @@
 # inbox-nizer
 
+**Current status and release scope:** [PROJECT_STATUS.md](PROJECT_STATUS.md) is the
+source of truth for the V1 checklist, known blockers and verified capabilities.
+The hosted release is still being qualified; full/local features are not all
+available in the Render Free runtime.
+
 An email organization project built with Python, FastAPI, PostgreSQL and a bilingual
 Arabic/English React interface. It started with DistilBERT fine-tuning and now includes
 read-only Gmail synchronization, classification, summaries, tasks, semantic search
@@ -131,8 +136,10 @@ and [model saving/loading](https://huggingface.co/docs/transformers/main_classes
    npm run dev
    ```
 
-Open `http://localhost:5173`, sign in, connect Gmail in Settings and explicitly start
-sync. Use `localhost` consistently for local cookies and callbacks. Swagger is at
+Open `http://localhost:5173`, sign in and connect Gmail in Settings. Recent-mail
+preparation starts automatically; subsequent updates use saved Gmail History.
+Keep the app active for continued work; reopening resumes committed progress.
+Use `localhost` consistently for local cookies and callbacks. Swagger is at
 `http://localhost:8000/docs`. Operator clients can provision a bearer token with
 `python backend_admin.py create-user --name local-owner`.
 

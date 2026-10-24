@@ -8,6 +8,7 @@ from database import get_db
 from embedding_service import EmbeddingInputError
 from local_llm import get_llm_provider, ContextTooLarge, ProviderUnavailable
 from rag_service import answer_email_question, InvalidGeneration, insufficient_answer
+from runtime_capabilities import require_retrieval
 
 router = APIRouter()
 
@@ -75,6 +76,7 @@ class _LazyProvider:
 
 @router.post('/ask', response_model=AnswerResponse, response_model_exclude_none=True)
 def ask(request: QuestionRequest, db: Session = Depends(get_db)):
+    require_retrieval()
     try:
         return answer_email_question(db, llm=_LazyProvider(), **request.model_dump())
     except EmbeddingInputError as error:

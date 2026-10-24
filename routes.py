@@ -16,6 +16,7 @@ from rag_api import router as rag_router
 from account_routes import router as account_router
 from authentication import current_user
 from backend_models import ProcessingState
+from runtime_capabilities import require_retrieval
 
 router = APIRouter()
 router.include_router(rag_router)
@@ -30,6 +31,7 @@ def search_semantic_emails(
     min_score: float | None = Query(default=None, ge=-1, le=1, allow_inf_nan=False),
     db: Session = Depends(get_db),
 ):
+    require_retrieval()
     if not q.strip():
         raise HTTPException(status_code=422, detail='Query must not be empty')
     try:
