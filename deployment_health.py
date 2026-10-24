@@ -44,17 +44,24 @@ def validate_production_configuration():
 
 
 def database_is_ready():
+    # Conservatively reject owner/admin membership even with NOINHERIT.
     # The engine bounds connection and pool waits. No mutations, model loads,
     # provider calls, syncs or mailbox reads belong in this probe.
     with engine.connect() as connection:
         revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
         role = connection.execute(text('''
             SELECT rolsuper, rolcreatedb, rolcreaterole, rolbypassrls,
-                   pg_has_role(current_user, datdba, 'USAGE') AS owns_database,
+                   pg_has_role(current_user, datdba, 'MEMBER') AS owns_database,
                    EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public'
-                           AND pg_has_role(current_user, tableowner, 'USAGE')) AS owns_tables,
+                           AND pg_has_role(current_user, tableowner, 'MEMBER')) AS owns_tables,
                    has_database_privilege(current_user, current_database(), 'CREATE') AS creates_schemas,
-                   has_schema_privilege(current_user, 'public', 'CREATE') AS creates_objects
+                   has_schema_privilege(current_user, 'public', 'CREATE') AS creates_objects,
+                   EXISTS (SELECT 1 FROM pg_roles privileged
+                           WHERE (privileged.rolsuper OR privileged.rolcreatedb
+                                  OR privileged.rolcreaterole OR privileged.rolbypassrls)
+                           AND pg_has_role(current_user, privileged.oid, 'MEMBER')) AS admin_member,
+                   EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='public'
+                           AND pg_has_role(current_user, nspowner, 'MEMBER')) AS owns_schema
             FROM pg_roles JOIN pg_database ON datname=current_database()
             WHERE rolname=current_user
         ''')).one()

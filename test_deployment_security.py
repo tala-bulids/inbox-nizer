@@ -55,9 +55,9 @@ def test_probes_disclose_no_private_configuration(monkeypatch):
 
 
 @pytest.mark.parametrize('revision,role,expected', [
-    ('head', (False,) * 8, True),
-    ('old', (False,) * 8, False),
-    *[('head', tuple(index == unsafe for index in range(8)), False) for unsafe in range(8)],
+    ('head', (False,) * 10, True),
+    ('old', (False,) * 10, False),
+    *[('head', tuple(index == unsafe for index in range(10)), False) for unsafe in range(10)],
 ])
 def test_readiness_requires_current_schema_and_limited_role(monkeypatch, revision, role, expected):
     connection = Mock()
@@ -71,6 +71,10 @@ def test_readiness_requires_current_schema_and_limited_role(monkeypatch, revisio
     assert deployment_health.database_is_ready() is expected
     statements = [str(call.args[0]).lstrip() for call in connection.scalar.call_args_list + connection.execute.call_args_list]
     assert all(statement.startswith('SELECT') for statement in statements)
+    role_query = statements[-1]
+    assert "'USAGE'" not in role_query
+    assert role_query.count("'MEMBER'") == 4
+    assert 'admin_member' in role_query and 'owns_schema' in role_query
 
 
 @pytest.mark.parametrize('issue', ['callback_origin', 'insecure_transport', 'client_file'])
