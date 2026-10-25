@@ -1,0 +1,360 @@
+{
+  "verified_at": "2026-10-24",
+  "release_code_head": "1d37c4647f45bef5762b432be08f6a12f856f23f",
+  "scope": "V03/V10 only; no approval, training, activation or final holdout consumption",
+  "provenance_verdict": "PASS: exact source and export parity; original training lineage incomplete; release approval blocked",
+  "quality_verdict": "FAIL: no representative human-reviewed final holdout",
+  "checkpoint_inventory": [
+    {
+      "path": "email_classifier/model.safetensors",
+      "size": 267857176,
+      "sha256": "1686c767582eab051298eb82fa048822b9c6142842f61b3a384f55e204f6902b",
+      "payload_sha256": "db231d9207d403cfe9c9c6f10c57a79afccc35fcf7e8a88206a815cf73e1ed25",
+      "tensor_count": 104
+    },
+    {
+      "path": "results/checkpoint-1053/model.safetensors",
+      "size": 267857176,
+      "sha256": "edaa03e3341ee4426656a8f8d51a7c22b8e8c4aea2d32f87e001e081c308e783",
+      "payload_sha256": "da0824511438d5a85cdfd15ee68d40117324652956afd322748a944e3e876272",
+      "tensor_count": 104,
+      "trainer": {
+        "epoch": 1.0,
+        "global_step": 1053,
+        "best_metric": null,
+        "best_model_checkpoint": null
+      },
+      "evaluations": []
+    },
+    {
+      "path": "results/checkpoint-2106/model.safetensors",
+      "size": 267857176,
+      "sha256": "cd95ebd5052374beb30143eea3d7a1bb94b00f1e6c2ca92fa3a2e68d4a1d1795",
+      "payload_sha256": "cbc7fc2ad36c855d6bd5a2c3d1e6df75ec700de26445a6fc131a738d972a1903",
+      "tensor_count": 104,
+      "trainer": {
+        "epoch": 2.0,
+        "global_step": 2106,
+        "best_metric": null,
+        "best_model_checkpoint": null
+      },
+      "evaluations": []
+    },
+    {
+      "path": "results/checkpoint-3/model.safetensors",
+      "size": 267838720,
+      "sha256": "d4d6bb468d5cac061e5da824cfcb8104d5bfc03cc6cfd99095f9297bc4c772f4",
+      "payload_sha256": "2738558151d984786d5047df93c8e69fc75c92be15f202af781addaf24ac67d7",
+      "tensor_count": 104,
+      "trainer": {
+        "epoch": 3.0,
+        "global_step": 3,
+        "best_metric": null,
+        "best_model_checkpoint": null
+      },
+      "evaluations": []
+    },
+    {
+      "path": "results/checkpoint-3159/model.safetensors",
+      "size": 267857176,
+      "sha256": "97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4",
+      "payload_sha256": "f2471168be9a04b674b4154080fe17582686ab6957e10815e89f6d5172d68624",
+      "tensor_count": 104
+    },
+    {
+      "path": "results/email-candidate-v2/model.safetensors",
+      "size": 267857176,
+      "sha256": "abf4935dea0bf327e1afeea0d632364db6f5e38c8419bb62b680a92504c8bbf2",
+      "payload_sha256": "54026f150e23baa217311c369d119269e3e954ebb245821ecde9e23a443505b9",
+      "tensor_count": 104
+    }
+  ],
+  "source_files_sha256": {
+    "config.json": "8ec1772000c970c33ad7ad840798d23bc4946012fe05f00a8f103992924e95ec",
+    "model.safetensors": "97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4",
+    "tokenizer.json": "435667fab0c06c165b1283ecb422497c37124f2d6a35b2ac73dc876332fc9518",
+    "tokenizer_config.json": "71cd48543bec670f50e0c9c3556df16b1f58ea720ead6a1b4675f08870c60b17"
+  },
+  "export_files_sha256": {
+    "model.onnx": "bdbba9a5946e4913c422cfcc7cc3eae762b75646a63c9ea53d2f47dcca363043",
+    "weights.bin": "a14f1c89a38aa4d42fa21437095d185b1178c988474c3d1f5c3450eb8cbdd9c7",
+    "config.json": "2d12a75c7d4f06922a3a71a6c712e8889c8d321d49f4209c2a7561946ed6173b",
+    "tokenizer.json": "435667fab0c06c165b1283ecb422497c37124f2d6a35b2ac73dc876332fc9518"
+  },
+  "config_semantic_difference": {
+    "source_only": {
+      "use_cache": false
+    }
+  },
+  "source_export_parity": {
+    "examples": 111,
+    "reviewed_development": 100,
+    "export_probes": 10,
+    "overlength_probe": 1,
+    "all_scores_max_abs_difference": 3.0100345611572266e-06,
+    "top1_agreement": 111,
+    "stored_probe_logit_max_abs_difference": 4.708766937255859e-06,
+    "tolerance": 0.0001,
+    "passed": true
+  },
+  "development_review": {
+    "validation": {
+      "total": 100,
+      "human_reviewed": 100,
+      "ambiguous": 0,
+      "weak": 0,
+      "pending": 0,
+      "invalid": 0
+    },
+    "evaluated": 100,
+    "label_distribution": {
+      "Business": 0,
+      "Customer Support": 13,
+      "Events & Invitations": 5,
+      "Finance & Bills": 4,
+      "Job Application": 15,
+      "Newsletters": 27,
+      "Personal": 11,
+      "Promotions": 13,
+      "Reminders": 10,
+      "Travel & Bookings": 2
+    },
+    "language_heuristic_distribution": {
+      "mixed": 43,
+      "ar": 1,
+      "en": 56
+    },
+    "language_rule": "At least 20 Arabic/Latin characters; mixed when both. Not human language adjudication.",
+    "development_csv_sha256": "d764ab42121af03ca0432d081e90ef6c37811dd5ce27e3fc1c980bd55436db69",
+    "unique_cleaned_texts": 100
+  },
+  "fresh_development_metrics": {
+    "n": 100,
+    "top1_accuracy": 0.32,
+    "top1_macro_f1": 0.28394149967679383,
+    "finance_false_positives": 14,
+    "finance_false_positive_rate": 0.14583333333333334,
+    "wrong_confident_ge_080": 18,
+    "top1_ece": 0.2888196208328009,
+    "correct": 32
+  },
+  "fresh_per_class": {
+    "Business": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "false_positives": 11,
+      "false_negatives": 0
+    },
+    "Customer Support": {
+      "precision": 0.42857142857142855,
+      "recall": 0.23076923076923078,
+      "f1": 0.3,
+      "support": 13,
+      "false_positives": 4,
+      "false_negatives": 10
+    },
+    "Events & Invitations": {
+      "precision": 0.09090909090909091,
+      "recall": 0.2,
+      "f1": 0.125,
+      "support": 5,
+      "false_positives": 10,
+      "false_negatives": 4
+    },
+    "Finance & Bills": {
+      "precision": 0.17647058823529413,
+      "recall": 0.75,
+      "f1": 0.2857142857142857,
+      "support": 4,
+      "false_positives": 14,
+      "false_negatives": 1
+    },
+    "Job Application": {
+      "precision": 0.8461538461538461,
+      "recall": 0.7333333333333333,
+      "f1": 0.7857142857142857,
+      "support": 15,
+      "false_positives": 2,
+      "false_negatives": 4
+    },
+    "Newsletters": {
+      "precision": 0.5714285714285714,
+      "recall": 0.14814814814814814,
+      "f1": 0.23529411764705882,
+      "support": 27,
+      "false_positives": 3,
+      "false_negatives": 23
+    },
+    "Personal": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 11,
+      "false_positives": 6,
+      "false_negatives": 11
+    },
+    "Promotions": {
+      "precision": 0.4166666666666667,
+      "recall": 0.38461538461538464,
+      "f1": 0.4,
+      "support": 13,
+      "false_positives": 7,
+      "false_negatives": 8
+    },
+    "Reminders": {
+      "precision": 0.6,
+      "recall": 0.3,
+      "f1": 0.4,
+      "support": 10,
+      "false_positives": 2,
+      "false_negatives": 7
+    },
+    "Travel & Bookings": {
+      "precision": 0.18181818181818182,
+      "recall": 1.0,
+      "f1": 0.3076923076923077,
+      "support": 2,
+      "false_positives": 9,
+      "false_negatives": 0
+    }
+  },
+  "original_script_language_metrics": {
+    "ar": {
+      "n": 1,
+      "top1_accuracy": 0.0,
+      "top1_macro_f1": 0.0,
+      "finance_false_positives": 0,
+      "finance_false_positive_rate": 0.0,
+      "wrong_confident_ge_080": 0,
+      "top1_ece": 0.4994969666004181,
+      "correct": 0
+    },
+    "en": {
+      "n": 56,
+      "top1_accuracy": 0.35714285714285715,
+      "top1_macro_f1": 0.31403762903762905,
+      "finance_false_positives": 8,
+      "finance_false_positive_rate": 0.14814814814814814,
+      "wrong_confident_ge_080": 16,
+      "top1_ece": 0.3727962340095214,
+      "correct": 20
+    },
+    "mixed": {
+      "n": 43,
+      "top1_accuracy": 0.27906976744186046,
+      "top1_macro_f1": 0.24676434676434678,
+      "finance_false_positives": 6,
+      "finance_false_positive_rate": 0.14634146341463414,
+      "wrong_confident_ge_080": 2,
+      "top1_ece": 0.26485983628866283,
+      "correct": 12
+    }
+  },
+  "dominance_language_rule": "Remove URLs/addresses; Arabic-heavy >=20 Arabic letters and >=65% Arabic share; mixed >=20 Arabic and Latin; otherwise English >=20 Latin. Not human language adjudication.",
+  "dominance_language_metrics": {
+    "Arabic-heavy": {
+      "n": 11,
+      "top1_accuracy": 0.09090909090909091,
+      "top1_macro_f1": 0.1,
+      "finance_false_positives": 0,
+      "finance_false_positive_rate": 0.0,
+      "wrong_confident_ge_080": 0,
+      "top1_ece": 0.3017635833133351,
+      "correct": 1
+    },
+    "English": {
+      "n": 56,
+      "top1_accuracy": 0.35714285714285715,
+      "top1_macro_f1": 0.31403762903762905,
+      "finance_false_positives": 8,
+      "finance_false_positive_rate": 0.14814814814814814,
+      "wrong_confident_ge_080": 16,
+      "top1_ece": 0.3727962340095214,
+      "correct": 20
+    },
+    "mixed": {
+      "n": 32,
+      "top1_accuracy": 0.3125,
+      "top1_macro_f1": 0.2658119658119658,
+      "finance_false_positives": 6,
+      "finance_false_positive_rate": 0.1935483870967742,
+      "wrong_confident_ge_080": 2,
+      "top1_ece": 0.25813081464730203,
+      "correct": 10
+    },
+    "other": {
+      "n": 1,
+      "top1_accuracy": 1.0,
+      "top1_macro_f1": 0.1,
+      "finance_false_positives": 0,
+      "finance_false_positive_rate": 0.0,
+      "wrong_confident_ge_080": 0,
+      "top1_ece": 0.6901094913482666,
+      "correct": 1
+    }
+  },
+  "historical_development_key_metrics_reproduced": true,
+  "versions": {
+    "torch": "2.13.0+cpu",
+    "onnxruntime": "1.31.0",
+    "numpy": "2.4.6"
+  },
+  "evaluation_helper_sha256": {
+    "human_development_eval.py": "2417fb6e4da73bce97e16451d52658e9607107a8a4399f6b8ea01c7286ab545e",
+    "review_sampling.py": "38d827386a34fd4d682ea4823bb30606b9e03f5ce75c4a08f5a81104b8affe26"
+  },
+  "gate_status": {
+    "review_status": {
+      "available": true,
+      "holdout_opened": false,
+      "holdout_present": false,
+      "development": {
+        "total": 100,
+        "human_reviewed": 100,
+        "ambiguous": 0,
+        "weak": 0,
+        "pending": 0,
+        "invalid": 0
+      }
+    },
+    "release_gate": {
+      "passed": false,
+      "rating": "C",
+      "blockers": [
+        "Representative human-reviewed final holdout evaluation is missing."
+      ],
+      "policy": {
+        "version": "classifier-release-v1",
+        "note": "Conservative engineering acceptance criteria; diagnostic sets cannot establish public readiness.",
+        "minimum_examples": 300,
+        "minimum_per_class": 20,
+        "minimum_per_language": 50,
+        "minimum_accuracy": 0.9,
+        "minimum_macro_f1": 0.85,
+        "minimum_class_precision": 0.8,
+        "minimum_class_recall": 0.7,
+        "minimum_finance_precision": 0.95,
+        "maximum_finance_false_positive_rate": 0.02,
+        "maximum_wrong_confident_rate": 0.02,
+        "maximum_ece": 0.1,
+        "maximum_language_accuracy_gap": 0.05,
+        "maximum_ambiguous_fraction": 0.05
+      },
+      "production_activation_authorized": false
+    },
+    "current_artifact_sha256": "97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4"
+  },
+  "verification": {
+    "pytest_passed": 29,
+    "pytest_skipped": 2,
+    "pytest_subtests_passed": 2,
+    "pytest_seconds": 7.71,
+    "pytest_warning": "Google Python 3.11 support lifecycle warning",
+    "initial_attempt": "22 passed, 2 skipped, 2 subtests passed, 7 temp-directory permission setup errors; all resolved using fresh workspace-local basetemp",
+    "holdout_opened": false,
+    "trained": false,
+    "production_changed": false
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "url": "https://inbox-nizer-demo.onrender.com",
+  "build": {
+    "mode": "synthetic-demo",
+    "commit": "0d383fea7bd913f63ffe752c22919859d88c39d3"
+  },
+  "results": [
+    {
+      "width": 1440,
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "inbox": true,
+      "detail": true,
+      "filters": true,
+      "pagination": true,
+      "tasks": true,
+      "deep_link_refresh": true,
+      "no_credentials_or_api": true,
+      "requests": 78,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "inbox": true,
+      "detail": true,
+      "filters": true,
+      "pagination": true,
+      "tasks": true,
+      "deep_link_refresh": true,
+      "no_credentials_or_api": true,
+      "requests": 78,
+      "errors": []
+    }
+  ],
+  "passed": true,
+  "verified_date": "2026-10-25",
+  "service_id": "srv-dbeuol4s728c73dh4n5g",
+  "deployment_id": "dep-dbeuolks728c73dh4o8g",
+  "architecture": "isolated Render Static Site; no backend/database/models",
+  "ci_runs": [
+    40190119941,
+    40190116435
+  ],
+  "ci_conclusion": "success",
+  "frontend_tests_passed": 173,
+  "demo_tests_passed": 11,
+  "http_status": 200,
+  "csp_connect_src": "none",
+  "private_service_changed": false
+}

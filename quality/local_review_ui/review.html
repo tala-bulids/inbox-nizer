@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local email review</title><link rel="stylesheet" href="/review.css?v=3"><script src="/review.js?v=3" defer></script></head>
+<body><main>
+<header><h1>Label review</h1></header>
+<div class="toolbar"><strong id="progress"></strong><span id="save" role="status" aria-live="polite">Loading email…</span></div>
+<noscript>This screen needs JavaScript to show the label buttons. Open the local URL in a browser with JavaScript enabled.</noscript>
+<p id="error" role="alert"></p>
+<article id="email"><h2 id="subject" dir="auto"></h2><div class="meta"><span id="sender" dir="auto"></span><time id="date"></time></div><pre id="body" dir="auto" tabindex="0"></pre></article>
+<section id="decisions" aria-label="Choose a label"><div class="reviewer-row"><label>Your reviewer name <input id="reviewer" maxlength="120" autocomplete="off" placeholder="Enter your name" aria-describedby="reviewer-help" required></label><p id="reviewer-help"></p></div><p id="prior"></p><div id="labels"></div></section>
+<nav aria-label="Review actions"><button id="previous">← Previous</button><button id="ambiguous">Ambiguous</button><button id="skip">Skip →</button><button id="remaining" hidden>Review remaining</button></nav>
+<p class="hint">Choose a label to save and move on. Ambiguous saves without forcing a label. Skip leaves labels unchanged. Previous lets you correct a choice.</p>
+</main></body></html>
