@@ -4,9 +4,16 @@ Inbox-nizer is a read-only Gmail organizer with an Arabic/English React interfac
 It imports mail in small resumable batches and presents messages, category/priority
 suggestions, extractive summaries and source-linked tasks in one workspace.
 
+**[Try the interactive demo →](https://inbox-nizer-demo.onrender.com/)**
+
+**PUBLIC PORTFOLIO DEMO: GO.** No login required. Explore 24 fictional messages,
+category/priority filters, details, example summaries and source-linked tasks in
+Arabic or English. This separate static website makes no Gmail, database or model
+requests. [Demo architecture and live verification](docs/release/PUBLIC_DEMO.md).
+
 **PORTFOLIO SOURCE RELEASE: COMPLETE**
 
-**HOSTED PRODUCTION RELEASE: NO-GO**
+**FULL GMAIL-CONNECTED PRODUCTION: NO-GO**
 
 The source release is frozen for portfolio review, not production use. Classification
 is **experimental and unapproved**. The release branch contains the tested application

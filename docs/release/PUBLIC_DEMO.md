@@ -69,8 +69,8 @@ aggregate results. Do not serve the repository root or private directories.
   its billing settings. [Render static sites](https://render.com/docs/static-sites),
   [free-tier limits](https://render.com/docs/free).
 
-The live URL and deployment identity are recorded only after deployment and real
-HTTP/browser verification. A platform status of `live` alone is not acceptance.
+The verified live URL and deployment identity are recorded below. A platform
+status of `live` alone was not used as acceptance.
 
 ## Private Gmail boundaries
 
@@ -115,3 +115,42 @@ The demo-specific keyboard skip link focuses the content without changing the ha
 Synthetic local screenshots were reviewed; live deployment acceptance is separate.
 No manual backend suite was needed because backend code/routes remain unchanged;
 the existing GitHub workflow still runs its backend checks automatically.
+
+
+## Verified public launch — 25 October 2026
+
+**PUBLIC PORTFOLIO DEMO: GO**
+
+**FULL GMAIL-CONNECTED PRODUCTION: NO-GO until its acceptance gates pass.**
+
+- Public URL and direct entry: **https://inbox-nizer-demo.onrender.com/**.
+- Example deep links: `/#/email/1`, `/#/tasks`, `/#/settings`.
+- Render Static Site: `inbox-nizer-demo`, `srv-dbeuol4s728c73dh4n5g`.
+- Deploy: `dep-dbeuolks728c73dh4o8g`, live at 2026-10-25 11:47:59 UTC.
+- Exact deployed code: **`0d383fea7bd913f63ffe752c22919859d88c39d3`**.
+  Render's deploy record and the public `/demo-build.json` agree.
+- GitHub CI: [40190119941](https://github.com/tala-bulids/inbox-nizer/actions/runs/40190119941)
+  and [40190116435](https://github.com/tala-bulids/inbox-nizer/actions/runs/40190116435)
+  completed successfully before deployment, including private and demo builds.
+- Public HTTPS returned HTTP 200 with the demo title and network-blocking CSP.
+- The same anonymous Edge acceptance script passed against the **actual public URL**
+  at 1440px desktop and 390px mobile in Arabic and English. It tested filters,
+  pagination, details, summary/task rendering, task-to-source navigation, disabled
+  Gmail connection, keyboard skip-link behavior, fresh supported deep links,
+  refresh and the Not Found state. No horizontal overflow, page/console errors,
+  external/API/XHR/fetch requests, cookie reads or cookies were recorded.
+- Synthetic desktop/mobile screenshots were inspected. This is real deployed UI
+  evidence with fictional data, not a mocked API or real Gmail acceptance claim.
+- Build logs show Node 24.22.1, clean dependency installation, successful Vite build
+  and static upload. Only known third-party Zod annotation warnings appeared; no
+  secret values or startup errors were observed. Static hosting has no app-server
+  startup or migration step.
+- The repository Homepage was updated to the verified URL after browser acceptance;
+  the default branch and description were preserved.
+- [Machine-readable acceptance evidence](public-demo-verification.json) contains
+  aggregate results only. Screenshots/raw local reports remain ignored.
+
+The follow-up documentation commit links to this already verified deployment and
+records its evidence; it does not change the deployed application. Auto-deploy is
+off. No remaining blocker prevents sharing this public-demo link. The existing
+private service, database, credentials and migration configuration were not modified.

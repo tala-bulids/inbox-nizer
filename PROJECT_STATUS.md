@@ -2,7 +2,7 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
-**Public demo execution, 25 October 2026:** the owner has separately authorized an isolated synthetic-data-only website. The selected path is a separate frontend-only Render Static Site, because the existing private service runs automatic migrations and depends on unapproved model/database prerequisites. Implementation and acceptance are tracked in [PUBLIC_DEMO.md](docs/release/PUBLIC_DEMO.md). This does not change V10 or authorize Gmail-connected production deployment. Live demo GO is withheld until actual deployed HTTP/browser verification.
+**Public demo launch, 25 October 2026: PUBLIC PORTFOLIO DEMO — GO.** [Open the verified interactive demo](https://inbox-nizer-demo.onrender.com/). Separate Render Static Site `srv-dbeuol4s728c73dh4n5g`, deploy `dep-dbeuolks728c73dh4o8g`, serves exact commit `0d383fea7bd913f63ffe752c22919859d88c39d3`. Anonymous desktop/mobile browser acceptance passed in Arabic and English, including filtering, pagination, detail/tasks, direct refresh and zero account/API/credential access. [Exact evidence](docs/release/PUBLIC_DEMO.md). **FULL GMAIL-CONNECTED PRODUCTION remains NO-GO**; V10 is still FAILED and the private service/database were not changed. This separately authorized isolated demo does not waive any production gate.
 
 **Final portfolio freeze, 25 October 2026:** **PORTFOLIO SOURCE RELEASE: COMPLETE. HOSTED PRODUCTION RELEASE: NO-GO.** This explicitly closes source/portfolio presentation scope, not the unchanged production acceptance gates. The release branch is verified as GitHub's default; the operator confirms the temporary external IP rule was removed and verified. Exposed-credential rotation remains deferred. This final state supersedes earlier candidate/default-branch/IP-rule statements below. See [the final freeze ledger](docs/release/PORTFOLIO_FREEZE.md) for A/B/C dispositions, checks and exact remaining production blockers. No application code or infrastructure changed in this freeze.
 
@@ -781,3 +781,29 @@ The user explicitly authorized closing the portfolio/source scope while keeping 
 The operator's final instruction confirms temporary external PostgreSQL IP-rule removal and verification; that item is resolved by operator evidence, not a new inspection here. The previously exposed role password remains an unresolved security risk because coordinated rotation is deferred. Encrypted backup checksum/decryption/archive-list evidence remains valid; isolated restoration is still unverified. Live Render remains the operator-reported f53e22c with auto-deploy off; no deployment or infrastructure change was performed.
 
 [Final freeze ledger](docs/release/PORTFOLIO_FREEZE.md) records all V01–V18 dispositions, the publication boundary, prior versus current verification, and only genuine remaining production blockers. Final GitHub HEAD and CI results are confirmed after the normal non-force push and reported in the final handoff; the commit's GitHub Checks remain the authoritative publication result. No merge, history rewrite or new development phase is authorized by this closure.
+
+
+## Public interactive demo acceptance — 25 October 2026
+
+**PUBLIC PORTFOLIO DEMO: GO.** The isolated frontend-only deployment is shareable at
+https://inbox-nizer-demo.onrender.com/ with no Google account or login. All 24 messages,
+example categories/summaries and ten source-linked tasks are authored fictional data.
+Existing inbox/detail/tasks/navigation components are reused; no AI inference, Gmail
+synchronization, backend API or database participates. The example notice and disabled
+connection action prevent a false claim of live Gmail or approved classification.
+
+Deployed commit `0d383fea7bd913f63ffe752c22919859d88c39d3`; static site
+`srv-dbeuol4s728c73dh4n5g`; deployment `dep-dbeuolks728c73dh4o8g`. Both associated
+GitHub CI runs passed. Local verification: clean locked dependency install, 11 demo
+regressions and 173 total frontend tests, typecheck/lint, normal private build and
+static-demo build. Actual public HTTPS and deployed build identity were verified;
+Edge passed 1440/390px, Arabic/English, filters/pagination, details/tasks, keyboard
+skip-link and fresh-route/reload tests with zero external/API requests, credential
+reads, cookies or runtime errors. See [the launch report](docs/release/PUBLIC_DEMO.md)
+and [aggregate acceptance results](docs/release/public-demo-verification.json).
+
+No paid compute, live migration, model change, OAuth/secret change, data deletion or
+network-rule change was introduced. The demo is independent of the expiring database.
+Auto-deploy is disabled. README and the repository Homepage now point to the verified
+website. Full Gmail-connected production remains NO-GO for the previously recorded
+quality/security/restore/capacity/continuity gates; these do not block the isolated demo.
