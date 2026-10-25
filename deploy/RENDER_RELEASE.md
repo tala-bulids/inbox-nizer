@@ -1,6 +1,7 @@
 # Existing Render release recipe and recovery gate
 
-Prepared 24 October 2026. **Not deployed.** PROJECT_STATUS.md owns the release verdict.
+Prepared 24 October 2026. **Portfolio source frozen; hosted production NO-GO. Not deployed.**
+PROJECT_STATUS.md owns the release verdict.
 This recipe preserves the existing native Python service, mounted `/api` and built
 React SPA. The nginx/systemd examples in OPERATIONS.md describe a different,
 self-managed full-runtime setup; do not apply them to this service.
@@ -21,8 +22,9 @@ self-managed full-runtime setup; do not apply them to this service.
   before Uvicorn. Neither command was changed in the Dashboard.
 - PostgreSQL: `inboxnizer-beta-db`, `dpg-dbcquaa9lscs73eqtki0-a`, PostgreSQL 18,
   Free, Frankfurt, available. No managed connection pool, replicas or HA.
-  Closure recheck: one temporary /32 rule, "Temporary laptop backup", remains.
-  Removal is NOT verified. The application URL/role and any external
+  Final operator evidence: the temporary external IP allowlist rule was removed
+  and verified. This supersedes the earlier recheck; no networking action was
+  performed in the source-freeze pass. The application URL/role and any external
   pooler remain unverified; session advisory locks require session affinity.
 - Database expiration reported by Render: **2026-11-21 06:37:29.181483 UTC**.
   A durable zero-cost beta cannot be promised with that expiration unresolved.
@@ -81,13 +83,15 @@ so stale packages cannot satisfy checks. Full/local requirements are unchanged.
 
 ## Artifact and quality gate
 
-The current local source weights SHA-256 is
-`1686c767582eab051298eb82fa048822b9c6142842f61b3a384f55e204f6902b`.
-The existing FP32 export provenance records source weights SHA-256
-`97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4`.
-These differ. The historical classifier decision selected no release model.
-Do not pack, publish or activate either as an approved production artifact until
-its source/approval is resolved. Existing artifacts are preserved.
+The frozen existing FP32 export matches `results/checkpoint-3159/model.safetensors`,
+SHA-256 `97a26b679690d2ab8df85f4e5b8fab2b7c91c8011807ac04767c4a9790a1e3d4`.
+The earlier `1686c767…` mismatch compared a different `email_classifier` directory.
+Source/tokenizer/config identity and fresh 111/111 Torch/ONNX parity are recorded
+in [V03/V10 evidence](../docs/release/V03_V10_EVIDENCE.md), including all export hashes.
+V03 provenance is verified; the original training report/split is unavailable.
+**Classification is experimental, V10 FAILED, and no model is production approved.**
+Do not pack, publish or activate it as an approved production artifact. Existing
+artifacts remain unchanged; no new export is needed to fix the former identity confusion.
 
 After approval, use the existing `deploy/export_classifier_onnx.py` only if a
 matching export is needed (export is not training). Verify source/tokenizer
@@ -134,14 +138,11 @@ screenshot. Treat that password as compromised. No exposed value is reproduced i
 this repository. OAuth encryption keys and the backup passphrase are separate and
 must be preserved; database password rotation does not justify rotating them.
 
-Exact proposed operations, **not executed**:
+The operator confirms the temporary external IP rule was removed and verified.
+Do not recreate it. Credential rotation is deferred and remains an unresolved
+security risk. Exact remaining proposed operation, **not executed**:
 
-1. On `inboxnizer-beta-db`, remove only the temporary /32 entry labelled
-   **Temporary laptop backup**, then read back Networking/IP rules to confirm no
-   external entries remain. This closes that laptop's direct DB access; it does not
-   remove data or change Render's internal connection. Coordinate any remaining
-   operator work before closing access. The closure recheck still found this rule.
-2. In an approved maintenance window, rotate only `inboxnizer_beta_db_user`'s
+1. In an approved maintenance window, rotate only `inboxnizer_beta_db_user`'s
    password using the database owner's authorized mechanism. Keep the new secret
    outside commands, screenshots and Git. Update every legitimate dependent client,
    including the existing service's protected DATABASE_URL, then activate it through

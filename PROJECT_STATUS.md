@@ -2,6 +2,8 @@
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
+**Final portfolio freeze, 25 October 2026:** **PORTFOLIO SOURCE RELEASE: COMPLETE. HOSTED PRODUCTION RELEASE: NO-GO.** This explicitly closes source/portfolio presentation scope, not the unchanged production acceptance gates. The release branch is verified as GitHub's default; the operator confirms the temporary external IP rule was removed and verified. Exposed-credential rotation remains deferred. This final state supersedes earlier candidate/default-branch/IP-rule statements below. See [the final freeze ledger](docs/release/PORTFOLIO_FREEZE.md) for A/B/C dispositions, checks and exact remaining production blockers. No application code or infrastructure changed in this freeze.
+
 **V03/V10 follow-up, 24 October:** the export source has now been identified as `results/checkpoint-3159` (`97a26b67…`), not the separate `email_classifier` directory (`1686c767…`). The prior mismatch interpretation is superseded. Source identity is resolved; release approval and representative quality acceptance remain blocked. See [the focused evidence report](docs/release/V03_V10_EVIDENCE.md) and the final V03/V10 section below. No model was replaced or retrained.
 
 **Closure execution, 24 October:** release HEAD `30d7c357b762ba9305f69acf03ff6105bd639e0d` was published and verified through Git and GitHub. Both remote CI runs passed. This closure change adds documentation and synthetic screenshots only; application code remains `b3225fa`. **NO-GO for hosted V1:** classifier approval/quality, target-host acceptance, isolated restore, database expiry and now-confirmed credential/access cleanup remain open. See the final closure ledger below; historical evidence sections retain their original dates and scope.
@@ -12,7 +14,7 @@ Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0
 
 This is the single source of truth for current product scope, release blockers and remaining work. Historical reports describe their dated experiments, not current release approval. Update this file when a checklist item is verified; include the tested commit, environment and evidence. Do not mark work complete merely because code exists.
 
-**Current verdict:** suitable for a supervised demonstration in a prepared environment; **not yet a reproducible, independently usable portfolio V1 or a verified hosted release**. The user reported a real Gmail run reaching 1,585 messages. That is useful integration evidence, not proof that this latest commit, classifier, all visible features or recovery paths are live on Render.
+**Current verdict:** complete as a technically honest portfolio/source release, suitable for repository review and supervised demonstrations with provisioned prerequisites. It is **not** a turnkey clean-clone deployment or an approved hosted product. Local model artifacts and Google credentials are not distributed. The user-reported 1,585-message Gmail run is integration evidence, not proof that the latest source, classifier or recovery paths are deployed. Classification is experimental/unapproved; V10 remains failed.
 
 **Freeze:** finish the existing organizer. No new AI features, model replacement, broad refactor, new queue infrastructure, paid API, hosting migration or visual redesign belongs in this release.
 
@@ -764,3 +766,16 @@ This follow-up changes evidence/documentation only, based on release HEAD `1d37c
 The existing release gate status was rerun against the correct source hash: **representative human-reviewed final holdout evaluation is missing**. All original thresholds remain unchanged (>=300 examples, >=20/class, >=50 Arabic and English, accuracy >=90%, top-one macro-F1 >=85%, plus all per-class/Finance/calibration/language-gap/ambiguity limits). No final labels were opened. Tests: **29 passed, 2 skipped, 2 subtests passed**; initial seven Windows temp-directory setup errors resolved with a fresh workspace-local basetemp. Skips are explicit opt-in browser and saved-reference artifact tests; the separate fresh 111-input parity run passed. See the report for exact commands/results.
 
 **Exact remaining action:** explicitly freeze a selected artifact, supply a separate untouched representative human-reviewed holdout with the existing group-disjoint manifest and sampling policy, then run the existing one-time final evaluation under the unchanged gate. Do not recycle development examples. Poor development results remain a warning, not a forecast or a reason to lower thresholds. If baseline acceptance is not pursued or the final gate fails, a bounded classifier-improvement or release-scope decision requires separate authorization; no retraining/model search is started here. V03's approval requirement and V10 are not declared closed. No deployment, Gmail, database, credentials, hosting or UI changes were made.
+
+
+## Final portfolio/source scope closure — 25 October 2026
+
+**PORTFOLIO SOURCE RELEASE: COMPLETE**
+
+**HOSTED PRODUCTION RELEASE: NO-GO**
+
+The user explicitly authorized closing the portfolio/source scope while keeping failed production gates open. V03 technical provenance is verified (111/111 parity); classifier approval is blocked and V10 remains FAILED. Original training split/report is unavailable. No thresholds, training data, artifacts or application code were changed. The final default-branch experience now leads with experimental classification, accurate setup prerequisites, synthetic screenshot provenance, architecture, test evidence and production limitations.
+
+The operator's final instruction confirms temporary external PostgreSQL IP-rule removal and verification; that item is resolved by operator evidence, not a new inspection here. The previously exposed role password remains an unresolved security risk because coordinated rotation is deferred. Encrypted backup checksum/decryption/archive-list evidence remains valid; isolated restoration is still unverified. Live Render remains the operator-reported f53e22c with auto-deploy off; no deployment or infrastructure change was performed.
+
+[Final freeze ledger](docs/release/PORTFOLIO_FREEZE.md) records all V01–V18 dispositions, the publication boundary, prior versus current verification, and only genuine remaining production blockers. Final GitHub HEAD and CI results are confirmed after the normal non-force push and reported in the final handoff; the commit's GitHub Checks remain the authoritative publication result. No merge, history rewrite or new development phase is authorized by this closure.

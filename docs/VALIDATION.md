@@ -1,4 +1,8 @@
-# inbox-nizer validation for this update
+# Inbox-nizer validation evidence
+
+**Current source freeze:** see [the final evidence ledger](release/PORTFOLIO_FREEZE.md)
+and [PROJECT_STATUS.md](../PROJECT_STATUS.md). The dated results below are historical,
+not the latest suite counts or production approval.
 
 Checked locally on 18–19 October 2026 with Python 3.11.9, Node 24.11.1 and npm 11.6.2.
 Direct Python requirements are pinned to the tested installed environment; the frontend

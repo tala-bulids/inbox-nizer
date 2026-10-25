@@ -1,17 +1,24 @@
-# inbox-nizer
+# Inbox-nizer
 
 Inbox-nizer is a read-only Gmail organizer with an Arabic/English React interface.
 It imports mail in small resumable batches and presents messages, category/priority
 suggestions, extractive summaries and source-linked tasks in one workspace.
 
-**Portfolio release candidate — hosted V1 is not yet approved.** The published
-release branch contains the tested application and release preparation. The live
+**PORTFOLIO SOURCE RELEASE: COMPLETE**
+
+**HOSTED PRODUCTION RELEASE: NO-GO**
+
+The source release is frozen for portfolio review, not production use. Classification
+is **experimental and unapproved**. The release branch contains the tested application
+and documented limitations. The live
 Render service still runs an older commit. [PROJECT_STATUS.md](PROJECT_STATUS.md)
 is the release contract and evidence ledger; [RENDER_RELEASE.md](deploy/RENDER_RELEASE.md)
 contains the existing-host installation and recovery procedure.
 
 The local candidate passed **1,380 backend tests and 162 frontend tests**; GitHub
-backend/frontend CI also passed at [30d7c35](https://github.com/tala-bulids/inbox-nizer/actions/runs/40102885080).
+backend/frontend CI also passed at `30d7c35` and `1d37c46`.
+[GitHub Actions](https://github.com/tala-bulids/inbox-nizer/actions/workflows/ci.yml)
+records checks for each published commit; see [final freeze evidence](docs/release/PORTFOLIO_FREEZE.md).
 These checks prove application behavior under their stated fixtures, not production
 capacity, real Google consent or classifier accuracy.
 
@@ -53,7 +60,7 @@ of database row-level-security policies.
 | Capability | render-free | Full/local |
 | --- | --- | --- |
 | Inbox, details, summaries, tasks, Gmail connection/recovery | Implemented and tested locally | Preserved |
-| Classification | Provisioned FP32 ONNX; source approval/quality gate still blocked | Existing local classifier |
+| Classification | FP32 ONNX implementation; provenance verified, quality unapproved | Existing experimental local classifier |
 | Semantic Search / Ask | Navigation/routes disabled; API rejects before heavy inference | pgvector, local embeddings and optional Qwen/GGUF |
 | Model downloads on a user request | None | Explicit offline provisioning required |
 
@@ -64,27 +71,31 @@ See [installation](#full-application-setup), [models](docs/MODELS.md) and
 
 ## Demonstrated limitations
 
-- The approved classifier identity is unresolved: current source weights differ from
-  the existing ONNX export's recorded source. Neither is silently approved for V1.
-- A 20-example public diagnostic scored **7/10 English, 1/10 Arabic**. This small
-  synthetic sample is not representative mailbox accuracy. Bilingual UI does not
-  imply validated Arabic classification. The human-reviewed holdout gate is unmet.
+- ONNX provenance is verified against `results/checkpoint-3159`; fresh Torch/ONNX
+  parity passed on 111/111 inputs. The original training report/split is unavailable.
+- Classification remains **experimental/unapproved**. On 100 deliberately difficult,
+  consumed development examples: English 20/56, Arabic-heavy 1/11, overall 32/100.
+  These are **not representative accuracy**; language groups are heuristic. V10's
+  untouched representative human-reviewed holdout is missing. Bilingual UI does not
+  establish Arabic classification quality. [Exact evidence](docs/release/V03_V10_EVIDENCE.md).
 - Linux memory/concurrent-workload capacity and actual hosted acceptance remain
   unverified. Empty platform metrics are not evidence of adequate capacity.
 - An encrypted backup has operator-reported checksum/decryption/archive checks;
   a real isolated database restoration has not been tested.
 - The current free database expires on **21 November 2026**. Continuity, coordinated
-  credential rotation and temporary-access cleanup are release blockers.
+  credential rotation remain production blockers. The operator confirms the temporary
+  external IP rule was removed and verified; no networking change is needed here.
 - Invited-user access is the intended beta scope; this is not unrestricted public signup.
 
 ## Implemented features
 
-- **Classification:** ten-label DistilBERT training with weighted binary cross-entropy.
+- **Experimental classification:** a ten-label DistilBERT pipeline; the supported
+  trainer uses weighted binary cross-entropy. No classifier is production approved.
   The product returns the highest-scoring label and its raw sigmoid score. That score
   is not a calibrated probability of correctness.
 - **Inbox:** account-owned Gmail sync, filters, pagination, priority, clean message text,
   summaries, and conservative task/deadline extraction.
-- **Search and Ask:** local multilingual embeddings with pgvector, structured facts,
+- **Search and Ask (full/local only):** local multilingual embeddings with pgvector, structured facts,
   literal extraction, clarification and optional local GGUF synthesis. Generated
   answers retain an unverified-synthesis notice and source links.
 - **Authentication:** Google application sign-in, separate Gmail read consent, encrypted
@@ -115,7 +126,7 @@ For CUDA-specific PyTorch packages, follow PyTorch's instructions for your hardw
 
 ## Optional classifier research workflow
 
-Training is not required to launch the app with an existing approved artifact, and
+Training is not required to launch the app with an explicitly provisioned local artifact, and
 is outside the current V1 closure scope. Continue to [application setup](#full-application-setup)
 when working on the product.
 
@@ -163,7 +174,7 @@ Training refuses nonempty output directories. Evaluate a new candidate explicitl
 before changing `EMAIL_MODEL_PATH`. Existing `results/checkpoint-3159` installations
 remain usable by setting that path explicitly. No legacy weights are moved or replaced.
 
-Artifacts contain weights, tokenizer, label mappings, multi-label problem type, training
+New artifacts from the supported trainer contain weights, tokenizer, label mappings, multi-label problem type, training
 token limit, split manifest and training report. Prediction and evaluation share loading,
 preprocessing, truncation and sigmoid scoring. Missing/incompatible artifacts fail
 instead of downloading a substitute model. Model weights are not included in Git.
@@ -178,8 +189,8 @@ and [model saving/loading](https://huggingface.co/docs/transformers/main_classes
 
 ## Full application setup
 
-Prerequisites: install dependencies above; obtain the approved classifier artifact
-and set `EMAIL_MODEL_PATH` for full/local use. Model weights and Google credentials
+Prerequisites: install dependencies above; explicitly provision a compatible classifier
+artifact and set `EMAIL_MODEL_PATH` for experimental full/local use. Model weights and Google credentials
 are intentionally not distributed with this repository. There is currently no approved
 public classifier bundle, so a clean clone is not a turnkey hosted release. For
 render-free serving, use the separate checked-in recipe only after its approval gates.

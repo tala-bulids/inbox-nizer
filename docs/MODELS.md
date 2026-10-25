@@ -2,6 +2,11 @@
 
 ## Email classifier
 
+**Experimental and unapproved for production.** V03 verifies the existing ONNX
+export against checkpoint-3159 (111/111 fresh parity inputs); the original training
+split/report is unavailable and V10 remains failed. See [frozen provenance and
+quality evidence](release/V03_V10_EVIDENCE.md). Training is not a source-release step.
+
 Follow the root README to train a local artifact or explicitly select an existing
 one with `EMAIL_MODEL_PATH`. The default is `results/email-classifier`. The legacy
 `results/checkpoint-3159` directory is supported only when explicitly selected.
