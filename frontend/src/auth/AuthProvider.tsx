@@ -19,16 +19,17 @@ import { KeyRound } from "lucide-react";
 import { RetroWindow } from "../components/ui/RetroWindow";
 type Auth = {
   api: ApiClient;
+  demo?: boolean;
   getAccessToken: () => string | undefined;
   getCurrentUser: () => {
-    kind: "operator-token" | "browser-session";
+    kind: "operator-token" | "browser-session" | "demo";
     profileAvailable: false;
   };
   logout: () => void;
 };
-const Context = createContext<Auth | null>(null);
+export const AuthContext = createContext<Auth | null>(null);
 export function useAuth() {
-  const value = useContext(Context);
+  const value = useContext(AuthContext);
   if (!value) throw new Error("AuthProvider required");
   return value;
 }
@@ -68,7 +69,7 @@ function Session({
     [api, queryClient],
   );
   return (
-    <Context.Provider
+    <AuthContext.Provider
       value={{
         api,
         getAccessToken: () => token,
@@ -80,7 +81,7 @@ function Session({
       }}
     >
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </Context.Provider>
+    </AuthContext.Provider>
   );
 }
 type LoginSession = { token?: string; csrf?: string; initial: Accounts };

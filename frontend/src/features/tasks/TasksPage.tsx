@@ -11,7 +11,7 @@ import { EmailDate } from "../../components/ui/EmailDate";
 import { ContentText } from "../../components/ui/Text";
 import { RetroWindow } from "../../components/ui/RetroWindow";
 export function TasksPage() {
-  const { api } = useAuth();
+  const { api, demo } = useAuth();
   const { t } = useLocale();
   const [params, setParams] = useSearchParams();
   const n = Number(params.get("offset") || 0);
@@ -46,8 +46,12 @@ export function TasksPage() {
           <h1>{t("المهام", "Tasks")}</h1>
           <p>
             {t(
-              "مهام مستخرجة من بريدك. راجع الرسالة الأصلية للتأكد من التفاصيل.",
-              "Tasks extracted from your email. Review the original for details.",
+              demo
+                ? "مهام تجريبية من رسائل خيالية. افتح المصدر للاطلاع على السياق."
+                : "مهام مستخرجة من بريدك. راجع الرسالة الأصلية للتأكد من التفاصيل.",
+              demo
+                ? "Example tasks from fictional messages. Open the source for context."
+                : "Tasks extracted from your email. Review the original for details.",
             )}
           </p>
         </div>

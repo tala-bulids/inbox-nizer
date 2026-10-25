@@ -18,6 +18,8 @@ export class ApiClient {
     path: string,
     options: { method?: string; body?: unknown; signal?: AbortSignal } = {},
   ): Promise<unknown> {
+    // A static demo build must never contact even a same-origin mailbox API.
+    if (import.meta.env.VITE_PUBLIC_DEMO === "true") throw new ApiError(403);
     const headers: Record<string, string> = { Accept: "application/json" };
     const token = this.token();
     if (token) headers.Authorization = `Bearer ${token}`;

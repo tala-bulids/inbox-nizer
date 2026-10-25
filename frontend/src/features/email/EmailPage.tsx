@@ -22,7 +22,7 @@ export function EmailPage() {
     inbox?: unknown;
   } | null;
   const back = emailReturnPath(state?.returnTo ?? state?.inbox);
-  const { api } = useAuth();
+  const { api, demo } = useAuth();
   const { t, language } = useLocale();
   const isEn = language === "en";
   const qc = useQueryClient();
@@ -167,7 +167,11 @@ export function EmailPage() {
               </span>
             ))}
           </div>
-          <h3>{t("ملخص آلي", "AI summary")}</h3>
+          <h3>
+            {demo
+              ? t("ملخص تجريبي", "Example summary")
+              : t("ملخص آلي", "AI summary")}
+          </h3>
           <ContentText>
             {email.summary || t("لا يوجد ملخص", "No summary available")}
           </ContentText>

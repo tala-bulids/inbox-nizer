@@ -1,9 +1,21 @@
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { App } from "./app/App";
+import { BrowserRouter, HashRouter } from "react-router-dom";
 import "./styles/theme.css";
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>,
-);
+const root = createRoot(document.getElementById("root")!);
+if (import.meta.env.VITE_PUBLIC_DEMO === "true") {
+  void import("./demo/DemoApp").then(({ DemoApp }) => {
+    root.render(
+      <HashRouter>
+        <DemoApp />
+      </HashRouter>,
+    );
+  });
+} else {
+  void import("./app/App").then(({ App }) => {
+    root.render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+  });
+}

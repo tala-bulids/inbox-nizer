@@ -16,7 +16,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "api:generate": "node scripts/generate-api.mjs",
-    "ui:check": "node scripts/check-ui.mjs"
+    "ui:check": "node scripts/check-ui.mjs",
+    "build:demo": "tsc -b && vite build --mode demo",
+    "demo:check": "node scripts/check-demo.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.2.0",

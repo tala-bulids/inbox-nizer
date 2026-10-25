@@ -17,7 +17,7 @@ import { DesktopTopBar } from "../ui/DesktopTopBar";
 import { GmailSyncNotice } from "../../features/settings/GmailSync";
 import { useRetrievalEnabled } from "../../app/capabilities";
 
-export function Shell() {
+export function Shell({ demo = false }: { demo?: boolean }) {
   const retrievalEnabled = useRetrievalEnabled();
   const logout = useSignOut();
   const { t, toggle, language } = useLocale();
@@ -61,10 +61,23 @@ export function Shell() {
       <DesktopTopBar
         language={language === "en" ? "en" : "ar"}
         onToggleLanguage={toggle}
-        onLogout={logout}
+        onLogout={demo ? undefined : logout}
       />
       <div className="app-shell flex-1">
-        <a className="skip-link" href="#main">
+        <a
+          className="skip-link"
+          href="#main"
+          onClick={
+            demo
+              ? (event) => {
+                  event.preventDefault();
+                  const main = document.getElementById("main");
+                  main?.focus();
+                  main?.scrollIntoView();
+                }
+              : undefined
+          }
+        >
           {t("انتقل إلى المحتوى", "Skip to content")}
         </a>
         <aside className="sidebar">
@@ -73,7 +86,9 @@ export function Shell() {
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-[1px] bg-[#81B29A] border border-[#241E18] block" />
               <span className="font-mono-code text-xs font-semibold">
-                {t("مساحة عمل خاصة", "Private workspace")}
+                {demo
+                  ? t("بيانات تجريبية فقط", "Sample data only")
+                  : t("مساحة عمل خاصة", "Private workspace")}
               </span>
             </div>
           </div>
@@ -125,7 +140,32 @@ export function Shell() {
             </span>
           </header>
           <main id="main" className="main-content" tabIndex={-1}>
-            <GmailSyncNotice />
+            {demo ? (
+              <section
+                className="surface p-4 mb-4"
+                aria-label={t("عن العرض التفاعلي", "About this demo")}
+              >
+                <strong>
+                  {t(
+                    "عرض تفاعلي — بيانات تجريبية",
+                    "Interactive Demo — Sample Data",
+                  )}
+                </strong>
+                <p>
+                  {t(
+                    "كل الرسائل والتصنيفات والملخصات والمهام أمثلة خيالية. لا يوجد اتصال بـ Gmail أو تشغيل للذكاء الاصطناعي. التصنيف الفعلي غير معتمد للإنتاج.",
+                    "All messages, categories, summaries and tasks are fictional examples. No Gmail connection or AI inference runs here. The real classifier is not production approved.",
+                  )}
+                </p>
+                <NavLink to="/">{t("جرّب العرض", "Try Demo")}</NavLink>
+                {" · "}
+                <NavLink to="/settings">
+                  {t("الميزات والحدود", "Features & limitations")}
+                </NavLink>
+              </section>
+            ) : (
+              <GmailSyncNotice />
+            )}
             <Suspense fallback={<Loading />}>
               <Outlet />
             </Suspense>
