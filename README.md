@@ -1,3 +1,5 @@
+> **AI Engineering refocus — Phase 1 development branch.** This branch adds real model inference, source-grounded Ask, task extraction and Model Lab without a Gmail/DB dependency. See [the specification and local setup](docs/AI_SHOWCASE_SPEC.md). It has not been deployed; the hosted links and release history below describe earlier versions. The original Gmail application is preserved.
+
 # Inbox-nizer
 
 Inbox-nizer is a read-only Gmail organizer with an Arabic/English React interface.

@@ -12,18 +12,7 @@ from rag_budget import pack_context
 from local_llm import ContextTooLarge
 from rag_extractive import audit_answers, decide, verify_proof, format_extractive
 from rag_clarification import clarification
-
-
-def _validate_citations(answer, sources):
-    pattern = r'\[email_id=(\d+)\]'
-    cited = list(dict.fromkeys(int(value) for value in re.findall(pattern, answer)))
-    allowed = {source['email_id'] for source in sources}
-    if (not cited or not set(cited) <= allowed
-            or any(not re.search(pattern, paragraph) for paragraph in answer.split('\n') if paragraph.strip())
-            or '[email_id' in re.sub(pattern, '', answer)):
-        raise InvalidGeneration('Generation failed source citation validation')
-
-    return cited
+from rag_citations import validate_citations as _validate_citations
 
 
 def insufficient_answer(question):

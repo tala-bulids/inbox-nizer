@@ -1,0 +1,8 @@
+[
+  {"id":1,"language":"en","subject":"Atlas workshop","sender":"learning@example.invalid","date":"2026-10-20T09:00:00+00:00","body":"Atlas workshop\nWorkshop date: 2026-11-05\nWorkshop location: Online room Atlas\nPlease submit the workshop preparation form by 2026-11-02."},
+  {"id":2,"language":"ar","subject":"ورشة التعلم الآلي","sender":"workshop@example.invalid","date":"2026-10-21T09:00:00+00:00","body":"ورشة التعلم الآلي\nتاريخ الورشة: 2026-11-08\nمكان الورشة: قاعة النور\nيرجى إرسال ملخص المشروع قبل 2026-11-04."},
+  {"id":3,"language":"en","subject":"Orbit application update","sender":"careers@example.invalid","date":"2026-10-22T10:00:00+00:00","body":"Your application for the Orbit internship is under review.\nApplication reference: ORBIT-204\nPlease upload your portfolio by 2026-11-03. No interview has been scheduled."},
+  {"id":4,"language":"ar","subject":"فاتورة خدمة المختبر","sender":"billing@example.invalid","date":"2026-10-22T11:00:00+00:00","body":"رقم الفاتورة: LAB-310\nالمبلغ المستحق: 120 ريال\nتاريخ الاستحقاق: 2026-11-10\nيرجى دفع الفاتورة قبل 2026-11-10. هذه رسالة تدريبية خيالية."},
+  {"id":5,"language":"en","subject":"Research newsletter","sender":"research@example.invalid","date":"2026-10-23T09:00:00+00:00","body":"This week's reading covers multilingual retrieval, evaluation leakage and calibration. The next issue will discuss grounded question answering. This newsletter requires no action."},
+  {"id":6,"language":"ar","subject":"مراجعة تقرير المشروع","sender":"team@example.invalid","date":"2026-10-24T09:00:00+00:00","body":"اسم المشروع: أطلس\nموعد المراجعة: 2026-11-06\nيرجى مراجعة التقرير قبل 2026-11-05. لا ترسل النسخة القديمة."}
+]

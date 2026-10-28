@@ -18,6 +18,8 @@
     "api:generate": "node scripts/generate-api.mjs",
     "ui:check": "node scripts/check-ui.mjs",
     "build:demo": "tsc -b && vite build --mode demo",
+    "dev:showcase": "vite --mode showcase --host localhost",
+    "build:showcase": "tsc -b && vite build --mode showcase",
     "demo:check": "node scripts/check-demo.mjs"
   },
   "dependencies": {

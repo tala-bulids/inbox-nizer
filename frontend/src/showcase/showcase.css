@@ -1,0 +1,9 @@
+/* Preserve the shared visual system; this navigation is not the Gmail sidebar. */
+.showcase-nav {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.showcase-nav a {
+  flex: 1 1 150px;
+}

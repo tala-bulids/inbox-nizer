@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-28",
+  "branch": "codex/ai-showcase-phase1",
+  "base_commit": "693feb08f79a14aa019e576797fe93dfd8a4a619",
+  "scope": "Local Phase 1 foundation; not deployed; not a quality evaluation",
+  "automated": {
+    "showcase_backend_passed": 18,
+    "legacy_rag_regressions_passed": 108,
+    "focused_frontend_passed": 6,
+    "full_frontend_passed": 178,
+    "frontend_typecheck": "passed",
+    "frontend_lint": "passed",
+    "api_contract": "unchanged",
+    "full_frontend_note": "178 passed before the final source-navigation regression was added; final focused suite: 6 passed.",
+    "standard_frontend_build": "passed",
+    "showcase_frontend_build": "passed"
+  },
+  "real_models": {
+    "input_provenance": "authored fictional showcase collection",
+    "database_used": false,
+    "google_used": false,
+    "quality_evaluation": false,
+    "classification": [
+      {
+        "language": "en",
+        "returned_prediction": true,
+        "seconds": 0.9581914998125285
+      },
+      {
+        "language": "ar",
+        "returned_prediction": true,
+        "seconds": 0.1076380000449717
+      }
+    ],
+    "ask": [
+      {
+        "language": "en",
+        "literal_answer_matches_source": true,
+        "seconds": 15.354825499933213
+      },
+      {
+        "language": "ar",
+        "literal_answer_matches_source": true,
+        "seconds": 0.01967170019634068
+      }
+    ],
+    "unknown_question_abstained": true,
+    "extracted_tasks": 6
+  },
+  "browser": [
+    {
+      "width": 1440,
+      "english": true,
+      "arabic": true,
+      "classification": true,
+      "groundedAnswers": true,
+      "tasks": true,
+      "lab": true,
+      "deepLinks": true,
+      "noOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    },
+    {
+      "width": 390,
+      "english": true,
+      "arabic": true,
+      "classification": true,
+      "groundedAnswers": true,
+      "tasks": true,
+      "lab": true,
+      "deepLinks": true,
+      "noOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    }
+  ],
+  "generation_quality_verified": false,
+  "production_changed": false
+}

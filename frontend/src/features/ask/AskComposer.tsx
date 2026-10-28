@@ -4,11 +4,13 @@ export function AskComposer({
   onChange,
   busy,
   onSubmit,
+  maxLength = 2000,
 }: {
   draft: string;
   onChange: (v: string) => void;
   busy: boolean;
   onSubmit: () => void;
+  maxLength?: number;
 }) {
   const { t } = useLocale();
   return (
@@ -24,7 +26,7 @@ export function AskComposer({
         id="question"
         dir="auto"
         rows={3}
-        maxLength={2000}
+        maxLength={maxLength}
         value={draft}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t("متى موعد رحلتي؟", "When is my trip?")}

@@ -5,6 +5,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     define: {
+      "import.meta.env.VITE_AI_SHOWCASE": JSON.stringify(
+        mode === "showcase" ? "true" : "false",
+      ),
       "import.meta.env.VITE_PUBLIC_DEMO": JSON.stringify(
         mode === "demo" ? "true" : "false",
       ),
@@ -12,6 +15,20 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      ...(mode === "showcase"
+        ? [
+            {
+              name: "ai-showcase",
+              generateBundle() {
+                this.emitFile({
+                  type: "asset",
+                  fileName: "showcase-build.json",
+                  source: JSON.stringify({ mode: "ai-showcase" }),
+                });
+              },
+            } satisfies Plugin,
+          ]
+        : []),
       ...(mode === "demo"
         ? [
             {

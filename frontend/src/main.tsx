@@ -2,7 +2,15 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter } from "react-router-dom";
 import "./styles/theme.css";
 const root = createRoot(document.getElementById("root")!);
-if (import.meta.env.VITE_PUBLIC_DEMO === "true") {
+if (import.meta.env.VITE_AI_SHOWCASE === "true") {
+  void import("./showcase/ShowcaseApp").then(({ ShowcaseApp }) => {
+    root.render(
+      <BrowserRouter>
+        <ShowcaseApp />
+      </BrowserRouter>,
+    );
+  });
+} else if (import.meta.env.VITE_PUBLIC_DEMO === "true") {
   void import("./demo/DemoApp").then(({ DemoApp }) => {
     root.render(
       <HashRouter>
