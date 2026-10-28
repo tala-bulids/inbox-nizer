@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-28",
+  "base_commit": "906e228d20b1e43956b9bff874b9e380be76987f",
+  "phase2_tests": {
+    "passed": 13,
+    "command": "python -m pytest --confcutdir=ml_phase2 ml_phase2/tests -q"
+  },
+  "showcase_regression_tests": {
+    "passed": 18,
+    "warnings": 1,
+    "warning": "Existing Starlette/httpx deprecation",
+    "command": "python -m pytest --confcutdir=showcase showcase/tests -q"
+  },
+  "actual_training": [
+    "A: TF-IDF + balanced logistic heads",
+    "C: frozen multilingual E5 + balanced logistic heads"
+  ],
+  "actual_inference": [
+    "B: historical checkpoint-3159 on 215 validation rows"
+  ],
+  "real_transformer_finetuning": "NOT EXECUTED: CPU-only environment, initial available RAM about 1.8 GiB; recipe preflight minimum 3 GiB",
+  "tiny_training_tests": "Two deterministic random tiny DistilBERT fixture fits; optimizer updates, loss tracking and checkpoint reload verified; not portfolio training runs",
+  "task_training": "NOT EXECUTED: no compatible action/deadline labels",
+  "final_test_predictions_executed": false,
+  "arabic_evaluation": "UNAVAILABLE: no admitted Arabic labels",
+  "production_changed": false,
+  "personal_mail_used": false,
+  "new_onnx_export": false,
+  "shared_training_data_tests": {
+    "passed": 5,
+    "command": "python -m pytest --noconftest test_training.py test_quality_data.py -q"
+  },
+  "frontend_checks": "Not repeated: no frontend changes in Phase 2"
+}

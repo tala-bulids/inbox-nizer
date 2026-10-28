@@ -1,0 +1,18 @@
+{
+  "method": "One fixed convex liblinear fit; no epoch/early-stopping claims",
+  "solver_iterations_per_label": [
+    5,
+    5,
+    5,
+    5,
+    6,
+    5,
+    5,
+    6,
+    5,
+    5
+  ],
+  "train_unweighted_binary_log_loss": 0.28391077143529087,
+  "validation_unweighted_binary_log_loss": 0.2938089244356182,
+  "epochs": []
+}

@@ -1,0 +1,97 @@
+{
+  "raw_rows": 2105,
+  "usable_rows": 2103,
+  "exact_duplicate_excess": 1,
+  "contradictory_exact_groups": 1,
+  "quarantined_rows": 2,
+  "near_duplicate_pairs": 131,
+  "groups": 1995,
+  "near_pairs_different_labels": 38,
+  "sender_domains": 0,
+  "sender_thread_metadata_available": false,
+  "splits": {
+    "train": {
+      "rows": 1679,
+      "classes": {
+        "Customer Support": 187,
+        "Reminders": 268,
+        "Business": 754,
+        "Events & Invitations": 531,
+        "Travel & Bookings": 260,
+        "Job Application": 96,
+        "Promotions": 90,
+        "Newsletters": 156,
+        "Personal": 169,
+        "Finance & Bills": 261
+      }
+    },
+    "validation": {
+      "rows": 215,
+      "classes": {
+        "Travel & Bookings": 27,
+        "Customer Support": 17,
+        "Job Application": 16,
+        "Newsletters": 21,
+        "Promotions": 13,
+        "Finance & Bills": 38,
+        "Personal": 21,
+        "Business": 93,
+        "Reminders": 38,
+        "Events & Invitations": 63
+      }
+    },
+    "test": {
+      "rows": 209,
+      "classes": {
+        "Travel & Bookings": 27,
+        "Customer Support": 23,
+        "Job Application": 10,
+        "Newsletters": 22,
+        "Promotions": 17,
+        "Finance & Bills": 35,
+        "Business": 92,
+        "Events & Invitations": 61,
+        "Reminders": 35,
+        "Personal": 31
+      }
+    }
+  },
+  "pii_screen": {
+    "rows_changed_by_contact_redaction": 3
+  },
+  "language_counts": {
+    "en": 2103
+  },
+  "class_counts": {
+    "Customer Support": 227,
+    "Reminders": 341,
+    "Business": 939,
+    "Events & Invitations": 655,
+    "Travel & Bookings": 314,
+    "Job Application": 122,
+    "Newsletters": 199,
+    "Promotions": 120,
+    "Personal": 221,
+    "Finance & Bills": 334
+  },
+  "language_method": "Script heuristic, not human language annotation",
+  "sender_metadata_available": false,
+  "preprocessing": "NFC + existing HTML/body cleaner; whitespace; contact/URL/long-number redaction",
+  "dedup": "Exact normalized duplicates collapsed; conflicting exact labels quarantined; transitive near-template cosine >=0.9 and provided sender-domain groups",
+  "limitations": [
+    "Names and semantic personal information may remain. No raw text is approved for redistribution.",
+    "Source has no sender/thread metadata; template grouping cannot eliminate all leakage.",
+    "Public data was used in historical experiments; reserved test is not a new release holdout."
+  ],
+  "source": {
+    "repository": "imnim/multiclass-email-classification",
+    "revision": "e95090f0bb6dae0b05c9cd6db314dcae1d40db3f",
+    "license": "MIT (publisher declaration)",
+    "data_sha256": "1093f1a3191e52b715ae728609b2e15bac71ba2573814a968856c43b009a0b30",
+    "card_sha256": "de69b0adb28d0117105547af1f761bd2220aecab635f4dad429e53e69865c329",
+    "generation_code_sha256": "3850b452fcd3047830c1de6c2065fc57b9bc17d52868d7da472c1cf6bf21180c",
+    "redistribute_examples": false,
+    "provenance": "Publisher supplies GPT-3.5-turbo synthetic generation code; row-level generation logs are unavailable. Do not assert every row's origin is verified."
+  },
+  "seed": 42
+}

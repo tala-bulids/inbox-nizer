@@ -1,0 +1,591 @@
+{
+  "n": 215,
+  "top1_accuracy": 0.8837209302325582,
+  "top1_macro_f1": 0.7043026029435766,
+  "per_class": {
+    "Business": {
+      "precision": 1.0,
+      "recall": 0.1827956989247312,
+      "f1": 0.3090909090909091,
+      "support": 93
+    },
+    "Customer Support": {
+      "precision": 0.55,
+      "recall": 0.6470588235294118,
+      "f1": 0.5945945945945946,
+      "support": 17
+    },
+    "Events & Invitations": {
+      "precision": 0.9111111111111111,
+      "recall": 0.6507936507936508,
+      "f1": 0.7592592592592593,
+      "support": 63
+    },
+    "Finance & Bills": {
+      "precision": 1.0,
+      "recall": 0.7894736842105263,
+      "f1": 0.8823529411764706,
+      "support": 38
+    },
+    "Job Application": {
+      "precision": 1.0,
+      "recall": 0.8125,
+      "f1": 0.896551724137931,
+      "support": 16
+    },
+    "Newsletters": {
+      "precision": 0.8333333333333334,
+      "recall": 0.47619047619047616,
+      "f1": 0.6060606060606061,
+      "support": 21
+    },
+    "Personal": {
+      "precision": 0.7333333333333333,
+      "recall": 0.5238095238095238,
+      "f1": 0.6111111111111112,
+      "support": 21
+    },
+    "Promotions": {
+      "precision": 0.6923076923076923,
+      "recall": 0.6923076923076923,
+      "f1": 0.6923076923076923,
+      "support": 13
+    },
+    "Reminders": {
+      "precision": 0.92,
+      "recall": 0.6052631578947368,
+      "f1": 0.7301587301587301,
+      "support": 38
+    },
+    "Travel & Bookings": {
+      "precision": 1.0,
+      "recall": 0.9259259259259259,
+      "f1": 0.9615384615384616,
+      "support": 27
+    }
+  },
+  "confusion_matrix": [
+    [
+      7.833333333333333,
+      5.666666666666667,
+      16.16666666666667,
+      0.8333333333333333,
+      0.0,
+      0.5,
+      1.8333333333333333,
+      0.0,
+      11.0,
+      0.0
+    ],
+    [
+      0.0,
+      5.166666666666667,
+      0.0,
+      1.3333333333333333,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.5,
+      1.0
+    ],
+    [
+      5.333333333333334,
+      0.0,
+      22.16666666666666,
+      0.0,
+      0.0,
+      1.5,
+      1.8333333333333333,
+      0.0,
+      1.5,
+      0.0
+    ],
+    [
+      0.0,
+      5.833333333333333,
+      0.0,
+      26.333333333333336,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      13.0,
+      0.0,
+      1.5,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      2.5,
+      0.0,
+      0.0,
+      9.5,
+      0.5,
+      4.0,
+      0.5,
+      0.0
+    ],
+    [
+      0.0,
+      2.0,
+      2.5,
+      0.5,
+      0.0,
+      0.0,
+      9.0,
+      0.5,
+      0.5,
+      0.0
+    ],
+    [
+      0.0,
+      1.3333333333333333,
+      0.0,
+      0.0,
+      0.0,
+      0.5,
+      0.0,
+      8.5,
+      0.0,
+      0.0
+    ],
+    [
+      3.8333333333333335,
+      0.0,
+      1.6666666666666665,
+      0.0,
+      0.0,
+      0.0,
+      0.3333333333333333,
+      0.0,
+      11.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      24.0
+    ]
+  ],
+  "confusion_note": "Rows gold, columns predicted; multi-label gold rows weighted 1/label-count.",
+  "finance_false_positives": 0,
+  "confidence_bins": [
+    {
+      "low": 0.3,
+      "count": 1,
+      "accuracy": 1.0,
+      "confidence": 0.32363192657602147
+    },
+    {
+      "low": 0.4,
+      "count": 1,
+      "accuracy": 1.0,
+      "confidence": 0.42537870865004085
+    },
+    {
+      "low": 0.5,
+      "count": 1,
+      "accuracy": 1.0,
+      "confidence": 0.5368685759567106
+    },
+    {
+      "low": 0.6,
+      "count": 2,
+      "accuracy": 0.5,
+      "confidence": 0.6476485406792039
+    },
+    {
+      "low": 0.7,
+      "count": 13,
+      "accuracy": 0.6923076923076923,
+      "confidence": 0.768224451136292
+    },
+    {
+      "low": 0.8,
+      "count": 41,
+      "accuracy": 0.7560975609756098,
+      "confidence": 0.8604598392204725
+    },
+    {
+      "low": 0.9,
+      "count": 156,
+      "accuracy": 0.9358974358974359,
+      "confidence": 0.9634845918327477
+    }
+  ],
+  "top1_ece": 0.053854816134397424,
+  "finance_false_positive_rate": 0.0,
+  "pair_confusions": {
+    "Business / Job Application": {
+      "first_to_second": 0,
+      "second_to_first": 0
+    },
+    "Newsletters / Promotions": {
+      "first_to_second": 4,
+      "second_to_first": 0
+    },
+    "Reminders / Events & Invitations": {
+      "first_to_second": 0,
+      "second_to_first": 1
+    }
+  },
+  "confidence_semantics": "Raw independent classifier scores; not a calibrated probability of correctness.",
+  "top1_brier_correctness": 0.10000615463982966,
+  "selective_accuracy": {
+    "0.5": {
+      "coverage": 0.9906976744186047,
+      "n": 213,
+      "accuracy": 0.8826291079812206
+    },
+    "0.7": {
+      "coverage": 0.9767441860465116,
+      "n": 210,
+      "accuracy": 0.8857142857142857
+    },
+    "0.8": {
+      "coverage": 0.9162790697674419,
+      "n": 197,
+      "accuracy": 0.8984771573604061
+    },
+    "0.9": {
+      "coverage": 0.7255813953488373,
+      "n": 156,
+      "accuracy": 0.9358974358974359
+    }
+  },
+  "wrong_confident_ge_080": 20,
+  "wrong_confident_rate": 0.09302325581395349,
+  "mean_confidence_correct": 0.9286467795432762,
+  "mean_confidence_wrong": 0.8683062311215417,
+  "top1_weighted_f1": 0.6421593994408791,
+  "metric_definition": "Top-one accuracy accepts any annotated label; per-class F1 compares one prediction against all reference positives. Confusion rows fractional for multilabel gold.",
+  "by_language": {
+    "en": {
+      "n": 215,
+      "top1_accuracy": 0.8837209302325582,
+      "top1_macro_f1": 0.7043026029435766,
+      "per_class": {
+        "Business": {
+          "precision": 1.0,
+          "recall": 0.1827956989247312,
+          "f1": 0.3090909090909091,
+          "support": 93
+        },
+        "Customer Support": {
+          "precision": 0.55,
+          "recall": 0.6470588235294118,
+          "f1": 0.5945945945945946,
+          "support": 17
+        },
+        "Events & Invitations": {
+          "precision": 0.9111111111111111,
+          "recall": 0.6507936507936508,
+          "f1": 0.7592592592592593,
+          "support": 63
+        },
+        "Finance & Bills": {
+          "precision": 1.0,
+          "recall": 0.7894736842105263,
+          "f1": 0.8823529411764706,
+          "support": 38
+        },
+        "Job Application": {
+          "precision": 1.0,
+          "recall": 0.8125,
+          "f1": 0.896551724137931,
+          "support": 16
+        },
+        "Newsletters": {
+          "precision": 0.8333333333333334,
+          "recall": 0.47619047619047616,
+          "f1": 0.6060606060606061,
+          "support": 21
+        },
+        "Personal": {
+          "precision": 0.7333333333333333,
+          "recall": 0.5238095238095238,
+          "f1": 0.6111111111111112,
+          "support": 21
+        },
+        "Promotions": {
+          "precision": 0.6923076923076923,
+          "recall": 0.6923076923076923,
+          "f1": 0.6923076923076923,
+          "support": 13
+        },
+        "Reminders": {
+          "precision": 0.92,
+          "recall": 0.6052631578947368,
+          "f1": 0.7301587301587301,
+          "support": 38
+        },
+        "Travel & Bookings": {
+          "precision": 1.0,
+          "recall": 0.9259259259259259,
+          "f1": 0.9615384615384616,
+          "support": 27
+        }
+      },
+      "confusion_matrix": [
+        [
+          7.833333333333333,
+          5.666666666666667,
+          16.16666666666667,
+          0.8333333333333333,
+          0.0,
+          0.5,
+          1.8333333333333333,
+          0.0,
+          11.0,
+          0.0
+        ],
+        [
+          0.0,
+          5.166666666666667,
+          0.0,
+          1.3333333333333333,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0
+        ],
+        [
+          5.333333333333334,
+          0.0,
+          22.16666666666666,
+          0.0,
+          0.0,
+          1.5,
+          1.8333333333333333,
+          0.0,
+          1.5,
+          0.0
+        ],
+        [
+          0.0,
+          5.833333333333333,
+          0.0,
+          26.333333333333336,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          13.0,
+          0.0,
+          1.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.5,
+          0.0,
+          0.0,
+          9.5,
+          0.5,
+          4.0,
+          0.5,
+          0.0
+        ],
+        [
+          0.0,
+          2.0,
+          2.5,
+          0.5,
+          0.0,
+          0.0,
+          9.0,
+          0.5,
+          0.5,
+          0.0
+        ],
+        [
+          0.0,
+          1.3333333333333333,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          8.5,
+          0.0,
+          0.0
+        ],
+        [
+          3.8333333333333335,
+          0.0,
+          1.6666666666666665,
+          0.0,
+          0.0,
+          0.0,
+          0.3333333333333333,
+          0.0,
+          11.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          24.0
+        ]
+      ],
+      "confusion_note": "Rows gold, columns predicted; multi-label gold rows weighted 1/label-count.",
+      "finance_false_positives": 0,
+      "confidence_bins": [
+        {
+          "low": 0.3,
+          "count": 1,
+          "accuracy": 1.0,
+          "confidence": 0.32363192657602147
+        },
+        {
+          "low": 0.4,
+          "count": 1,
+          "accuracy": 1.0,
+          "confidence": 0.42537870865004085
+        },
+        {
+          "low": 0.5,
+          "count": 1,
+          "accuracy": 1.0,
+          "confidence": 0.5368685759567106
+        },
+        {
+          "low": 0.6,
+          "count": 2,
+          "accuracy": 0.5,
+          "confidence": 0.6476485406792039
+        },
+        {
+          "low": 0.7,
+          "count": 13,
+          "accuracy": 0.6923076923076923,
+          "confidence": 0.768224451136292
+        },
+        {
+          "low": 0.8,
+          "count": 41,
+          "accuracy": 0.7560975609756098,
+          "confidence": 0.8604598392204725
+        },
+        {
+          "low": 0.9,
+          "count": 156,
+          "accuracy": 0.9358974358974359,
+          "confidence": 0.9634845918327477
+        }
+      ],
+      "top1_ece": 0.053854816134397424,
+      "finance_false_positive_rate": 0.0,
+      "pair_confusions": {
+        "Business / Job Application": {
+          "first_to_second": 0,
+          "second_to_first": 0
+        },
+        "Newsletters / Promotions": {
+          "first_to_second": 4,
+          "second_to_first": 0
+        },
+        "Reminders / Events & Invitations": {
+          "first_to_second": 0,
+          "second_to_first": 1
+        }
+      },
+      "confidence_semantics": "Raw independent classifier scores; not a calibrated probability of correctness.",
+      "top1_brier_correctness": 0.10000615463982966,
+      "selective_accuracy": {
+        "0.5": {
+          "coverage": 0.9906976744186047,
+          "n": 213,
+          "accuracy": 0.8826291079812206
+        },
+        "0.7": {
+          "coverage": 0.9767441860465116,
+          "n": 210,
+          "accuracy": 0.8857142857142857
+        },
+        "0.8": {
+          "coverage": 0.9162790697674419,
+          "n": 197,
+          "accuracy": 0.8984771573604061
+        },
+        "0.9": {
+          "coverage": 0.7255813953488373,
+          "n": 156,
+          "accuracy": 0.9358974358974359
+        }
+      },
+      "wrong_confident_ge_080": 20,
+      "wrong_confident_rate": 0.09302325581395349,
+      "mean_confidence_correct": 0.9286467795432762,
+      "mean_confidence_wrong": 0.8683062311215417
+    },
+    "ar": {
+      "n": 0,
+      "status": "unavailable"
+    },
+    "mixed": {
+      "n": 0,
+      "status": "unavailable"
+    },
+    "und": {
+      "n": 0,
+      "status": "unavailable"
+    }
+  },
+  "error_patterns": {
+    "Newsletters -> Promotions": 4,
+    "Finance & Bills -> Customer Support": 4,
+    "Business + Events & Invitations -> Personal": 3,
+    "Personal + Promotions -> Customer Support": 2,
+    "Finance & Bills + Personal -> Customer Support": 2,
+    "Personal -> Events & Invitations": 2,
+    "Business -> Customer Support": 1,
+    "Events & Invitations -> Newsletters": 1,
+    "Business + Events & Invitations -> Newsletters": 1,
+    "Newsletters + Personal -> Reminders": 1,
+    "Newsletters + Personal -> Events & Invitations": 1,
+    "Business + Events & Invitations -> Reminders": 1,
+    "Business + Events & Invitations + Reminders -> Personal": 1,
+    "Newsletters -> Events & Invitations": 1
+  },
+  "test_evaluated": false
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "source": {
+    "repository": "imnim/multiclass-email-classification",
+    "revision": "e95090f0bb6dae0b05c9cd6db314dcae1d40db3f",
+    "license": "MIT (publisher declaration)",
+    "data_sha256": "1093f1a3191e52b715ae728609b2e15bac71ba2573814a968856c43b009a0b30",
+    "card_sha256": "de69b0adb28d0117105547af1f761bd2220aecab635f4dad429e53e69865c329",
+    "generation_code_sha256": "3850b452fcd3047830c1de6c2065fc57b9bc17d52868d7da472c1cf6bf21180c",
+    "redistribute_examples": false,
+    "provenance": "Publisher supplies GPT-3.5-turbo synthetic generation code; row-level generation logs are unavailable. Do not assert every row's origin is verified."
+  },
+  "linear": {
+    "C": 1.0,
+    "class_weight": "balanced",
+    "solver": "liblinear",
+    "max_iter": 1000
+  },
+  "tfidf": {
+    "word_features": 8000,
+    "char_features": 16000,
+    "min_df": 2
+  },
+  "multilingual": {
+    "model": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "prefix": "query: ",
+    "max_length": 512,
+    "batch_size": 4,
+    "encoder_frozen": true
+  },
+  "legacy": {
+    "checkpoint": "checkpoint-3159",
+    "max_length": 512,
+    "batch_size": 4,
+    "validation_eligible_for_selection": false
+  },
+  "finetune": {
+    "epochs": 3,
+    "batch_size": 4,
+    "max_length": 256,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "patience": 2,
+    "positive_weight_cap": 10,
+    "train_last_layers": 2
+  },
+  "selection": "Among newly fitted A/C research candidates: validation top1 macro F1, then accuracy, then lower p95 latency. Legacy B is excluded due to unknown training overlap. No production approval.",
+  "final_test": "Do not predict reserved test rows. This historically used public corpus is not a new untouched representative release holdout."
+}
