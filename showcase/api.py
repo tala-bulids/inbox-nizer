@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from showcase.engine import Engine, collection, lab, tasks
+from showcase.intelligence import metadata
 from embedding_service import EmbeddingInputError
 
 
@@ -27,7 +28,9 @@ class Analyze(BaseModel):
 class Question(BaseModel):
     model_config = ConfigDict(extra='forbid')
     question: str = Field(min_length=1, max_length=1000)
-    mode: Literal['grounded', 'synthesis'] = 'grounded'
+    # Public CPU showcase is extractive. Optional GGUF code remains available to
+    # explicit offline callers, but cannot be requested through this API.
+    mode: Literal['grounded'] = 'grounded'
 
     @field_validator('question')
     @classmethod
@@ -100,7 +103,8 @@ def create_api(engine=None):
 
     @app.get('/showcase/collection')
     def emails():
-        return {'provenance': 'Authored fictional bilingual corpus; not evaluation data', 'emails': collection()}
+        return {'provenance': 'Authored fictional bilingual corpus; not representative mailbox data',
+                'metadata': metadata(), 'emails': collection()}
 
     @app.get('/showcase/lab')
     def experiments():

@@ -18,13 +18,18 @@ from rag_grounding import resolve_answer, format_facts, is_abstention
 from rag_prompt import build_rag_messages
 from summarizer import summarize_email
 from task_extractor import extract_action_items
+from showcase.intelligence import chunks as document_chunks, index_version, compose, metadata, task_records, unsafe
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def collection():
     # Fresh decoded objects prevent a caller from mutating the shared corpus.
-    return json.loads((Path(__file__).parent / 'collection.json').read_text(encoding='utf-8'))
+    rows = json.loads((Path(__file__).parent / 'collection.json').read_text(encoding='utf-8'))
+    if (len(rows)>50 or len({e['id'] for e in rows})!=len(rows)
+            or any(not e['sender'].endswith('@example.invalid') or len(e['body'])>12000 for e in rows)):
+        raise ValueError('Invalid curated collection')
+    return rows
 
 
 def lab():
@@ -49,11 +54,7 @@ def lab():
 
 
 def tasks(email):
-    items = extract_action_items(email['subject'], email['body'], datetime.fromisoformat(email['date']))
-    # The extractor may normalize capitalization. Include the complete original
-    # source rather than inventing offsets or labelling a paraphrase an exact span.
-    return [{'email_id': email['id'], **item,
-             'evidence': {'subject': email['subject'], 'body': email['body']}} for item in items]
+    return task_records(email, collection())
 
 
 class Engine:
@@ -61,6 +62,8 @@ class Engine:
         self._vectors = None
         self._load_lock = Lock()
         self._classifier_verified = False
+        self._index_version = None
+        self._chunks = []
 
     def verify_classifier(self):
         if self._classifier_verified:
@@ -86,27 +89,44 @@ class Engine:
     def retrieve(self, question):
         emails = collection()
         with self._load_lock:
-            if self._vectors is None:
-                self._vectors = embed_passages([e['subject'] + '\n' + e['body'] for e in emails])
+            version = index_version(emails)
+            if self._vectors is None or version != self._index_version:
+                passages = document_chunks(emails)
+                vectors = []
+                # Bound encoder batch memory on the public CPU process.
+                for i in range(0,len(passages),4):
+                    vectors.extend(embed_passages([p['embedding_text'] for p in passages[i:i+4]]))
+                self._chunks, self._vectors, self._index_version = passages, vectors, version
         query = embed_query(question)
-        ranked = sorted(zip(emails, self._vectors),
-                        key=lambda item: sum(a*b for a,b in zip(query, item[1])), reverse=True)
-        # Small corpus has one short passage per message. E5 cosine is a ranking
-        # signal, not calibrated confidence or proof that an answer is present.
-        return [{'email_id': e['id'], 'chunk_index': 0, 'chunk_id': e['id'],
-                 'score': sum(a*b for a,b in zip(query, v)), 'text': e['body'],
-                 'subject': e['subject']} for e,v in ranked[:3]]
+        ranked = sorted(zip(self._chunks, self._vectors),
+                        key=lambda item: (-sum(a*b for a,b in zip(query,item[1])), item[0]['chunk_id']))
+        unique = {}
+        for chunk, vector in ranked:
+            if chunk['email_id'] not in unique:
+                email=next(e for e in emails if e['id']==chunk['email_id'])
+                unique[chunk['email_id']]={k:v for k,v in chunk.items() if k!='embedding_text'}
+                unique[chunk['email_id']].update(score=sum(a*b for a,b in zip(query,vector)),
+                    text=email['body'],matched_text=chunk['text'],sender=email['sender'],date=email['date'])
+        # All documents in this bounded corpus are candidates for exhaustive
+        # task/calendar filtering; ranking remains actual E5 max-chunk cosine.
+        return list(unique.values())
 
     def ask(self, question, mode='grounded'):
-        chunks, _ = select_evidence(question, self.retrieve(question))
+        ranked = self.retrieve(question)
+        composed = compose(question, ranked, collection())
+        if composed:
+            return composed
+        chunks, _ = select_evidence(question, ranked[:3])
         sources = [dict(c, content=c['text']) for c in chunks]
-        facts = resolve_answer(question, sources)
+        # Do not feed an embedded control instruction into fact composition.
+        sources = [s for s in sources if not unsafe(s['content'])]
+        facts = resolve_answer(question, sources) if not unsafe(question) else []
         if facts:
             cited = {f['email_id'] for f in facts}
             return {'status': 'answered', 'answer': format_facts(facts),
                     'mode': 'literal_fact', 'verification': 'source_supported',
                     'sources': [s for s in sources if s['email_id'] in cited]}
-        if mode == 'synthesis':
+        if mode == 'synthesis' and not unsafe(question):
             from local_llm import get_llm_provider
             from rag_citations import validate_citations
             from llm_provider import InvalidGeneration

@@ -1,0 +1,24 @@
+{
+  "platform": "Windows x64, CPU",
+  "python": "3.11.9",
+  "packages": {
+    "torch": "2.13.0",
+    "transformers": "5.14.1",
+    "sentence-transformers": "5.7.0",
+    "numpy": "2.4.6",
+    "tokenizers": "0.22.2",
+    "sentencepiece": "0.2.2",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.52.4",
+    "pydantic": "2.13.5",
+    "beautifulsoup4": "4.15.0",
+    "geonamescache": "3.0.0",
+    "psutil": "7.2.2"
+  },
+  "encoder_snapshot": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "encoder_hash_manifest": "../phase2/evidence/encoder-artifact-manifest.json",
+  "hashes_verified": true,
+  "public_qwen_enabled": false,
+  "public_ask_requires_postgres": false,
+  "render_verified": false
+}

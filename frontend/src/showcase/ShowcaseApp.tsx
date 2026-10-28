@@ -76,7 +76,6 @@ function Ask() {
   const { t } = useLocale();
   const state = useRequest<z.infer<typeof Answer>>();
   const [question, setQuestion] = useState("");
-  const [synthesis, setSynthesis] = useState(false);
   return (
     <RetroWindow
       title={t("اسأل البريد", "Ask Mail")}
@@ -89,23 +88,13 @@ function Ask() {
         )}
       </p>
       <div className="flex flex-wrap gap-2">
-        {["What is the Atlas workshop date?", "ما تاريخ الورشة؟"].map((q) => (
+        {["What is the Atlas workshop date?", "ما تاريخ الورشة؟", "What meetings do I have this week?", "هل عندي مهام متأخرة؟", "What is the latest update on ORDER-778?"].map((q) => (
           <button key={q} onClick={() => setQuestion(q)}>
             {q}
           </button>
         ))}
       </div>
-      <label>
-        <input
-          type="checkbox"
-          checked={synthesis}
-          onChange={(e) => setSynthesis(e.target.checked)}
-        />{" "}
-        {t(
-          "توليد Qwen المحلي التجريبي عند غياب إجابة حرفية",
-          "Experimental local Qwen synthesis when no literal answer is found",
-        )}
-      </label>
+      <p className="text-sm">{t("استرجاع E5 متعلم، وإجابات استخراجيّة حتمية؛ ليست توليد LLM.", "Learned E5 retrieval with deterministic extractive answers, not LLM generation.")}</p>
       <AskComposer
         maxLength={1000}
         draft={question}
@@ -115,7 +104,7 @@ function Ask() {
           if (question.trim())
             void state.run("ask", Answer, {
               question,
-              mode: synthesis ? "synthesis" : "grounded",
+              mode: "grounded",
             });
         }}
       />
@@ -267,10 +256,15 @@ function SmartTasks({ email }: { email: CollectionEmail }) {
                 )}
                 : {task.confidence}
               </small>
+              <p>{t("المسؤول", "Responsible")}: {task.responsible ?? t("غير مذكور", "Not stated")}</p>
+              <p>{t("حالة الموعد", "Deadline state")}: {task.deadline_state === "ambiguous" ? t("غير محسوم", "Ambiguous") : task.deadline_state === "explicit" ? t("مذكور", "Explicit") : t("غير مذكور", "Missing")}</p>
+              {task.conditional && <p>{t("طلب مشروط؛ راجع الشرط في المصدر.", "Conditional request; check the source condition.")}</p>}
+              {task.state === "superseded" && <p>{t("ألغته رسالة لاحقة.", "Cancelled by a later message.")} {task.superseded_by?.map(id => <Link key={id} to={`/?email=${id}`}>#{id} </Link>)}</p>}
+              <Link to={`/?email=${task.email_id}`}>{t("افتح الرسالة الداعمة", "Open supporting email")}</Link>
               <details>
                 <summary>{t("المصدر الأصلي", "Original source")}</summary>
                 <blockquote className="whitespace-pre-wrap" dir="auto">
-                  {task.evidence.body}
+                  {task.evidence.text ?? task.evidence.body}
                 </blockquote>
               </details>
             </article>
@@ -421,6 +415,7 @@ function Workspace() {
             </NavLink>
           ))}
         </nav>
+        {data?.metadata && <p className="text-sm">{t("تاريخ المجموعة المرجعي", "Collection reference date")}: {data.metadata.reference_datetime} · {t("الأسبوع يبدأ يوم الاثنين. هذه مجموعة خيالية وليست تقويمك الشخصي.", "Week starts Monday. This fictional collection is not your personal calendar.")}</p>}
         <Failure code={error} />
         {!data && !error && (
           <p role="status">

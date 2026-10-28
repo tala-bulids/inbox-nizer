@@ -54,6 +54,9 @@ beforeEach(() => {
             confidence: 0.9,
             deadline_text: "2026-11-02",
             deadline_date: "2026-11-02",
+            responsible: "Maya",
+            deadline_state: "explicit",
+            state: "open",
             evidence: { subject: email.subject, body: email.body },
           },
         ],
@@ -75,6 +78,17 @@ beforeEach(() => {
       });
     throw new Error("Unexpected route");
   });
+});
+
+test("public Ask is extractive and tasks link to supporting original mail", async () => {
+  const user = await open("/tasks");
+  await user.click(screen.getByRole("button", { name: "Extract tasks" }));
+  expect(await screen.findByText("Responsible: Maya")).toBeVisible();
+  expect(screen.getByText("Deadline state: Explicit")).toBeVisible();
+  await user.click(screen.getByRole("link", { name: "Open supporting email" }));
+  expect(screen.getByText(/not LLM generation/)).toBeVisible();
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Choose a source")).toHaveValue("1");
 });
 afterEach(() => vi.restoreAllMocks());
 async function open(path = "/") {

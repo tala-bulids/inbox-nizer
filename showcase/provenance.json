@@ -1,0 +1,17 @@
+{
+  "version": "curated-mail-v2",
+  "reference_datetime": "2026-11-09T12:00:00+00:00",
+  "timezone": "UTC",
+  "week_starts": "Monday",
+  "authorship": "AI-authored fictional examples created for Inbox-nizer; not copied from a mailbox or external corpus",
+  "reuse": "Original project-authored fixture text dedicated to CC0-1.0 to the extent copyright applies",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "contains_personal_mail": false,
+  "addresses": "Reserved example.invalid only",
+  "limitations": [
+    "No independent human factual or linguistic review",
+    "Not representative of real mailbox prevalence",
+    "No inferred completion: overdue means past stated date with no explicit completion record",
+    "Fixed snapshot date, not the visitor current date"
+  ]
+}

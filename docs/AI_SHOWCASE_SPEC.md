@@ -1,5 +1,7 @@
 # Inbox-nizer — AI Engineering showcase specification
 
+**Phase 3 update:** [The current Ask/task implementation and evaluation](phase3/README.md) supersede Phase 1's six-message collection and public optional-synthesis descriptions below. Public Ask is now explicitly extractive; historical Phase 1 evidence remains unchanged.
+
 Phase 1, 28 October 2026. Development branch: `codex/ai-showcase-phase1`, based on
 verified `693feb08f79a14aa019e576797fe93dfd8a4a619`. This product direction supersedes
 the earlier Gmail-first release scope. This is a local functional foundation, not

@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-28",
+  "base_commit": "5b7cf7bdf1c77b9293d2431f0a91c15f5539ed1b",
+  "showcase_backend_tests_passed": 38,
+  "frontend_tests_passed": 180,
+  "frontend_typecheck": "passed",
+  "frontend_lint": "passed",
+  "showcase_build": "passed",
+  "evaluation": "Real local E5; one frozen-suite run, two evidence-set failures retained; no post-evaluation runtime tuning",
+  "phase3_browser": [
+    {
+      "width": 1440,
+      "realE5": true,
+      "conflictShown": true,
+      "ownerShown": true,
+      "missingDeadlineShown": true,
+      "sourceNavigation": true,
+      "rtl": true,
+      "noOverflow": true,
+      "refresh": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    },
+    {
+      "width": 390,
+      "realE5": true,
+      "conflictShown": true,
+      "ownerShown": true,
+      "missingDeadlineShown": true,
+      "sourceNavigation": true,
+      "rtl": true,
+      "noOverflow": true,
+      "refresh": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    }
+  ],
+  "phase1_browser_regression": [
+    {
+      "width": 1440,
+      "english": true,
+      "arabic": true,
+      "classification": true,
+      "groundedAnswers": true,
+      "tasks": true,
+      "lab": true,
+      "deepLinks": true,
+      "noOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    },
+    {
+      "width": 390,
+      "english": true,
+      "arabic": true,
+      "classification": true,
+      "groundedAnswers": true,
+      "tasks": true,
+      "lab": true,
+      "deepLinks": true,
+      "noOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "cookies": 0
+    }
+  ],
+  "visual_review": "Desktop meetings and mobile Arabic tasks screenshots reviewed locally",
+  "warnings": [
+    "Existing Starlette/httpx deprecation",
+    "Existing Rollup annotation notices",
+    "Windows Proactor connection-reset callbacks observed during local browser/server teardown; browser assertions passed"
+  ],
+  "initial_test_repairs": [
+    "Python 3.11 f-string compatibility fixed before evaluation",
+    "Exact reference matching corrected before evaluation",
+    "Browser script switched to in-app navigation to preserve locale; no product change"
+  ],
+  "production_changed": false,
+  "independent_human_evaluation": false,
+  "render_free_fit": "NO-GO: measured E5 process exceeds 512 MB budget",
+  "legacy_api_contract": "unchanged after generation"
+}

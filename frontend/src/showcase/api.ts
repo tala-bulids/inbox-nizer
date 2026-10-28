@@ -12,6 +12,7 @@ export type CollectionEmail = z.infer<typeof Email>;
 export const Collection = z.object({
   provenance: z.string(),
   emails: z.array(Email),
+  metadata: z.object({ reference_datetime: z.string() }).optional(),
 });
 export const Analysis = z.object({
   predictions: z.array(
@@ -30,7 +31,12 @@ export const Tasks = z.object({
       confidence: z.number(),
       deadline_text: z.string().nullable(),
       deadline_date: z.string().nullable(),
-      evidence: z.object({ subject: z.string(), body: z.string() }),
+      responsible: z.string().nullable().optional(),
+      deadline_state: z.enum(["explicit", "missing", "ambiguous"]).optional(),
+      state: z.string().optional(),
+      superseded_by: z.array(z.number()).optional(),
+      conditional: z.boolean().optional(),
+      evidence: z.object({ subject: z.string(), body: z.string(), text: z.string().optional() }),
     }),
   ),
 });

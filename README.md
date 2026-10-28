@@ -1,3 +1,5 @@
+> **Phase 3:** real multilingual retrieval, explicitly extractive Ask answers and source-linked tasks are implemented locally. [Evaluation and limitations](docs/phase3/README.md) include two retained evidence failures and a Render Free memory blocker. This is not a deployment announcement.
+
 > **Phase 2 research:** reproducible dataset preparation, two real classifier fits and historical-model evaluation are recorded in [the research report](docs/phase2/README.md) and [model card](docs/phase2/MODEL_CARD.md). Results are English validation diagnostics; no production quality pass or Arabic accuracy is claimed. No serving model was replaced.
 
 > **AI Engineering refocus — Phase 1 development branch.** This branch adds real model inference, source-grounded Ask, task extraction and Model Lab without a Gmail/DB dependency. See [the specification and local setup](docs/AI_SHOWCASE_SPEC.md). It has not been deployed; the hosted links and release history below describe earlier versions. The original Gmail application is preserved.
