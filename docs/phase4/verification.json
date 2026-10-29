@@ -1,0 +1,125 @@
+{
+  "date": "2026-10-29",
+  "branch": "codex/ai-showcase-phase1",
+  "base_commit": "96fc1c0bb10c66aacbc8e94f61de22aa00ad11e8",
+  "scope": "Local Phase 4 interaction verification. Not model quality or hosted capacity approval.",
+  "checks": [
+    {
+      "command": "python -m pytest --confcutdir=showcase showcase/tests/test_portfolio.py -q",
+      "result": "6 passed (2026-10-28, initial version)"
+    },
+    {
+      "command": "python -m pytest --confcutdir=showcase showcase/tests -q",
+      "result": "44 passed (2026-10-28); final 2026-10-29 run: 43 passed, one real-classifier subprocess timeout at unchanged 60s limit"
+    },
+    {
+      "command": "python -m pytest --confcutdir=showcase showcase/tests/test_portfolio.py::test_real_selected_artifact_inference_has_no_heavy_ai_imports -q",
+      "result": "1 passed on isolated retry in 22.83s; assertions and timeout unchanged; no skipped model test"
+    },
+    {
+      "command": "npm test -- src/test/showcase.test.tsx",
+      "result": "12 passed"
+    },
+    {
+      "command": "npm test",
+      "result": "185 passed in 12 files, 201.80s"
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run build:showcase",
+      "result": "PASS, 2025 modules; preceding attempt failed ENOSPC; retry passed after disk space became available without deleting data"
+    },
+    {
+      "command": "node scripts/check-phase4.mjs",
+      "result": "PASS on warmed real models at 1440/390 px in English/Arabic; separate cold first Ask attempt exceeded 120s browser timeout"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "node scripts/check-showcase.mjs",
+      "result": "PASS: existing real-model browser regression at 1440/390 px, both languages, predictions, Ask, tasks, Model Lab and deep links"
+    }
+  ],
+  "browser_report": "browser-verification.json",
+  "warnings": [
+    "Existing Starlette/httpx TestClient deprecation",
+    "Existing Zod/Rollup annotation warnings"
+  ],
+  "cold_start": "NOT QUALIFIED: one final-run cold Ask exceeded 120 seconds; process remained alive and eventually recovered; warmed flows passed. Client request cancellation is not a native model timeout.",
+  "privacy_review": {
+    "private_api_calls": 0,
+    "third_party_browser_requests": 0,
+    "cookies": 0,
+    "browser_storage_entries": 0,
+    "credential_pattern_findings": 0,
+    "model_or_mailbox_artifacts_added": 0,
+    "screenshot_data": "Authored fictional CC0 collection and authored fictional interview text only"
+  },
+  "runtime": {
+    "python": "3.11.9",
+    "platform": "Windows",
+    "packages": {
+      "fastapi": "0.141.1",
+      "uvicorn": "0.52.4",
+      "scikit-learn": "1.9.1",
+      "joblib": "1.6.0",
+      "threadpoolctl": "3.7.0",
+      "numpy": "2.4.6",
+      "torch": "2.13.0",
+      "transformers": "5.14.1",
+      "sentence-transformers": "5.7.0"
+    },
+    "offline_models": true,
+    "access_log": false
+  },
+  "source_hash_method": "SHA-256 of UTF-8 text after stripping BOM and normalizing CRLF to LF",
+  "source_sha256": {
+    "showcase/api.py": "4725347ddcd18af3a15ecc559e7213f085340d8881545fb043d798c73ea228e3",
+    "showcase/portfolio.py": "84fbdd4d40976f80a1ddc2c8b71bc5acd52bffdc9ccd9e69fd544019d17947b2",
+    "showcase/tests/test_portfolio.py": "34bffb37504ba5e5696645b0198b0e4c43a45276a37f1690dc0e7518f2f98f79",
+    "frontend/src/showcase/ShowcaseApp.tsx": "a45518021741433babc833ba2f2054f44d1ecd2680e286b49c193dc7271b2b78",
+    "frontend/src/showcase/ModelLab.tsx": "67fa15a2344eb705ac88ffd6ffdb706ccba2bf96eea2f48eb273bcfdc7e3f455",
+    "frontend/src/showcase/api.ts": "178c3385c58234703fbd8d01324aeb7f42714530b4a83115a28fdc06d248184d",
+    "frontend/src/showcase/showcase.css": "6a66fc0164afa21b9e762b60e26dee804f93652e1749fa0086dd8dcc1402db8e",
+    "frontend/src/test/showcase.test.tsx": "d3b1b08fb923ce4b84dc50fd3e8175058da6bf94303f603c268db6a3db4e5c38",
+    "frontend/scripts/check-phase4.mjs": "d00053b4e411f50b620a25edccf9bfdf3747b47c2a14753cf2ac1126b8b00682",
+    "frontend/scripts/check-showcase.mjs": "403342ab7fed1e1cec7cfe454d0d790e37ebeb48e091e7c6b10277c036db35fd"
+  },
+  "screenshots_sha256": {
+    "1440-ask-ar.png": "161f0868b5470b8ade3407720c5b47fdeaf087c20fdbf1cc01178aee2a0e4070",
+    "1440-ask-en.png": "4cec7f421276ca43938732df5ca345346a59f2b714684a7cebb6325e535e5650",
+    "1440-evaluation-ar.png": "a8c803eb13a8c8c69711f921060f50c82394a6aaf701ff9f2e398de7e2464bb1",
+    "1440-evaluation-en.png": "5393a003315b800b605ee02b72bf826f5a0cf139d9d5bbdf10e7b261fc61ccbd",
+    "1440-lab-en.png": "115169669d8de8c0a2e5256cbcfdfc65cfe61805fa772ca0f52505d8784b757a",
+    "1440-prediction-en.png": "09de88d3f3aea311cfa359b965de9a6551d634c9dbb0cd56c228d05ef75e38a4",
+    "1440-tasks-ar.png": "47a06131475c16bf7981deae27258559f12e64c79d0c12c1445d8a8264ae032f",
+    "390-ask-ar.png": "079a1a5f60a21ca4a4792280bb2b0543465936364012f44a86df7d560460dc5f",
+    "390-ask-en.png": "52e096acf282daa8b41a46654030d23eda250dadbc0f11744240c13e4b7fdebf",
+    "390-evaluation-ar.png": "b9b9472e86560de1ceb7ffa38e16e34c00093272735f9ca282e914510ca2ef22",
+    "390-evaluation-en.png": "a6cfae06dbdb458799af540518679ab7dd9156abaaaf41c6bf9d2ee61a75d1b3",
+    "390-lab-en.png": "1e23245703fe2039fb74d496e39e8a1bab9b303bd00dfcd58d6bb54515c8ef93",
+    "390-prediction-en.png": "dcbbef3a453b1d83146ae632da907370cc1a1752dba71be9adca49f0eea6aae4",
+    "390-tasks-ar.png": "1fb81b19d3d9fd20c38fceeec4ec417d5cb697e0a3b547c435ddb5d27f088422"
+  },
+  "unchanged": [
+    "Phase 2 frozen numeric evidence",
+    "Phase 3 corpus, retrieval, answer/task algorithms and evaluation inputs",
+    "Private Gmail application, DB and production configuration"
+  ],
+  "remaining_gates": [
+    "Render Free memory budget not met by E5 runtime",
+    "Cold-start latency, combined Linux memory and public load qualification",
+    "Independent human-reviewed bilingual classifier/QA/task quality evidence"
+  ],
+  "deployed": false,
+  "production_model_approved": false
+}

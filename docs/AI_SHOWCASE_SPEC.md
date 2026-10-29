@@ -1,5 +1,7 @@
 # Inbox-nizer — AI Engineering showcase specification
 
+**Phase 4 update:** [Current interface, serving instructions and verification](phase4/README.md) supersede the Phase 1 navigation and public-classifier descriptions below. Primary navigation is Ask Mail / Smart Tasks / Email Collection / Model Lab. Model Lab performs genuine inference with the selected Phase 2 TF-IDF research artifact via `/showcase/predict`; the historical ONNX endpoint remains separately preserved. Public generation stays extractive. A shared 30-attempt/minute process budget supplements the single-inference lock. Epoch curves, Arabic classifier metrics and final test results remain unavailable. No deployment or production approval.
+
 **Phase 3 update:** [The current Ask/task implementation and evaluation](phase3/README.md) supersede Phase 1's six-message collection and public optional-synthesis descriptions below. Public Ask is now explicitly extractive; historical Phase 1 evidence remains unchanged.
 
 Phase 1, 28 October 2026. Development branch: `codex/ai-showcase-phase1`, based on

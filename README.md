@@ -1,3 +1,33 @@
+# Inbox-nizer — AI Engineering portfolio
+
+Explore multilingual semantic retrieval, evidence-grounded email answers, task
+extraction and reproducible model experiments in the existing bilingual React UI.
+The public showcase works without Google OAuth or a personal mailbox.
+
+**Phase 4 is implemented locally, not deployed.** The intended public URL remains
+`https://inbox-nizer-beta.onrender.com`. [Local setup, evidence and limitations](docs/phase4/README.md).
+
+- **Ask Mail:** ask your own question; learned E5 retrieval and clearly labelled extractive answers.
+- **Smart Tasks:** inspect requests, deadlines, uncertainty and original source evidence.
+- **Email Collection:** browse 24 authored CC0 bilingual samples; no personal mail.
+- **Model Lab:** compare actual experiments, inspect metrics and run the selected research classifier.
+
+![Actual local Model Lab with saved experiment outputs](docs/phase4/screenshots/1440-lab-en.png)
+
+The selected TF-IDF model achieved 0.704 macro F1 on 215 consumed English validation
+examples. Arabic classification and final test quality are not evaluated. Historical
+DistilBERT quality failures remain visible. No generated metrics or training curves
+are presented. Real E5 retrieval currently exceeds the verified Render Free memory
+allocation; this branch does not claim production hosting readiness.
+
+[Research pipeline](docs/phase2/README.md) · [RAG evaluation](docs/phase3/README.md) ·
+[Project status](PROJECT_STATUS.md) · [Safe interaction screenshots](docs/phase4/README.md#verification-and-screenshots)
+
+## Historical Gmail application and release evidence
+
+The material below describes preserved earlier releases and the older static demo,
+not the new AI showcase or a new deployment. Current Phase 4 instructions are above.
+
 > **Phase 3:** real multilingual retrieval, explicitly extractive Ask answers and source-linked tasks are implemented locally. [Evaluation and limitations](docs/phase3/README.md) include two retained evidence failures and a Render Free memory blocker. This is not a deployment announcement.
 
 > **Phase 2 research:** reproducible dataset preparation, two real classifier fits and historical-model evaluation are recorded in [the research report](docs/phase2/README.md) and [model card](docs/phase2/MODEL_CARD.md). Results are English validation diagnostics; no production quality pass or Arabic accuracy is claimed. No serving model was replaced.

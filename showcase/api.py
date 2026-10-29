@@ -1,14 +1,17 @@
 """Separate ASGI app: curated corpus + local inference, no Gmail or database."""
 from threading import Lock
+from collections import deque
+import time
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from showcase.engine import Engine, collection, lab, tasks
 from showcase.intelligence import metadata
+from showcase.portfolio import SelectedClassifier, evidence, ROOT
 from embedding_service import EmbeddingInputError
 
 
@@ -67,11 +70,31 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
-def create_api(engine=None):
+class InferenceBudget:
+    """Process-wide rolling budget; stores timestamps only, never IPs or text."""
+    def __init__(self, limit=30, window=60, clock=time.monotonic):
+        self.limit, self.window, self.clock = limit, window, clock
+        self.requests=deque()
+        self.lock=Lock()
+
+    def admit(self):
+        with self.lock:
+            now=self.clock()
+            while self.requests and self.requests[0]<=now-self.window:
+                self.requests.popleft()
+            if len(self.requests)>=self.limit:
+                return max(1,int(self.requests[0]+self.window-now)+1)
+            self.requests.append(now)
+            return 0
+
+
+def create_api(engine=None, predictor=None, budget=None):
     app = FastAPI(title='Inbox-nizer AI Showcase', docs_url=None, redoc_url=None)
     app.add_middleware(BodyLimit)
     engine = engine or Engine()
     inference = Lock()
+    predictor = predictor or SelectedClassifier()
+    budget = budget or InferenceBudget()
 
     @app.middleware('http')
     async def private_responses(request, call_next):
@@ -86,6 +109,9 @@ def create_api(engine=None):
         return JSONResponse({'code': 'invalid_input'}, status_code=422)
 
     def compute(operation):
+        retry=budget.admit()
+        if retry:
+            raise HTTPException(429, {'code':'rate_limited'}, headers={'Retry-After':str(retry)})
         if not inference.acquire(blocking=False):
             raise HTTPException(429, {'code': 'inference_busy'}, headers={'Retry-After': '2'})
         try:
@@ -110,6 +136,19 @@ def create_api(engine=None):
     def experiments():
         return lab()
 
+    @app.get('/showcase/portfolio')
+    def portfolio():
+        return evidence()
+
+    @app.get('/showcase/reproduction', response_class=PlainTextResponse)
+    def reproduction():
+        return (ROOT/'docs/phase2/README.md').read_text(encoding='utf-8')
+
+    @app.get('/showcase/tasks')
+    def collection_tasks():
+        return {'tasks':[task for email in collection() for task in tasks(email)],
+                'method':'deterministic source extraction; completion is unknown'}
+
     @app.get('/showcase/emails/{email_id}/tasks')
     def extract(email_id: int):
         email = next((e for e in collection() if e['id'] == email_id), None)
@@ -120,6 +159,10 @@ def create_api(engine=None):
     @app.post('/showcase/analyze')
     def analyze(request: Analyze):
         return compute(lambda: engine.analyze(request.subject, request.body))
+
+    @app.post('/showcase/predict')
+    def selected_prediction(request: Analyze):
+        return compute(lambda: predictor.predict(request.subject, request.body))
 
     @app.post('/showcase/ask')
     def ask(request: Question):
