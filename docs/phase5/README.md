@@ -157,3 +157,24 @@ All receipt outputs refuse overwrite. This harness removes DB/Google/OAuth setti
 from its child environment and does not import the private app or load `.env`.
 The actual release factory refuses those settings instead of silently ignoring them.
 A repeated measurement is not a fresh holdout and does not erase earlier failures.
+
+## Final GitHub release record
+
+Published normally to `codex/ai-showcase-phase1`; no force push or main merge.
+Release preparation: `1b6176dc695d7cd8eec9c2ea7fd230ff8f10eb43`.
+Test-fixture isolation correction and verified code/test HEAD:
+`d7d5712dcb943b16c9900229352ad948f2d305eb`.
+[GitHub run 40893033160](https://github.com/tala-bulids/inbox-nizer/actions/runs/40893033160)
+completed successfully: 1,450 backend tests passed, 6 skipped, 2 subtests passed;
+isolated showcase 57 passed/1 private-artifact skip; ML pipeline 13 passed;
+quality unittest 11 run/1 skipped; frontend 185 passed; pip check, typecheck,
+lint, API contract and all three frontend builds passed. Local showcase ran
+58/58 including the actual private classifier. Initial CI exposed two new tests
+being overridden by the legacy fake-encoder fixture; the correction is test-only.
+
+The final documentation-only follow-up records these results with `[skip ci]`;
+it does not change the application or tests and does not claim another CI run.
+The green SHA above identifies exactly what CI exercised. No Render service,
+private database, credentials, model weights or public Homepage were modified.
+**PUBLIC AI SHOWCASE remains NO-GO** until the artifact/compute/approved-transition
+and target-host acceptance boundaries in the runbook are resolved.

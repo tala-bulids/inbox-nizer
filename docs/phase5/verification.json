@@ -23,7 +23,44 @@
     "real_browser": "PASS, fresh local Edge contexts at 1440/390, English/Arabic; browser-verification.json",
     "final_pinned_release_startup": "PASS, real SHA-verified E5 and A initialized; readiness 200 and real Ask answered; historical endpoint 404 verified",
     "full_legacy_backend_local": "Not run: requires a separate disposable PostgreSQL; no private DB accessed. Existing GitHub workflow runs this suite with an ephemeral pgvector service.",
-    "github_ci": "Initial 1b6176d run: frontend PASS; backend 1448 passed, 2 failed, 6 skipped, 2 subtests passed. The two new loader tests collided with the legacy global fake encoder fixture. Test-only isolation fix validated locally; final CI rerun pending.",
+    "github_ci": {
+      "status": "PASS",
+      "tested_sha": "d7d5712dcb943b16c9900229352ad948f2d305eb",
+      "run_id": 40893033160,
+      "url": "https://github.com/tala-bulids/inbox-nizer/actions/runs/40893033160",
+      "backend_full": {
+        "passed": 1450,
+        "skipped": 6,
+        "subtests_passed": 2
+      },
+      "showcase_isolated": {
+        "passed": 57,
+        "skipped": 1,
+        "skip_reason": "Private classifier artifact deliberately not distributed; corresponding local real test passed."
+      },
+      "ml_pipeline": {
+        "passed": 13
+      },
+      "quality_unittest": {
+        "ran": 11,
+        "skipped": 1,
+        "status": "OK"
+      },
+      "frontend": {
+        "passed": 185,
+        "files": 12,
+        "typecheck": "PASS",
+        "lint": "PASS",
+        "api_contract": "PASS",
+        "builds": [
+          "standard PASS",
+          "static demo PASS",
+          "AI showcase PASS"
+        ]
+      },
+      "pip_check": "PASS",
+      "initial_failure": "Run 40892353195 had two test-fixture isolation failures. Test-only fix d7d5712; rerun passed. No application regression or quality threshold change."
+    },
     "public_acceptance": "NOT RUN; no deployment approved"
   },
   "warnings": [
@@ -43,5 +80,13 @@
     "showcase/tests/test_release_report.py": "13542dc69e1ec5751ece0382b932670f255214f9887e40ce343426d32d535723",
     "deploy/requirements-showcase.txt": "b91dcd68ed0c908c8b0076d829dd42f8252a651b81a69aa21043d04f7d29dfdc",
     "frontend/scripts/check-phase4.mjs": "7c740cf8aeb789cd381e250bddee09e617805c20ddb6a952a27ad69e44894aa1"
+  },
+  "publication": {
+    "remote_branch": "codex/ai-showcase-phase1",
+    "verified_code_sha": "d7d5712dcb943b16c9900229352ad948f2d305eb",
+    "push": "normal, no force",
+    "documentation_followup": "Final CI record only; [skip ci] avoids repeating checks for documentation-only changes. Application and tests match the green SHA.",
+    "render_changed": false,
+    "deployed": false
   }
 }
