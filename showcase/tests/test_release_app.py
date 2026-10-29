@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from showcase.api import create_api
 from showcase.release_app import application
+from embedding_service import _load_encoder as load_encoder
 
 
 @pytest.mark.parametrize('name', ['DATABASE_URL','GOOGLE_CLIENT_SECRET','GMAIL_TOKEN','PGPASSWORD','OAUTH_CONFIG'])
@@ -41,13 +42,14 @@ def test_local_historical_path_remains_available():
 
 @pytest.mark.parametrize('revision', [None, 'pinned-revision'])
 def test_revision_pin_is_optional_and_local_full_default_is_preserved(monkeypatch, revision):
-    import embedding_service
     loader=Mock(return_value=SimpleNamespace())
     monkeypatch.setitem(sys.modules,'sentence_transformers',SimpleNamespace(SentenceTransformer=loader))
     monkeypatch.delenv('EMBEDDING_REVISION',raising=False)
     if revision:
         monkeypatch.setenv('EMBEDDING_REVISION',revision)
-    embedding_service._load_encoder()
+    # Capture the implementation at collection time: the legacy suite's autouse
+    # fixture replaces the module attribute with FakeEncoder before each test.
+    load_encoder()
     assert loader.call_args.kwargs['local_files_only'] is True
     if revision:
         assert loader.call_args.kwargs['revision']==revision
