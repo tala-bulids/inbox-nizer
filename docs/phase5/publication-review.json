@@ -1,0 +1,33 @@
+{
+  "scope": "New reachable Git blobs since verified 693feb0; pending Phase5 changes separately reviewed",
+  "blobs": 109,
+  "screenshots": 14,
+  "large_blobs_over_5mb": [],
+  "pattern_findings": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "pattern": "password_dsn",
+      "line": 31
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "pattern": "password_dsn",
+      "line": 32
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "pattern": "password_dsn",
+      "line": 31
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "pattern": "password_dsn",
+      "line": 32
+    }
+  ],
+  "email_domains_only": {
+    "example.invalid": 68
+  },
+  "review": "All four DSN matches are repeated localhost CI-only fixture credentials, not private credentials. All new email addresses use example.invalid. The 14 prior screenshots are authored corpus/model evidence; no new private screenshots.",
+  "phase5_review": "New source, runbook and aggregate evidence only; no source rows, weights, credentials, external signed URLs, raw logs or vector arrays. Existing Phase4 application preserved."
+}

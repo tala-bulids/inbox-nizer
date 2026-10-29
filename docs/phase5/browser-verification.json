@@ -1,0 +1,63 @@
+{
+  "scope": "Real local offline E5 and selected Phase 2 A classifier. Interaction evidence, not model quality evaluation.",
+  "results": [
+    {
+      "width": 1440,
+      "realInference": true,
+      "originalQuestion": "answered",
+      "novelQuestion": "answered",
+      "missingEvidence": "insufficient_evidence",
+      "arabicQuestion": "answered",
+      "tasksAndCitations": true,
+      "sourceRefresh": true,
+      "deepLinks": true,
+      "reproductionLink": true,
+      "thirdPartyBrowserRequests": 0,
+      "metricsMatchSavedEvidence": true,
+      "confusionMatrix": true,
+      "selectedPrediction": {
+        "model": "phase2-A",
+        "sha256": "ad110b70dae9b9875e37ca43103519e23ff4afcb79219ded99ca02d38c8ce11d",
+        "category": "Job Application",
+        "score": 0.8010989820745978,
+        "processing_ms": 177.30139987543225,
+        "cold_load_included": false
+      },
+      "rtl": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": 0,
+      "cookies": 0,
+      "browserStorageEntries": 0,
+      "privateApiRequests": 0
+    },
+    {
+      "width": 390,
+      "realInference": true,
+      "originalQuestion": "answered",
+      "novelQuestion": "answered",
+      "missingEvidence": "insufficient_evidence",
+      "arabicQuestion": "answered",
+      "tasksAndCitations": true,
+      "sourceRefresh": true,
+      "deepLinks": true,
+      "reproductionLink": true,
+      "thirdPartyBrowserRequests": 0,
+      "metricsMatchSavedEvidence": true,
+      "confusionMatrix": true,
+      "selectedPrediction": {
+        "model": "phase2-A",
+        "sha256": "ad110b70dae9b9875e37ca43103519e23ff4afcb79219ded99ca02d38c8ce11d",
+        "category": "Job Application",
+        "score": 0.8010989820745978,
+        "processing_ms": 14.793899841606617,
+        "cold_load_included": false
+      },
+      "rtl": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": 0,
+      "cookies": 0,
+      "browserStorageEntries": 0,
+      "privateApiRequests": 0
+    }
+  ]
+}

@@ -3,7 +3,8 @@ import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 const base = process.env.SHOWCASE_URL || "http://127.0.0.1:4181";
-const output = "../docs/phase4/screenshots";
+const evidenceDir = process.env.SHOWCASE_EVIDENCE_DIR || "../docs/phase4";
+const output = `${evidenceDir}/screenshots`;
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 const results = [];
@@ -275,7 +276,7 @@ try {
   await browser.close();
 }
 await writeFile(
-  "../docs/phase4/browser-verification.json",
+  `${evidenceDir}/browser-verification.json`,
   JSON.stringify(
     {
       scope:

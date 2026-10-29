@@ -88,7 +88,7 @@ class InferenceBudget:
             return 0
 
 
-def create_api(engine=None, predictor=None, budget=None):
+def create_api(engine=None, predictor=None, budget=None, *, allow_historical=True):
     app = FastAPI(title='Inbox-nizer AI Showcase', docs_url=None, redoc_url=None)
     app.add_middleware(BodyLimit)
     engine = engine or Engine()
@@ -158,6 +158,8 @@ def create_api(engine=None, predictor=None, budget=None):
 
     @app.post('/showcase/analyze')
     def analyze(request: Analyze):
+        if not allow_historical:
+            raise HTTPException(404, {'code': 'historical_model_not_served'})
         return compute(lambda: engine.analyze(request.subject, request.body))
 
     @app.post('/showcase/predict')

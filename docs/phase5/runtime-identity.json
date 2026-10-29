@@ -1,0 +1,52 @@
+{
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "packages": {
+    "torch": "2.13.0",
+    "transformers": "5.14.1",
+    "sentence-transformers": "5.7.0",
+    "sentencepiece": "0.2.2",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "threadpoolctl": "3.7.0",
+    "onnxruntime": "unavailable in base environment",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.52.4",
+    "pydantic": "2.13.5",
+    "httpx": "0.28.1",
+    "psutil": "7.2.2",
+    "beautifulsoup4": "4.15.0",
+    "geonamescache": "3.0.0",
+    "onnxruntime_probe_environment": "1.31.0 (existing separate dependency directory)"
+  },
+  "source_commit": "8a0ee5a1aca4c75c53f3348ff2f9681fbb0f10ca",
+  "encoder_snapshot": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "all_pinned_source_hashes_match": true,
+  "encoder_name": "intfloat/multilingual-e5-small",
+  "onnx_files": {
+    "model.onnx": {
+      "sha256": "ec4b40b14bded5954bf4e7e791703c2e7cf7a6abd530c2245d56860f489371b2",
+      "bytes": 470227075
+    },
+    "model_int8.onnx": {
+      "sha256": "b35fd7c9f9fbbd1f046393ea005fee4f1ce43e62ad905f720d1fa79c376273d7",
+      "bytes": 118065353
+    },
+    "sentencepiece.bpe.model": {
+      "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865",
+      "bytes": 5069051
+    },
+    "config.json": {
+      "sha256": "c5455c1c29ea233a875cac03faf9a468962afdc193fd11caf3e607ca41b315eb",
+      "bytes": 786
+    }
+  },
+  "onnx_source_history": "Existing local export; FP32 numerical parity verified on 20 queries and 80 corpus chunks. No signed original export receipt.",
+  "scripts_sha256": {
+    "showcase/release_probe.py": "0f80b9b0195b74b7b80fb669243085bdbc14f5b83775aef51214d2714a188996",
+    "showcase/onnx_probe_encoder.py": "f8f004bd702f5300db6fec41c74e869524fef23e554c0f687bfbf7276e66a310",
+    "showcase/release_report.py": "c75cfa119763a1304ecd24625d981d8822a17cef0d77d92d9961346f75163665"
+  }
+}

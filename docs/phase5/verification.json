@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-29",
+  "environment": "Windows 11 x64 / Python 3.11.9; local prepared environment; no production DB",
+  "checks": {
+    "showcase_pytest": {
+      "passed": 58,
+      "skipped": 0,
+      "note": "Real recorded classifier test included; fake unit tests are behavior checks, not quality evidence."
+    },
+    "ml_pipeline_pytest": {
+      "passed": 13,
+      "note": "No real transformer retraining or reserved-test evaluation"
+    },
+    "frontend_vitest": {
+      "files": 12,
+      "passed": 185
+    },
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "showcase_build": "PASS",
+    "legacy_api_generated_contract": "PASS, unchanged",
+    "real_capacity_probes": "3 completed: Torch, FP32 ONNX, INT8 ONNX; real HTTP/models, no output mocks",
+    "real_browser": "PASS, fresh local Edge contexts at 1440/390, English/Arabic; browser-verification.json",
+    "final_pinned_release_startup": "PASS, real SHA-verified E5 and A initialized; readiness 200 and real Ask answered; historical endpoint 404 verified",
+    "full_legacy_backend_local": "Not run: requires a separate disposable PostgreSQL; no private DB accessed. Existing GitHub workflow runs this suite with an ephemeral pgvector service.",
+    "github_ci": "Pending publication; final outcome will be recorded separately",
+    "public_acceptance": "NOT RUN; no deployment approved"
+  },
+  "warnings": [
+    "Existing Starlette/httpx deprecation and Rollup annotation warnings.",
+    "One non-escalated targeted run was stopped after hanging in Windows TestClient; final authorized runs passed.",
+    "A browser approval attempt was not executed when automatic approval review hit account usage limits; authorized retry passed."
+  ],
+  "scope": "Prepared release only; no Render/database/model distribution changes",
+  "source_sha256_utf8_lf": {
+    "embedding_service.py": "03834f6d8f044b3cf07b8ec0116744a884fbbef29a366fb60b84f4a09b20b92a",
+    "showcase/api.py": "ec01db6c806a64c26bdedb2040f4e3c27018149b2b6d9c8e430acfbd6f33ae3f",
+    "showcase/release_app.py": "6cbe57dadf7de61c769724b7fde363f42077f643579c4c0c4f59f1eec2296ec5",
+    "showcase/onnx_probe_encoder.py": "f8f004bd702f5300db6fec41c74e869524fef23e554c0f687bfbf7276e66a310",
+    "showcase/release_probe.py": "0f80b9b0195b74b7b80fb669243085bdbc14f5b83775aef51214d2714a188996",
+    "showcase/release_report.py": "c75cfa119763a1304ecd24625d981d8822a17cef0d77d92d9961346f75163665",
+    "showcase/tests/test_release_app.py": "3ce322268f8caac9e77d863317e8e1af2d516af3629c32b6d2e21c4d41e9bfce",
+    "showcase/tests/test_release_report.py": "13542dc69e1ec5751ece0382b932670f255214f9887e40ce343426d32d535723",
+    "deploy/requirements-showcase.txt": "b91dcd68ed0c908c8b0076d829dd42f8252a651b81a69aa21043d04f7d29dfdc",
+    "frontend/scripts/check-phase4.mjs": "7c740cf8aeb789cd381e250bddee09e617805c20ddb6a952a27ad69e44894aa1"
+  }
+}

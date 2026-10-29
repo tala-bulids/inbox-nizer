@@ -1,0 +1,17 @@
+# Direct runtime pins for the reviewed full E5 + sparse-classifier path.
+# No Gmail SDK, SQL driver, migrations, training datasets or GGUF runtime.
+# Linux dependency/build qualification remains required before deployment.
+fastapi==0.141.1
+uvicorn==0.52.4
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+torch==2.13.0
+transformers==5.14.1
+sentence-transformers==5.7.0
+huggingface-hub==1.24.0
+sentencepiece==0.2.2
+beautifulsoup4==4.15.0
+geonamescache==3.0.0
