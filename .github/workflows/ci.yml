@@ -20,7 +20,9 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install -r deploy/requirements-showcase-free.txt pytest==9.1.1 httpx==0.28.1
       - run: python -m pip check
-      - run: python -c "import importlib.util; assert all(importlib.util.find_spec(x) is None for x in ['torch','transformers','sentence_transformers','sqlalchemy','google','llama_cpp'])"
+      # ONNX Runtime legitimately needs protobuf's google namespace. Check the
+      # Gmail/OAuth clients, not that shared namespace.
+      - run: python -c "import importlib.util; assert all(importlib.util.find_spec(x) is None for x in ['torch','transformers','sentence_transformers','sqlalchemy','googleapiclient','google_auth_oauthlib','llama_cpp'])"
       - run: python -m pytest --confcutdir=showcase showcase/tests/test_free_runtime.py showcase/tests/test_release_app.py -q
       # Private model files are not uploaded to CI. This checks Linux dependency
       # isolation only, not real inference or constrained container capacity.
