@@ -10,8 +10,17 @@ warm-before-readiness startup; not constrained Linux/container evidence. Recall@
 Citation sets and the two known evidence failures are unchanged. Owner acceptance
 of that research trade-off is pending; V10/independent quality gates remain open.
 Local checks: **75 showcase backend and 13 focused frontend tests passed**;
-typecheck, lint and all three production builds passed. Final CI/browser evidence
-is recorded in [the qualification ledger](docs/free-qualification/verification.json).
+typecheck, lint and all three production builds passed. Real acquired-model
+browser flows passed at 1440/390 px in both languages. Published tested SHA
+**`181f2117526b9bcd9cfc7140f8d041c2050aee1c`**, [CI 41278976790](https://github.com/tala-bulids/inbox-nizer/actions/runs/41278976790):
+**1,467 backend passed, 6 skipped, 2 subtests passed; 186 frontend passed;
+74 isolated showcase passed/1 private-artifact skip; 13 ML passed; 26 minimal
+Linux runtime tests passed; pip checks, API contract, lint, typecheck and all
+three builds passed**. Local full frontend was interrupted after timing failures;
+the complete clean CI run is green. The first CI namespace assertion incorrectly
+rejected ONNX Protobuf and was corrected without changing serving behavior.
+The documentation-only follow-up records this evidence and skips redundant CI;
+application/test files match the green SHA. [Full qualification ledger](docs/free-qualification/verification.json).
 All three artifact hashes were verified by the new build-time acquisition path;
 approved private Render download locations are still missing. Read-only Render
 inspection confirms Free/release branch/auto-deploy off and the old migration start.

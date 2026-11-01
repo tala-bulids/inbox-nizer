@@ -2,18 +2,78 @@
   "date": "2026-11-01",
   "base_sha": "50461b520c3c253189bcbaedcd5fb7dd9c328884",
   "runtime": "e5-int8-fp32-corpus-v1",
-  "local_showcase_tests": {"passed": 75, "failed": 0, "real_private_classifier_included": true},
-  "local_ml_pipeline_tests": {"passed": 13, "failed": 0},
-  "local_focused_frontend_tests": {"passed": 13, "failed": 0},
+  "local_showcase_tests": {
+    "passed": 75,
+    "failed": 0,
+    "real_private_classifier_included": true
+  },
+  "local_ml_pipeline_tests": {
+    "passed": 13,
+    "failed": 0
+  },
+  "local_focused_frontend_tests": {
+    "passed": 13,
+    "failed": 0
+  },
   "local_full_frontend": "Interrupted after five timing failures in unchanged Ask/Search tests under host resource contention; use final CI for full-suite result",
   "typecheck": "PASS",
   "lint": "PASS",
-  "builds": {"standard": "PASS", "demo": "PASS", "showcase": "PASS"},
+  "builds": {
+    "standard": "PASS",
+    "demo": "PASS",
+    "showcase": "PASS"
+  },
   "artifact_acquisition": "All three pinned local artifacts verified and installed in ignored bundle; no approved Render download location",
   "corpus_provenance": "Committed index source_receipt_sha256 matches existing real Torch receipt; vectors unchanged from that receipt",
   "real_combined_probe": "PASS on Windows; receipt hash and aggregates in comparison.json",
-  "local_browser": "Pending final combined-runtime browser run",
-  "ci": "Pending publication",
+  "local_browser": "PASS: actual factory and acquired models, English/Arabic, 1440/390 px; browser-verification.json",
+  "ci": {
+    "run_id": 41278976790,
+    "status": "completed",
+    "url": "https://github.com/tala-bulids/inbox-nizer/actions/runs/41278976790",
+    "initial_run_id": 41278895864,
+    "initial_failure": "Test-only namespace assertion rejected protobuf dependency; narrowed to actual Gmail/OAuth clients in 181f211",
+    "free_runtime_dependencies": {
+      "status": "PASS",
+      "passed": 26,
+      "pip_check": "PASS",
+      "capacity_proof": false
+    },
+    "frontend": {
+      "status": "PASS",
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "api_contract": "PASS",
+      "builds": [
+        "standard",
+        "demo",
+        "showcase"
+      ],
+      "passed": 186
+    },
+    "conclusion": "success",
+    "tested_sha": "181f2117526b9bcd9cfc7140f8d041c2050aee1c",
+    "backend": {
+      "passed": 1467,
+      "skipped": 6,
+      "subtests_passed": 2,
+      "warnings": 1,
+      "pip_check": "PASS"
+    },
+    "isolated_showcase": {
+      "passed": 74,
+      "skipped": 1,
+      "reason": "private model artifact not uploaded to CI"
+    },
+    "ml_pipeline": {
+      "passed": 13
+    },
+    "quality_unittest": {
+      "run": 11,
+      "skipped": 1,
+      "status": "PASS"
+    }
+  },
   "linux_resource_test": "NOT EXECUTED; no local Docker/Podman/WSL distro",
   "free_technical_gate": "FAIL: constrained Linux container evidence unavailable",
   "ranking_tradeoff_accepted": false,
@@ -25,5 +85,13 @@
     "New frontend test used incorrect language-button accessible name; corrected, 13 focused tests pass",
     "Default pytest temp directory inaccessible; new workspace-local temp directory rerun passed all 75",
     "First browser attempt started before local service readiness; no product assertion reached"
-  ]
+  ],
+  "code_sha": "181f2117526b9bcd9cfc7140f8d041c2050aee1c",
+  "index_portability": "Public vector JSON normalized to repository LF; committed bytes/SHA verified; 17 focused runtime tests pass after normalization",
+  "screenshots_reviewed": [
+    "screenshots/1440-lab-en.png",
+    "screenshots/390-evaluation-ar.png"
+  ],
+  "real_inference_code_sha": "94f209df4c1d8086771367cf8b419a107c789d3c",
+  "final_followup": "Documentation and safe browser evidence only; application and test files match the green tested SHA; redundant CI skipped"
 }

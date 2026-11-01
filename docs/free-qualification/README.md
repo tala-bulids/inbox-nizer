@@ -117,11 +117,11 @@ For local inference set the nonsecret variables in the transition runbook. Then:
 ```sh
 python -m showcase.release_probe --encoder free-candidate --output results/new-free.json
 python -m showcase.resource_verdict results/new-free.json
-SHOWCASE_URL=http://127.0.0.1:4181 SHOWCASE_EXPECT_RUNTIME=e5-int8-fp32-corpus-v1 SHOWCASE_EVIDENCE_DIR=../results/free-browser node frontend/scripts/check-phase4.mjs
+cd frontend
+SHOWCASE_URL=http://127.0.0.1:4181 SHOWCASE_EXPECT_RUNTIME=e5-int8-fp32-corpus-v1 SHOWCASE_EVIDENCE_DIR=../results/free-browser node scripts/check-phase4.mjs
 ```
 
-The browser script is run from `frontend` (use `node scripts/check-phase4.mjs`
-there); it needs Playwright and Microsoft Edge, and a separately running factory
+The browser script needs Playwright and Microsoft Edge, and a separately running factory
 on port 4181. It tests both widths, languages, actual questions, tasks, citations,
 classification, metrics and refresh. Diagnostic probe routes bind loopback only
 and must never be used as the public start command.
@@ -161,3 +161,32 @@ rotation, billable resource, public artifact upload or Homepage change occurred.
 See [the transition runbook](../../deploy/AI_SHOWCASE_RELEASE.md) for the proposed
 operation and data preservation boundaries. Final test/CI evidence is recorded
 in `verification.json` and PROJECT_STATUS.md; no unavailable measurement is a pass.
+
+## Final published verification
+
+Implementation: `94f209df4c1d8086771367cf8b419a107c789d3c`. Test-only CI namespace
+correction and final tested SHA: **`181f2117526b9bcd9cfc7140f8d041c2050aee1c`**.
+[CI 41278976790](https://github.com/tala-bulids/inbox-nizer/actions/runs/41278976790)
+passed all three jobs: 1,467 backend tests, 6 skips, 2 passing subtests; 186 frontend;
+74 isolated showcase/1 private-artifact skip; 13 ML pipeline; 26 minimal Linux
+runtime tests; quality unittest 11 run/1 opt-in skip. Pip checks, API contract,
+typecheck, lint and standard/demo/showcase builds passed.
+
+Local showcase: 75 passed, including real private classifier; 17 runtime tests
+also passed after normalizing the pinned public index to Git's LF bytes. ML: 13;
+focused frontend: 13. Initial local full frontend was interrupted after timing
+failures under resource contention; the full clean CI run passed. The first CI
+run incorrectly rejected Protobuf's shared `google` namespace; the corrected
+check rejects actual Gmail/OAuth clients. No runtime dependency was added for it.
+
+[Real browser evidence](browser-verification.json) confirms both widths/languages,
+original/new questions, missing-evidence handling, tasks/citations, selected A
+inference and hash, saved Model Lab metrics, deep links/refresh, no private API or
+third-party browser requests, cookies or browser storage. The candidate identity
+was checked in the portfolio response and visible notice. Reviewed safe captures:
+[desktop Model Lab](screenshots/1440-lab-en.png),
+[mobile Arabic evaluation](screenshots/390-evaluation-ar.png).
+
+The final documentation/evidence-only follow-up skips redundant CI. It preserves
+the application/test content of the green SHA. No deployment occurred and all
+remaining boundaries above remain open; CI does not qualify Render capacity.
