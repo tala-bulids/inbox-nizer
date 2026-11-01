@@ -72,8 +72,9 @@ changes offer Save only. Do not click any save until the owner approves the
 complete ordered operation. A descriptor is not currently available on Render;
 local Windows artifacts cannot satisfy the build without an approved delivery path.
 
-After approval of the completed inventory, delivery, constrained capacity and
-quality decision: apply the reviewed configuration safely, then manually deploy
+The research-only ranking decision is already accepted. After the missing
+inventory, delivery and constrained capacity evidence are complete and the owner
+approves the exact transition: apply the reviewed configuration, then manually deploy
 the exact verified SHA to **this existing Free service only**. Validate readiness
 runtime identity, actual Render resource/error metrics and the public bilingual
 browser script. Until then the URL must not be advertised as the updated showcase.

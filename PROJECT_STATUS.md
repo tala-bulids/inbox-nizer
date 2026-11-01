@@ -1,5 +1,19 @@
 # Inbox-nizer — project status and V1 release contract
 
+**1 November 2026 — constrained-test preparation follow-up from `410c563`:**
+Added a pinned-Git-archive Docker runner with verified private model-file mounts,
+512 MiB / 0.1 CPU, no swap/network, bounded execution and external OOM/exit evidence.
+Fixed measurement gaps: retain cgroup counters after worker startup failure, reject
+incomplete OOM/invalid limit data, and require a successful concurrent request.
+**94 local showcase tests passed** (including the real private classifier); runner
+regressions are plumbing tests, not real Linux capacity evidence. Local bundle
+verification succeeded, then preflight blocked because Docker/Podman and a WSL
+Linux distro are unavailable. **No Linux resource run occurred; Free remains
+NO-GO (capacity unproven)**. Research-only ranking acceptance remains valid.
+An authorized Linux environment, private Render artifact delivery, environment
+inventory and exact deployment approval remain required. No serving models, UI,
+Render, Gmail data, credentials or billing changed. [Current test/evidence ledger](docs/free-qualification/verification.json).
+
 **1 November 2026 — Free-only qualification, NOT deployed:** Based on verified
 `50461b5`, the explicit `e5-int8-fp32-corpus-v1` candidate reuses INT8 E5 queries,
 the original FP32 vectors of the 24 fictional public emails, and Phase 2 classifier

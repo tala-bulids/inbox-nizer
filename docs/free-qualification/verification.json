@@ -102,5 +102,30 @@
     "linux_testing_waived": false,
     "deployment_approved": false
   },
-  "owner_instruction": "Continue safe preparation/testing only; do not modify or deploy the existing Render service"
+  "owner_instruction": "Continue safe preparation/testing only; do not modify or deploy the existing Render service",
+  "measurement_followup": {
+    "date": "2026-11-01",
+    "base_sha": "410c563824ced8bbf324a0860f059a9862a47554",
+    "local_showcase_tests": {
+      "passed": 94,
+      "failed": 0,
+      "warnings": 1
+    },
+    "initial_focused_tests": {
+      "passed": 35,
+      "failed": 0
+    },
+    "runner_preflight": "BLOCKED: exact local bundle verified; Docker absent; no container started",
+    "linux_test_executed": false,
+    "new_inference_metrics": null,
+    "changes": [
+      "pinned Git archive runner; three read-only verified artifact mounts; network/swap disabled; 512 MiB and 0.1 CPU",
+      "external container OOM/exit receipt and 600-second bound",
+      "post-failure cgroup snapshot and stricter fail-closed resource checks",
+      "concurrency requires at least one successful request"
+    ],
+    "ci": "Pending publication",
+    "model_delivery": "Private local bundle verified; approved Render HTTPS sources/descriptor still unavailable",
+    "live_inventory": "Pending per owner; no service or secrets read/changed"
+  }
 }

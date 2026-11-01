@@ -127,25 +127,43 @@ on port 4181. It tests both widths, languages, actual questions, tasks, citation
 classification, metrics and refresh. Diagnostic probe routes bind loopback only
 and must never be used as the public start command.
 
-On an already approved Linux Docker host, the prepared Dockerfile can be tested
-without adding any hosting service. These commands have **not been executed**:
+On an already approved Linux Docker host, the prepared runner performs the test
+without adding a hosting service. The actual constrained run remains **NOT EXECUTED**:
 
 ```sh
-git archive HEAD | docker build -f deploy/free-qualification.Dockerfile -t inbox-nizer-free-qualification -
-docker run --rm --network=none --memory=512m --memory-swap=512m --cpus=0.1 \
-  --mount type=bind,src=/approved/local/bundle,dst=/models,readonly \
-  --mount type=bind,src=/approved/local/evidence,dst=/evidence \
-  inbox-nizer-free-qualification
-python -m showcase.resource_verdict /approved/local/evidence/linux-free.json
+python -m showcase.qualify_linux --models /approved/local/bundle --check
+python -m showcase.qualify_linux --models /approved/local/bundle --output /approved/local/new-evidence-directory
 ```
 
-Use absolute existing operator-owned paths; choose an unused output file. Build
-from `git archive` to exclude ignored private data/models from the build context.
-Runtime has no network, no swap and no published port. Container peak includes
+Use an existing private model directory and a new evidence directory. Start from
+a clean committed checkout. The runner verifies the three exact hashes before
+using Docker, builds `git archive HEAD` through a binary stream (no ignored/private
+files in the build context), and records the source SHA and local image ID.
+It mounts only the three model files read-only, never the surrounding directory.
+No model files are uploaded to CI, a registry or a public repository.
+
+Docker constraints are `--memory=512m --memory-swap=512m --cpus=0.1`
+(536,870,912 bytes, no swap, 10% of one CPU), with 128 PIDs maximum. Runtime has
+no network, no inherited host environment, no published port. Container peak includes
 the probe client as well as the service. Require completed real inference, finite
-cgroup v2 limits, no OOM, and <=400 MiB peak. The 60-second startup deadline may
+cgroup v2 limits, explicit zero OOM counters, and <=400 MiB peak. The 60-second startup deadline may
 fail at 0.1 CPU; report failure rather than silently expanding it. A successful
 local container run still requires real Render/browser acceptance after approval.
+
+`qualification.json` retains external exit/OOM evidence if the entire container
+dies before writing `linux-free.json`. The child probe now records a final
+observer cgroup snapshot even after startup failure; incomplete OOM counters,
+invalid limits and all-rejected concurrency cannot yield a pass. A 600-second
+overall deadline stops a stalled run. Only this invocation's stopped container is
+removed; local models, logs, receipts and image are retained. Cleanup failures are
+recorded for manual inspection. Raw receipts remain private/local until sanitized.
+`--check` verifies prerequisites only and must never be reported as real inference.
+
+The 1 November follow-up rechecked available tools: no Docker/Podman executable or
+WSL distro. The exact local bundle passes hash verification, then runner preflight
+returns **BLOCKED** before any container/build. Linux peak memory, cold start,
+throttled latency and concurrency remain unavailable. A names-only request for an
+authorized Linux host/model path or an approved local Linux setup is pending.
 
 ## Outstanding release boundaries
 
@@ -165,7 +183,7 @@ See [the transition runbook](../../deploy/AI_SHOWCASE_RELEASE.md) for the propos
 operation and data preservation boundaries. Final test/CI evidence is recorded
 in `verification.json` and PROJECT_STATUS.md; no unavailable measurement is a pass.
 
-## Final published verification
+## Initial published verification (before the measurement follow-up)
 
 Implementation: `94f209df4c1d8086771367cf8b419a107c789d3c`. Test-only CI namespace
 correction and final tested SHA: **`181f2117526b9bcd9cfc7140f8d041c2050aee1c`**.

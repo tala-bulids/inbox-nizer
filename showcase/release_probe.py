@@ -190,6 +190,7 @@ def parent(args):
             with ThreadPoolExecutor(max_workers=4) as pool:
                 outcomes=list(pool.map(lambda _:call(client,'/api/showcase/ask',question),range(4)))
             report['concurrent_four']={'statuses':[r.status_code for r,_ in outcomes],'latencies_ms':[ms for _,ms in outcomes]}
+            assert any(r.status_code==200 for r,_ in outcomes)
             assert all(r.status_code in (200,429) for r,_ in outcomes)
             response=client.get(base+'/api/__probe/evaluate');response.raise_for_status()
             report['evaluation']=response.json()
@@ -204,6 +205,11 @@ def parent(args):
         process.terminate()
         try:process.wait(timeout=10)
         except subprocess.TimeoutExpired:process.kill();process.wait()
+        # The client shares the container cgroup with the worker. Preserve its
+        # lifetime peak/OOM counters even if inference failed before readiness.
+        # If the entire container dies, the external runner records Docker state.
+        report['observer_final']=memory()
+        report['worker_exit_code']=process.returncode
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
     print(json.dumps({k:v for k,v in report.items() if k!='evaluation'},indent=2))
