@@ -45,9 +45,10 @@ existing fixtures, all labelled deadlines/source references correct; only four
 negative English examples, no Arabic negatives. q09/q10 failures remain.
 
 These are consumed, same-author development probes, **not independent quality
-acceptance**. Recall@3 regresses, especially Arabic. Acceptable only as an explicitly
-labelled research candidate if the owner accepts that trade-off; that decision
-has been requested and remains open. Production thresholds were not lowered.
+acceptance**. Recall@3 regresses, especially Arabic. On 1 November 2026 the owner
+explicitly accepted this measured trade-off **for the labelled research showcase
+only**. This is not deployment approval, production quality acceptance or a waiver
+of Linux capacity testing. Production thresholds were not lowered.
 Historical 32/100 remains a failed difficult-development check, not accuracy.
 Classifier A's English validation accuracy 0.883721 / macro-F1 0.704303 is unchanged;
 Arabic and final-test classification remain unevaluated. No retraining occurred.
@@ -149,12 +150,14 @@ local container run still requires real Render/browser acceptance after approval
 ## Outstanding release boundaries
 
 1. Real constrained Linux CPU/container-memory evidence.
-2. Owner decision on the measured research-ranking trade-off; independent quality
-   gates remain open regardless of that decision.
-3. Approved private build-time artifact locations/descriptor.
-4. Names-only live environment/group/secret-file inventory. Connector does not
-   expose it; Dashboard is signed out. No values were read or printed.
-5. Exact transition approval and subsequent target-host/public browser acceptance.
+2. Approved private build-time artifact locations/descriptor.
+3. Names-only live environment/group/secret-file inventory. The owner confirms
+   Dashboard access is unavailable; keep this pending and do not guess names or
+   secrets. No values were read or printed.
+4. Exact transition approval and subsequent target-host/public browser acceptance.
+
+The research-ranking decision is closed by the owner's limited acceptance above.
+Independent production-quality gates remain open.
 
 No deployment, service mutation, database access, migration, deletion, credential
 rotation, billable resource, public artifact upload or Homepage change occurred.

@@ -10,16 +10,20 @@ record; do not execute historical startup commands containing migrations.
 The explicit candidate is `e5-int8-fp32-corpus-v1`; measured quality/resource
 limits, hashes, acquisition and reproduction are in
 [Free qualification](../docs/free-qualification/README.md). Windows peak process
-397.879 MiB does not establish the <=400 MiB Linux container target. No constrained
-Linux test or quality trade-off approval has been obtained. No production action
-is authorized by this document.
+397.879 MiB does not establish the <=400 MiB Linux container target. Constrained
+Linux testing remains pending. On 1 November 2026 the owner accepted the measured
+ranking trade-off for the labelled research showcase only, without approving
+deployment, production quality or a Linux-test waiver. No production action is
+authorized by this document.
 
 Read-only Render inspection reconfirmed the original service
 `srv-dbcqvja9lscs73er2pu0`, Free, Frankfurt, one instance, release branch
 `codex/inbox-nizer-release`, auto-deploy off, empty health path and the migration
 startup below. The connector does not provide environment variable names, linked
-groups or secret-file bindings. The Dashboard is signed out. **Actual inventory
-is unknown**; examples below are required exclusions, not observed configuration.
+groups or secret-file bindings. The owner confirms Dashboard access is unavailable.
+**Actual inventory remains pending**; do not infer names or secrets. Examples below
+are required exclusions, not observed configuration. The owner explicitly directs
+that the existing Render service must not be modified or deployed.
 
 ### Proposed exact transition — only after blockers and approval
 

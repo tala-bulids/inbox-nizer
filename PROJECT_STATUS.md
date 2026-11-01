@@ -7,8 +7,10 @@ A. Original full/local and Gmail implementations/artifacts remain intact. Real
 Windows combined-factory measurement: **397.879 MiB peak process memory**, 5.187 s
 warm-before-readiness startup; not constrained Linux/container evidence. Recall@5
 0.797619 / MRR 0.827381 improve, but Recall@3 falls to 0.678571 (Arabic 0.571429).
-Citation sets and the two known evidence failures are unchanged. Owner acceptance
-of that research trade-off is pending; V10/independent quality gates remain open.
+Citation sets and the two known evidence failures are unchanged. On 1 November
+2026 the owner explicitly accepted this trade-off **for the labelled research
+showcase only**. V10/independent quality gates remain open; this does not approve
+deployment or waive constrained Linux testing.
 Local checks: **75 showcase backend and 13 focused frontend tests passed**;
 typecheck, lint and all three production builds passed. Real acquired-model
 browser flows passed at 1440/390 px in both languages. Published tested SHA
@@ -24,10 +26,9 @@ application/test files match the green SHA. [Full qualification ledger](docs/fre
 All three artifact hashes were verified by the new build-time acquisition path;
 approved private Render download locations are still missing. Read-only Render
 inspection confirms Free/release branch/auto-deploy off and the old migration start.
-Environment/group/secret-file inventory is unavailable while Dashboard is signed
-out. **Free technical qualification: FAIL (unproven), deployment NO-GO** pending
-constrained Linux evidence, delivery, inventory, quality decision and exact owner
-transition approval. No service, private database, credentials, billing, model
+The owner confirms Dashboard access is unavailable. Environment/group/secret-file
+inventory remains pending; no names or values are inferred. **Free technical qualification: FAIL (unproven), deployment NO-GO** pending
+constrained Linux evidence, delivery, inventory and exact owner transition approval. No service, private database, credentials, billing, model
 training or public Homepage changed. [Evidence and remaining actions](docs/free-qualification/README.md),
 [Free-only proposed transition](deploy/AI_SHOWCASE_RELEASE.md). Historical paid
 compute suggestions below are superseded; no paid hosting is authorized.

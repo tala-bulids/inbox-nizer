@@ -76,8 +76,8 @@
   },
   "linux_resource_test": "NOT EXECUTED; no local Docker/Podman/WSL distro",
   "free_technical_gate": "FAIL: constrained Linux container evidence unavailable",
-  "ranking_tradeoff_accepted": false,
-  "live_environment_inventory": "Unavailable: connector lacks names/groups/secret-file reads and Dashboard is signed out",
+  "ranking_tradeoff_accepted": true,
+  "live_environment_inventory": "PENDING: owner confirms Dashboard access unavailable; do not guess variables, groups, secret-file bindings or secret values",
   "deployment_authorized": false,
   "deployed": false,
   "initial_failures": [
@@ -93,5 +93,14 @@
     "screenshots/390-evaluation-ar.png"
   ],
   "real_inference_code_sha": "94f209df4c1d8086771367cf8b419a107c789d3c",
-  "final_followup": "Documentation and safe browser evidence only; application and test files match the green tested SHA; redundant CI skipped"
+  "final_followup": "Documentation and safe browser evidence only; application and test files match the green tested SHA; redundant CI skipped",
+  "ranking_tradeoff_acceptance": {
+    "date": "2026-11-01",
+    "authority": "explicit owner reply",
+    "scope": "labelled research showcase only",
+    "production_quality_approved": false,
+    "linux_testing_waived": false,
+    "deployment_approved": false
+  },
+  "owner_instruction": "Continue safe preparation/testing only; do not modify or deploy the existing Render service"
 }
