@@ -85,6 +85,10 @@ try {
     const evidence = await (
       await context.request.get(`${base}/api/showcase/portfolio`)
     ).json();
+    if (process.env.SHOWCASE_EXPECT_RUNTIME) {
+      assert.equal(evidence.serving_runtime?.id, process.env.SHOWCASE_EXPECT_RUNTIME);
+      await page.getByText(/Experimental hosting candidate:/).waitFor();
+    }
     await page.screenshot({
       path: `${output}/${width}-lab-en.png`,
       fullPage: true,
@@ -244,6 +248,7 @@ try {
     results.push({
       width,
       realInference: true,
+      runtime: evidence.serving_runtime?.id || "original-e5",
       originalQuestion: original.status,
       novelQuestion: custom.status,
       missingEvidence: unknown.status,

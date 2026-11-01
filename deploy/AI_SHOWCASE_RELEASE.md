@@ -1,5 +1,93 @@
 # Existing-service AI showcase transition — approval required
 
+## Current decision: Free-only candidate, 1 November 2026
+
+**Prepared only. NO-GO pending qualification and owner approval.** This section
+supersedes the historical compute recommendation and original-factory commands
+below. Paid hosting is not an option. Preserve the rest as the rollback/history
+record; do not execute historical startup commands containing migrations.
+
+The explicit candidate is `e5-int8-fp32-corpus-v1`; measured quality/resource
+limits, hashes, acquisition and reproduction are in
+[Free qualification](../docs/free-qualification/README.md). Windows peak process
+397.879 MiB does not establish the <=400 MiB Linux container target. No constrained
+Linux test or quality trade-off approval has been obtained. No production action
+is authorized by this document.
+
+Read-only Render inspection reconfirmed the original service
+`srv-dbcqvja9lscs73er2pu0`, Free, Frankfurt, one instance, release branch
+`codex/inbox-nizer-release`, auto-deploy off, empty health path and the migration
+startup below. The connector does not provide environment variable names, linked
+groups or secret-file bindings. The Dashboard is signed out. **Actual inventory
+is unknown**; examples below are required exclusions, not observed configuration.
+
+### Proposed exact transition — only after blockers and approval
+
+Keep service, URL, region, Free plan, one instance and auto-deploy off. No disk,
+new service/database, billing/default-branch/Homepage change. Set:
+
+- Branch: `codex/ai-showcase-phase1`; deploy only the reviewed, CI-verified SHA
+  recorded in PROJECT_STATUS.md (not an unreviewed moving branch tip).
+- Build command: `sh deploy/build-showcase-free.sh`.
+- Start command: `sh deploy/start-showcase-free.sh`.
+- Health path: `/api/health/ready`.
+
+Nonsecret service settings to add/retain for this candidate:
+
+| Name | Value |
+|---|---|
+| PYTHON_VERSION | 3.11.9 |
+| NODE_VERSION | 24 |
+| SHOWCASE_RUNTIME | e5-int8-fp32-corpus-v1 |
+| SHOWCASE_EMBEDDING_DIR | local_models/showcase-free |
+| SHOWCASE_CLASSIFIER_PATH | local_models/showcase-free/candidate.joblib |
+| SHOWCASE_ARTIFACT_DESCRIPTOR | /etc/secrets/showcase-artifacts.json (proposed; not provisioned) |
+| OMP_NUM_THREADS | 1 |
+| OPENBLAS_NUM_THREADS | 1 |
+| MKL_NUM_THREADS | 1 |
+| HF_HUB_OFFLINE | 1 |
+| TRANSFORMERS_OFFLINE | 1 |
+
+Render supplies PORT. The start script explicitly uses one worker regardless of
+WEB_CONCURRENCY. It neither imports `main` nor runs Alembic. Do not install the
+root full/Gmail requirements in this build. Preserve the selected research A and
+original E5 artifacts; downloads occur during build, never in a user request.
+
+Before any save/deploy, obtain a names-only inventory including inherited groups
+and secret-file bindings. Privately preserve rollback configuration with the owner.
+Detach this service's private DB/Gmail/OAuth/session/encryption credentials and
+private secret files; do not delete credentials, shared groups or any database.
+`DATABASE_*`, `POSTGRES*`, `PGPASSWORD`, `GOOGLE*`, `GMAIL*`, `OAUTH*` are rejected
+by the factory. Check generic session/encryption/API-key names too; a name guard
+alone is not evidence of complete credential isolation. Retain only approved
+showcase configuration and the approved artifact descriptor. Never print values.
+
+No exact list of bindings to detach can be approved until the inventory exists.
+Changing/saving secret files can automatically deploy, even when ordinary env
+changes offer Save only. Do not click any save until the owner approves the
+complete ordered operation. A descriptor is not currently available on Render;
+local Windows artifacts cannot satisfy the build without an approved delivery path.
+
+After approval of the completed inventory, delivery, constrained capacity and
+quality decision: apply the reviewed configuration safely, then manually deploy
+the exact verified SHA to **this existing Free service only**. Validate readiness
+runtime identity, actual Render resource/error metrics and the public bilingual
+browser script. Until then the URL must not be advertised as the updated showcase.
+
+### Preservation and rollback
+
+No operation touches PostgreSQL, Google accounts, tokens, checkpoints, emails or
+backups. Preserve prior branch/SHA/build/settings and owner-held secrets privately.
+Do not automatically roll back by executing the historical migration-on-start
+command. If launch fails, stop the transition and present the exact safe rollback
+for owner approval, including restoration of bindings where required and a
+separately reviewed migration-free old-app entry point. Database credential
+rotation and any restore remain independent, approval-required operations.
+
+---
+
+## Historical Phase 5 record (superseded where noted above)
+
 29 October 2026. **Prepared, not applied. PUBLIC AI SHOWCASE: NO-GO.**
 Do not execute a deploy, save Dashboard settings that automatically deploy, change
 compute, attach a disk, alter credentials, or run a migration from this document

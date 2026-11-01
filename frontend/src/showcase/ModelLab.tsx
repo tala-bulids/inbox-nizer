@@ -76,6 +76,15 @@ export function ModelLab({ email }: { email: CollectionEmail }) {
               "Research model, not production approved. Classification results are consumed English validation evidence, not general accuracy or final test scores.",
             )}
           </p>
+          {data.serving_runtime && (
+            <p className="lab-notice">
+              {t(
+                "مرشح استضافة تجريبي: استعلامات E5 INT8 وفهرس مصادر محسوب مسبقاً بـ FP32. نتائج الاسترجاع السابقة تخص النموذج الأصلي؛ اعتماد الجودة والاستضافة لم يكتمل.",
+                "Experimental hosting candidate: E5 INT8 queries with a precomputed FP32 source index. Earlier retrieval metrics describe the original encoder; quality and hosting acceptance remain open.",
+              )}{" "}
+              <code>{data.serving_runtime.id}</code>
+            </p>
+          )}
           {section === "overview" && (
             <>
               <div className="lab-models">

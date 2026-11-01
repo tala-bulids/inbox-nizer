@@ -72,6 +72,7 @@ beforeEach(() => {
       });
     if (path.endsWith("portfolio"))
       return Response.json({
+        serving_runtime: { id: "e5-int8-fp32-corpus-v1" },
         selected: comparison.selected_research_candidate,
         models: comparison.runs.map((row) => ({
           id: row.run.candidate,
@@ -109,6 +110,13 @@ test("public Ask is extractive and tasks link to supporting original mail", asyn
   expect(screen.getByLabelText("Choose a source")).toHaveValue("1");
 });
 afterEach(() => vi.restoreAllMocks());
+test("Model Lab identifies the separate hosting candidate in both languages", async () => {
+  const user = await open("/lab");
+  expect(await screen.findByText(/Experimental hosting candidate:/)).toBeVisible();
+  expect(screen.getByText("e5-int8-fp32-corpus-v1")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
+  expect(screen.getByText(/مرشح استضافة تجريبي:/)).toBeVisible();
+});
 async function open(path = "/") {
   const user = userEvent.setup();
   render(

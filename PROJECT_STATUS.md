@@ -1,5 +1,28 @@
 # Inbox-nizer — project status and V1 release contract
 
+**1 November 2026 — Free-only qualification, NOT deployed:** Based on verified
+`50461b5`, the explicit `e5-int8-fp32-corpus-v1` candidate reuses INT8 E5 queries,
+the original FP32 vectors of the 24 fictional public emails, and Phase 2 classifier
+A. Original full/local and Gmail implementations/artifacts remain intact. Real
+Windows combined-factory measurement: **397.879 MiB peak process memory**, 5.187 s
+warm-before-readiness startup; not constrained Linux/container evidence. Recall@5
+0.797619 / MRR 0.827381 improve, but Recall@3 falls to 0.678571 (Arabic 0.571429).
+Citation sets and the two known evidence failures are unchanged. Owner acceptance
+of that research trade-off is pending; V10/independent quality gates remain open.
+Local checks: **75 showcase backend and 13 focused frontend tests passed**;
+typecheck, lint and all three production builds passed. Final CI/browser evidence
+is recorded in [the qualification ledger](docs/free-qualification/verification.json).
+All three artifact hashes were verified by the new build-time acquisition path;
+approved private Render download locations are still missing. Read-only Render
+inspection confirms Free/release branch/auto-deploy off and the old migration start.
+Environment/group/secret-file inventory is unavailable while Dashboard is signed
+out. **Free technical qualification: FAIL (unproven), deployment NO-GO** pending
+constrained Linux evidence, delivery, inventory, quality decision and exact owner
+transition approval. No service, private database, credentials, billing, model
+training or public Homepage changed. [Evidence and remaining actions](docs/free-qualification/README.md),
+[Free-only proposed transition](deploy/AI_SHOWCASE_RELEASE.md). Historical paid
+compute suggestions below are superseded; no paid hosting is authorized.
+
 **29 October 2026 — Phase 5 release qualification (not deployed):** Real fresh-process probes measured the unchanged full E5 + selected A stack at **918.21 MiB**, existing FP32 ONNX at **940.32 MiB**, and existing INT8 ONNX at **398.00 MiB**. FP32 preserved all tested rankings; INT8 preserved Recall@5/citation sets but reduced MRR from 0.76190 to 0.72024 and nDCG@5 from 0.69897 to 0.68668. The INT8 adapter remains offline qualification code; no model or quality threshold was silently replaced. A reviewed release factory now rejects private mailbox configuration, pins and hashes E5, warms both models before readiness, and rejects the historical classifier route. Existing local/full behavior remains available. Local checks: 58 showcase tests, 13 ML tests, 185 frontend tests, typecheck/lint/build/API contract and real bilingual desktop/mobile browser flows passed. [Exact evidence, model limits and reproduction](docs/phase5/README.md); [transition requiring explicit approval](deploy/AI_SHOWCASE_RELEASE.md). **PUBLIC AI SHOWCASE: NO-GO** pending a hosting decision, approved private artifact delivery, live-service transition approval and actual target-host/public acceptance. The unchanged runtime cannot fit Free; the smallest listed larger RAM plan is 1 CPU/2 GB at $25/month, not authorized. Render still reports old Gmail source `f53e22c`, auto-deploy off and a migration-on-start command. No private database or production configuration was accessed/changed; no deployment, purchase, credential rotation or retraining occurred. README/Homepage launch claims remain unchanged until live acceptance. Published code/test HEAD **`d7d5712dcb943b16c9900229352ad948f2d305eb`** is verified on GitHub; [CI run 40893033160](https://github.com/tala-bulids/inbox-nizer/actions/runs/40893033160) passed: **1,450 backend tests, 6 skips, 2 passing subtests; 185 frontend tests; pip check, lint, typecheck, API contract and all three builds**. The final follow-up changes only this evidence/documentation and skips redundant CI. Application/test files match the green SHA; no deployment occurred.
 
 **29 October 2026 — Phase 4 interactive portfolio:** Ask Mail, Smart Tasks, Email Collection and Model Lab now form the public showcase navigation. The playground explicitly uses hash-verified Phase 2 research candidate A; historical ONNX/Gmail implementations are preserved. Model Lab reads saved experiments, final losses, class metrics, confusion matrices and calibration; unavailable curves/Arabic/final-test results are labelled honestly. Request-local inputs, bounded inference and a timestamp-only rolling budget are implemented. Real local bilingual desktop/mobile flows and safe screenshots are recorded in [Phase 4 evidence](docs/phase4/README.md). Verified: 185 frontend tests, typecheck/lint/build, 44 backend cases (43 in the final full run plus the unchanged timed-out classifier case passing on isolated retry), and real warm-model browser flows at 1440/390 px. A cold Ask exceeded 120 seconds before recovery; cold-start readiness remains open. This is a local UI/inference implementation, not a quality-gate pass or deployment. Render Free remains blocked by the measured E5 memory requirement. No production data/configuration changed.

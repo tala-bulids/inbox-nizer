@@ -91,6 +91,7 @@ const Scores = z.object({
   support: z.number(),
 });
 export const Portfolio = z.object({
+  serving_runtime: z.object({ id: z.string() }).optional(),
   selected: z.string(),
   evidence_version: z.string(),
   models: z.array(

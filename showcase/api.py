@@ -88,7 +88,7 @@ class InferenceBudget:
             return 0
 
 
-def create_api(engine=None, predictor=None, budget=None, *, allow_historical=True):
+def create_api(engine=None, predictor=None, budget=None, *, allow_historical=True, runtime=None):
     app = FastAPI(title='Inbox-nizer AI Showcase', docs_url=None, redoc_url=None)
     app.add_middleware(BodyLimit)
     engine = engine or Engine()
@@ -138,7 +138,10 @@ def create_api(engine=None, predictor=None, budget=None, *, allow_historical=Tru
 
     @app.get('/showcase/portfolio')
     def portfolio():
-        return evidence()
+        result = evidence()
+        if runtime:
+            result['serving_runtime'] = runtime
+        return result
 
     @app.get('/showcase/reproduction', response_class=PlainTextResponse)
     def reproduction():

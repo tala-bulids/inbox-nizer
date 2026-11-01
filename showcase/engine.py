@@ -58,12 +58,16 @@ def tasks(email):
 
 
 class Engine:
-    def __init__(self):
+    def __init__(self, *, query_encoder=None, prepared_index=None):
         self._vectors = None
         self._load_lock = Lock()
         self._classifier_verified = False
         self._index_version = None
         self._chunks = []
+        self._query_encoder = query_encoder
+        self._prepared_index = prepared_index is not None
+        if prepared_index is not None:
+            self._chunks, self._vectors, self._index_version = prepared_index
 
     def verify_classifier(self):
         if self._classifier_verified:
@@ -91,13 +95,15 @@ class Engine:
         with self._load_lock:
             version = index_version(emails)
             if self._vectors is None or version != self._index_version:
+                if self._prepared_index:
+                    raise ValueError('Prepared index does not match the current collection')
                 passages = document_chunks(emails)
                 vectors = []
                 # Bound encoder batch memory on the public CPU process.
                 for i in range(0,len(passages),4):
                     vectors.extend(embed_passages([p['embedding_text'] for p in passages[i:i+4]]))
                 self._chunks, self._vectors, self._index_version = passages, vectors, version
-        query = embed_query(question)
+        query = (self._query_encoder or embed_query)(question)
         ranked = sorted(zip(self._chunks, self._vectors),
                         key=lambda item: (-sum(a*b for a,b in zip(query,item[1])), item[0]['chunk_id']))
         unique = {}

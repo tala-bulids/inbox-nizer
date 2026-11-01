@@ -1,0 +1,12 @@
+# Isolated INT8 research candidate only. No Torch, Transformers, Gmail or SQL.
+fastapi==0.141.1
+uvicorn==0.52.4
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+onnxruntime==1.31.0
+sentencepiece==0.2.2
+beautifulsoup4==4.15.0
+geonamescache==3.0.0

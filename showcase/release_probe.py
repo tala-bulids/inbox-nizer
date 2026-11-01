@@ -24,7 +24,17 @@ def digest(path):
 def memory():
     import psutil
     m=psutil.Process().memory_info()
-    return {'rss_mib':m.rss/2**20,'peak_wset_mib':getattr(m,'peak_wset',m.rss)/2**20}
+    if sys.platform == 'linux':
+        import resource
+        peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024
+    else:
+        peak=getattr(m,'peak_wset',m.rss)/2**20
+    result={'rss_mib':m.rss/2**20,'process_peak_mib':peak,'peak_wset_mib':peak}
+    if sys.platform=='linux':
+        result['cgroup_v2']={name:Path('/sys/fs/cgroup',name).read_text().strip()
+                            for name in ('memory.current','memory.peak','memory.max','memory.swap.max','memory.events','cpu.max','cpu.stat')
+                            if Path('/sys/fs/cgroup',name).is_file()}
+    return result
 
 
 def worker(args):
@@ -33,7 +43,7 @@ def worker(args):
             os.environ.pop(key)
     import numpy as np
     import embedding_service
-    if args.encoder!='torch':
+    if args.encoder not in ('torch','free-candidate'):
         from showcase.onnx_probe_encoder import ProbeEncoder
         name='model.onnx' if args.encoder=='onnx-fp32' else 'model_int8.onnx'
         embedding_service._load_encoder=lambda:ProbeEncoder(args.artifacts,name)
@@ -41,8 +51,16 @@ def worker(args):
     from showcase.engine import Engine, collection
     from showcase.portfolio import SelectedClassifier
     from showcase.intelligence import index_version, chunks
-    engine=Engine();predictor=SelectedClassifier()
-    api=create_api(engine,predictor)
+    outer=None
+    if args.encoder=='free-candidate':
+        from showcase.free_app import application
+        from starlette.routing import Mount
+        outer=application()
+        api=next(route.app for route in outer.routes if isinstance(route, Mount) and route.path=='/api')
+        engine,predictor,encoder=api.state.engine,api.state.predictor,api.state.encoder
+    else:
+        engine=Engine();predictor=SelectedClassifier()
+        api=create_api(engine,predictor)
 
     @api.get('/__probe/stats')
     def stats():
@@ -69,8 +87,9 @@ def worker(args):
                 'evidence_set_correct':set(ids)==set(case['evidence']),
                 'literal_grounding':literal_grounding(answer['answer'],collection()),'latency_ms':elapsed,
                 'ranked_top10':[r['email_id'] for r in ranked[:10]]})
-            vectors.append(embedding_service.embed_query(case['question']))
-        tokens=[embedding_service.get_tokenizer().encode('query: '+case['question'],add_special_tokens=True) for case in suite['questions']]
+            vectors.append(encoder.query(case['question']) if args.encoder=='free-candidate' else embedding_service.embed_query(case['question']))
+        tokenizer=encoder.tokenizer if args.encoder=='free-candidate' else embedding_service.get_tokenizer()
+        tokens=[tokenizer.encode('query: '+case['question'],add_special_tokens=True) for case in suite['questions']]
         return {'qa':aggregate_qa(records),'by_language':{lang:aggregate_qa([c for c in records if c['language']==lang]) for lang in ('en','ar')},
                 'tasks':task_metrics(suite['task_gold'],collection()),'cases':records,
                 'query_vectors':vectors,'query_token_ids':tokens,'document_vectors':engine._vectors,
@@ -80,7 +99,7 @@ def worker(args):
     def maximum():
         # Exercise the encoder's full reviewed 512-token boundary independently
         # of the smaller public 1000-character question limit.
-        encoder=embedding_service._get_encoder()
+        encoder=api.state.encoder if args.encoder=='free-candidate' else embedding_service._get_encoder()
         text='query: '+('meeting '*600)
         ids=encoder.tokenizer.encode(text,add_special_tokens=True)[:512]
         start=time.perf_counter()
@@ -97,7 +116,7 @@ def worker(args):
 
     from deploy.render_app import create_app
     import uvicorn
-    uvicorn.run(create_app(api,ROOT/'frontend/dist'),host='127.0.0.1',port=args.port,access_log=False,log_level='error')
+    uvicorn.run(outer or create_app(api,ROOT/'frontend/dist'),host='127.0.0.1',port=args.port,access_log=False,log_level='error')
 
 
 def parent(args):
@@ -112,7 +131,7 @@ def parent(args):
     process=subprocess.Popen(command,cwd=ROOT,env=environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     base=f'http://127.0.0.1:{args.port}'
     report={'encoder':args.encoder,'platform':sys.platform,'fresh_process':True,'os_cache_controlled':False,
-            'cpu_throttling':'Not emulated; Windows timings are not 0.1-CPU Render timings',
+            'cpu_throttling':('See recorded cgroup CPU/memory limits; do not assume constrained' if sys.platform=='linux' else 'Not emulated; Windows timings are not 0.1-CPU Render timings'),
             'render_capacity_verified':False,'production_approved':False,'real_inference':True,'mocked_inference':False,'snapshots':{}}
     def call(client,path,body=None):
         start=time.perf_counter()
@@ -153,6 +172,19 @@ def parent(args):
             report['snapshots']['combined_loaded']=client.get(base+'/api/__probe/stats').json()
             sample(client,'warm_ask','/api/showcase/ask',question)
             sample(client,'warm_classifier','/api/showcase/predict',prediction)
+            if args.encoder=='free-candidate':
+                ready=client.get(base+'/api/health/ready');ready.raise_for_status()
+                assert ready.json()['id']=='e5-int8-fp32-corpus-v1'
+                report['readiness']=ready.json()
+                assert client.post(base+'/api/showcase/analyze',json=prediction).status_code==404
+                # Long requests must stay bounded, including bilingual input and
+                # token overflow that passes the character limit.
+                for question_text in ['meeting '*125, 'هل عندي مهام متأخرة؟', 'x '*500]:
+                    r,ms=call(client,'/api/showcase/ask',{'question':question_text,'mode':'grounded'})
+                    assert r.status_code in (200,422)
+                    report.setdefault('long_or_arabic_queries',[]).append({'characters':len(question_text),'status':r.status_code,'latency_ms':ms})
+                assert client.post(base+'/api/showcase/ask',json={'question':'x'*1001}).status_code==422
+                assert client.post(base+'/api/showcase/predict',content=b'x'*24001).status_code==413
             sample(client,'max_classifier','/api/showcase/predict',{'subject':'x'*300,'body':('Meeting invoice interview. '*300)[:6000]},n=2)
             report['max_encoder']=client.get(base+'/api/__probe/max-tokens').json()
             with ThreadPoolExecutor(max_workers=4) as pool:
@@ -181,13 +213,13 @@ def parent(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--worker',action='store_true')
-    parser.add_argument('--encoder',choices=['torch','onnx-fp32','onnx-int8'],required=True)
+    parser.add_argument('--encoder',choices=['torch','onnx-fp32','onnx-int8','free-candidate'],required=True)
     parser.add_argument('--artifacts',type=Path)
     parser.add_argument('--port',type=int,default=4182)
     parser.add_argument('--output',type=Path)
     args=parser.parse_args()
     if not args.worker and args.output is None:parser.error('--output required')
-    if args.encoder!='torch' and args.artifacts is None:parser.error('--artifacts required for ONNX')
+    if args.encoder in ('onnx-fp32','onnx-int8') and args.artifacts is None:parser.error('--artifacts required for ONNX')
     worker(args) if args.worker else parent(args)
 
 if __name__=='__main__':main()
