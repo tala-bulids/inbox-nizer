@@ -124,8 +124,49 @@
       "post-failure cgroup snapshot and stricter fail-closed resource checks",
       "concurrency requires at least one successful request"
     ],
-    "ci": "Pending publication",
+    "ci": {
+      "run_id": 41283334140,
+      "url": "https://github.com/tala-bulids/inbox-nizer/actions/runs/41283334140",
+      "status": "completed",
+      "linux_inference_executed": false,
+      "conclusion": "success",
+      "backend": {
+        "passed": 1486,
+        "skipped": 6,
+        "subtests_passed": 2
+      },
+      "isolated_showcase": {
+        "passed": 93,
+        "skipped": 1
+      },
+      "frontend": {
+        "passed": 186,
+        "typecheck": "PASS",
+        "lint": "PASS",
+        "api_contract": "PASS",
+        "builds": [
+          "standard",
+          "demo",
+          "showcase"
+        ]
+      },
+      "minimal_runtime": {
+        "passed": 45,
+        "pip_check": "PASS",
+        "capacity_proof": false
+      },
+      "ml_pipeline": {
+        "passed": 13
+      },
+      "quality_unittest": {
+        "run": 11,
+        "skipped": 1,
+        "status": "PASS"
+      }
+    },
     "model_delivery": "Private local bundle verified; approved Render HTTPS sources/descriptor still unavailable",
-    "live_inventory": "Pending per owner; no service or secrets read/changed"
+    "live_inventory": "Pending per owner; no service or secrets read/changed",
+    "tested_sha": "dff8e4323ac7696537ec18cbcb30af3a5b65948b",
+    "final_followup": "Documentation-only evidence update; application and qualification code match dff8e4323ac7696537ec18cbcb30af3a5b65948b; redundant CI skipped"
   }
 }

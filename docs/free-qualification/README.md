@@ -211,3 +211,20 @@ was checked in the portfolio response and visible notice. Reviewed safe captures
 The final documentation/evidence-only follow-up skips redundant CI. It preserves
 the application/test content of the green SHA. No deployment occurred and all
 remaining boundaries above remain open; CI does not qualify Render capacity.
+
+## Measurement follow-up verification — 1 November 2026
+
+Base `410c563`; published tested preparation SHA
+`dff8e4323ac7696537ec18cbcb30af3a5b65948b`.
+[CI 41283334140](https://github.com/tala-bulids/inbox-nizer/actions/runs/41283334140)
+passed: 1,486 backend / 6 skips / 2 subtests; 186 frontend; 93 isolated showcase /
+1 private-artifact skip; 45 minimal-runtime checks; 13 ML pipeline; quality unittest
+11 run / 1 opt-in skip. Pip checks, API contract, typecheck, lint and all three
+builds passed. Local affected showcase suite: 94 passed, including actual private
+classifier inference. Final evidence follow-up is documentation-only.
+
+No new Linux inference metrics were produced. The runner preflight verified the
+local model bundle then blocked on missing Docker; it started no container.
+The owner-approved research ranking trade-off remains accepted. Private build-time
+artifact delivery and names-only Render inventory remain pending. No serving
+model, UI, production configuration, data, credential or billing change occurred.

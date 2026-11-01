@@ -5,8 +5,14 @@ Added a pinned-Git-archive Docker runner with verified private model-file mounts
 512 MiB / 0.1 CPU, no swap/network, bounded execution and external OOM/exit evidence.
 Fixed measurement gaps: retain cgroup counters after worker startup failure, reject
 incomplete OOM/invalid limit data, and require a successful concurrent request.
-**94 local showcase tests passed** (including the real private classifier); runner
-regressions are plumbing tests, not real Linux capacity evidence. Local bundle
+**94 local showcase tests passed** (including the real private classifier).
+Published/tested preparation SHA **`dff8e4323ac7696537ec18cbcb30af3a5b65948b`**,
+[CI 41283334140](https://github.com/tala-bulids/inbox-nizer/actions/runs/41283334140):
+**1,486 backend passed / 6 skipped / 2 subtests passed; 186 frontend passed;
+93 isolated showcase passed / 1 private-artifact skip; 45 minimal-runtime and
+13 ML tests passed**. Pip checks, API contract, lint, typecheck and all three
+builds passed. Runner regressions are plumbing tests, not real Linux capacity
+evidence. Final follow-up changes documentation only; redundant CI is skipped. Local bundle
 verification succeeded, then preflight blocked because Docker/Podman and a WSL
 Linux distro are unavailable. **No Linux resource run occurred; Free remains
 NO-GO (capacity unproven)**. Research-only ranking acceptance remains valid.
