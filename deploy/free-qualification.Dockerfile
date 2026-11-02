@@ -4,6 +4,10 @@ WORKDIR /build/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+# The frontend TypeScript build includes tests importing these public evidence
+# fixtures. Preserve repository-relative paths; no private model artifacts.
+COPY docs/phase2/evidence/ /build/docs/phase2/evidence/
+COPY docs/release/v03-v10-20261024.json /build/docs/release/v03-v10-20261024.json
 RUN npm run build:showcase
 
 FROM python:3.11.9-slim-bookworm
