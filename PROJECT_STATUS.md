@@ -1,5 +1,18 @@
 # Inbox-nizer — project status and V1 release contract
 
+**2 November 2026 — GitHub Actions qualification authorized:** The owner selected
+GitHub-hosted Ubuntu/Docker and explicitly ruled out local installations, restarts,
+SSH and Render changes. A dedicated branch-push workflow now builds only tracked
+source, verifies actual 512 MiB / 0.1 CPU / zero-swap container constraints and
+native dependencies, and runs the hybrid inference gate only with a privately
+provisioned, hash-verified bundle. No private provider/location is configured.
+Missing provisioning is explicitly **BLOCKED**, not a model capacity pass; only
+an allowlisted summary may be uploaded. Research-only ranking acceptance stands.
+See [the workflow and secure provisioning contract](docs/free-qualification/GITHUB_ACTIONS.md).
+No models, credentials or private data are published; no local Linux installation
+or production operation is performed. CI results will be recorded in the
+[qualification ledger](docs/free-qualification/verification.json).
+
 **1 November 2026 — constrained-test preparation follow-up from `410c563`:**
 Added a pinned-Git-archive Docker runner with verified private model-file mounts,
 512 MiB / 0.1 CPU, no swap/network, bounded execution and external OOM/exit evidence.

@@ -168,5 +168,20 @@
     "live_inventory": "Pending per owner; no service or secrets read/changed",
     "tested_sha": "dff8e4323ac7696537ec18cbcb30af3a5b65948b",
     "final_followup": "Documentation-only evidence update; application and qualification code match dff8e4323ac7696537ec18cbcb30af3a5b65948b; redundant CI skipped"
+  },
+  "github_actions_qualification": {
+    "date": "2026-11-02",
+    "base_sha": "cd5b8ffdcb90bbcd2be6038db2ec6b525d093c4e",
+    "authorized_environment": "GitHub-hosted Ubuntu/Docker only",
+    "local_installs_or_ssh_authorized": false,
+    "private_provider_configured": false,
+    "private_artifacts_uploaded": false,
+    "real_model_qualification": "BLOCKED pending approved private delivery",
+    "ci": "Pending publication",
+    "local_focused_tests": {
+      "passed": 45,
+      "failed": 0
+    },
+    "deployment_authorized": false
   }
 }

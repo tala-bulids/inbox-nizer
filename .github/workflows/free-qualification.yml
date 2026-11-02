@@ -1,0 +1,60 @@
+name: Free Linux qualification
+
+on:
+  push:
+    branches: [codex/ai-showcase-phase1]
+    paths:
+      - .github/workflows/free-qualification.yml
+      - showcase/**
+      - deploy/free-qualification.Dockerfile
+      - deploy/requirements-showcase-free.txt
+
+permissions:
+  contents: read
+
+jobs:
+  constrained-qualification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build tracked source only; no model files or private build inputs
+        run: |
+          test "$(docker info --format '{{.OSType}}')" = linux
+          git archive --format=tar "$GITHUB_SHA" | docker build -f deploy/free-qualification.Dockerfile -t inbox-nizer-qualification-check -
+      - name: Check real Linux limits and native dependencies, without model inference
+        run: |
+          timeout --signal=TERM 180s docker run --name inbox-nizer-constraint-check \
+            --network=none --memory=512m --memory-swap=512m --cpus=0.1 --pids-limit=128 \
+            inbox-nizer-qualification-check python -m showcase.ci_qualification --smoke \
+            > "$RUNNER_TEMP/inbox-nizer-constraint-smoke.json"
+      # No private artifact provider has been configured or authorized yet.
+      # A reviewed provider must write a mode-0600 descriptor to
+      # $RUNNER_TEMP/inbox-nizer-approved-artifacts.json before the next step.
+      # Never interpolate secrets into shell commands, upload models to this
+      # public repository, or cache/upload models, descriptors or raw receipts.
+      - name: Collect evidence or explicitly record missing private provisioning
+        if: always()
+        run: python -m showcase.ci_qualification --temp "$RUNNER_TEMP" --sha "$GITHUB_SHA"
+      - name: Publish only allowlisted public evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: free-qualification-public-evidence
+          path: ${{ runner.temp }}/inbox-nizer-qualification-public.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove only this job's constraint-check container
+        if: always()
+        run: |
+          if docker container inspect inbox-nizer-constraint-check >/dev/null 2>&1; then
+            docker rm -f inbox-nizer-constraint-check >/dev/null
+          fi
+      - name: Enforce real-model gate; BLOCKED is never PASS
+        if: always()
+        run: python -m showcase.ci_qualification --enforce "$RUNNER_TEMP/inbox-nizer-qualification-public.json"
