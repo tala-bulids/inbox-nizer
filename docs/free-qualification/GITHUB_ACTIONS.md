@@ -84,3 +84,38 @@ Render remains untouched. Its proposed build/start/health/nonsecret settings are
 in [the existing transition runbook](../../deploy/AI_SHOWCASE_RELEASE.md). The
 names-only variable/group/secret-file inventory is still pending, and deployment
 still requires separate approval of the exact existing-service changes.
+
+## Executed evidence
+
+Tested code/workflow SHA: **`24c953b42338a69ed4b03588058d451b21f825b2`**.
+The initial workflow at `a87bfc3` found a real packaging defect: the frontend
+Docker stage lacked public JSON fixtures imported during TypeScript compilation.
+The tested follow-up copies only those committed public evidence files.
+
+[Qualification run 41392546684](https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546684):
+image build **PASS**; actual constrained Linux native dependency smoke **PASS**.
+Cgroup checks verified 536,870,912 bytes, zero swap and 0.1 CPU. Real-model stage:
+**BLOCKED — approved private artifact descriptor unavailable**. The final gate
+exited nonzero intentionally; the workflow's failure is not an OOM or an observed
+model-capacity failure. No learned inference, cold-model timing or peak model
+memory was measured. [Exact public report](github-actions-20261102.json).
+
+The only uploaded artifact is `free-qualification-public-evidence`, ID
+`13117654707`, **445-byte archive**, SHA-256
+`a4cf2a91064a05bfc52b766238a2adb53fdaf02c1f6752c80811a387a9ef659a`.
+It contains only the sanitized report. The local runner image was
+`sha256:91c27a572885e0919576bda09a84e2c546e23ad05a3cc83d85f16ff998d52b2b`;
+no image or model was pushed to a registry.
+
+[Normal CI 41392546712](https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546712)
+passed: 1,495 backend / 6 skips / 2 subtests; 186 frontend; 54 minimal-runtime;
+102 isolated showcase / 1 private-artifact skip; 13 ML; quality unittest 11 run /
+1 opt-in skip. Pip checks, API contract, typecheck, lint and all three frontend
+builds passed. Local affected showcase suite: 103 passed. The final follow-up
+records documentation/public evidence only and skips redundant CI.
+
+**Next required action:** approve a private artifact location and authentication
+method, then review the provider step that creates the private descriptor without
+logging its contents. Re-run this workflow with the three verified artifacts.
+Adding an arbitrary secret alone cannot unblock a workflow with no provider step.
+No local install, SSH, restart or Render action is needed for this CI test.

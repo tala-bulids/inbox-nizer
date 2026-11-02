@@ -1,5 +1,12 @@
 # Existing-service AI showcase transition — approval required
 
+**2 November qualification update:** GitHub Actions Ubuntu/Docker image build
+and constrained native dependency checks passed. Real-model Linux capacity remains
+**BLOCKED** pending approved private artifact provisioning; see the
+[CI qualification record](../docs/free-qualification/GITHUB_ACTIONS.md).
+The owner prohibits local installs, SSH, restarts and any Render changes. The
+service settings below remain proposed only; live binding inventory is pending.
+
 ## Current decision: Free-only candidate, 1 November 2026
 
 **Prepared only. NO-GO pending qualification and owner approval.** This section

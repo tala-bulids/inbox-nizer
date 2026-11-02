@@ -10,8 +10,19 @@ Missing provisioning is explicitly **BLOCKED**, not a model capacity pass; only
 an allowlisted summary may be uploaded. Research-only ranking acceptance stands.
 See [the workflow and secure provisioning contract](docs/free-qualification/GITHUB_ACTIONS.md).
 No models, credentials or private data are published; no local Linux installation
-or production operation is performed. CI results will be recorded in the
-[qualification ledger](docs/free-qualification/verification.json).
+or production operation is performed. Verified preparation SHA
+**`24c953b42338a69ed4b03588058d451b21f825b2`**: [normal CI](https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546712)
+passed **1,495 backend / 6 skips / 2 subtests; 186 frontend; 54 minimal-runtime;
+102 isolated showcase / 1 private-artifact skip; 13 ML tests**, pip checks, API
+contract, lint, typecheck and all three builds. Local showcase: **103 passed**.
+[Ubuntu/Docker workflow](https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546684)
+**built the real image and verified 536,870,912-byte memory / zero swap / 0.1 CPU
+constraints and native imports**. It then deliberately failed its final gate with
+**BLOCKED: approved private artifact descriptor unavailable**. No learned-model
+Linux inference, model memory or latency was measured. First Docker build exposed
+missing public JSON fixtures in the frontend stage; `24c953b` fixed that packaging
+issue. Only the 445-byte sanitized evidence archive was uploaded. Final evidence
+commit is documentation-only and skips redundant CI. [Exact qualification ledger](docs/free-qualification/verification.json).
 
 **1 November 2026 — constrained-test preparation follow-up from `410c563`:**
 Added a pinned-Git-archive Docker runner with verified private model-file mounts,

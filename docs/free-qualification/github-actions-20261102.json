@@ -1,0 +1,15 @@
+{
+  "source_sha": "24c953b42338a69ed4b03588058d451b21f825b2",
+  "status": "BLOCKED",
+  "real_model_inference": false,
+  "deployment_authorized": false,
+  "render_accepted": false,
+  "constraint_check": {
+    "status": "PASS",
+    "memory_limit_bytes": 536870912,
+    "swap_limit_bytes": 0,
+    "cpu_fraction": 0.1,
+    "real_model_inference": false
+  },
+  "reason": "Approved private artifact descriptor unavailable"
+}

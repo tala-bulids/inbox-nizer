@@ -1,5 +1,12 @@
 # Free-serving qualification — 1 November 2026
 
+**2 November update:** GitHub Actions Ubuntu/Docker is the only authorized Linux
+test environment. The image build and actual 512 MiB / zero-swap / 0.1-CPU
+dependency check passed. **Real-model qualification is BLOCKED** on private
+artifact provisioning; no model capacity pass is claimed. Local installs,
+restarts and SSH are not authorized. [Current workflow, results and next action](GITHUB_ACTIONS.md)
+supersede the earlier local-environment request below.
+
 **NO-GO for deployment. Prepared candidate, not Render acceptance. Free only.**
 This supersedes Phase 5's compute recommendation; it does not erase its evidence.
 Starting HEAD: `50461b520c3c253189bcbaedcd5fb7dd9c328884`, branch

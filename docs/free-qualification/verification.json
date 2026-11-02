@@ -74,8 +74,8 @@
       "status": "PASS"
     }
   },
-  "linux_resource_test": "NOT EXECUTED; no local Docker/Podman/WSL distro",
-  "free_technical_gate": "FAIL: constrained Linux container evidence unavailable",
+  "linux_resource_test": "Real-model BLOCKED; GitHub Ubuntu/Docker image build and constrained dependency smoke passed. No model memory/latency measured.",
+  "free_technical_gate": "BLOCKED: approved private artifact provisioning unavailable; no real-model Linux capacity pass",
   "ranking_tradeoff_accepted": true,
   "live_environment_inventory": "PENDING: owner confirms Dashboard access unavailable; do not guess variables, groups, secret-file bindings or secret values",
   "deployment_authorized": false,
@@ -177,11 +177,81 @@
     "private_provider_configured": false,
     "private_artifacts_uploaded": false,
     "real_model_qualification": "BLOCKED pending approved private delivery",
-    "ci": "Pending publication",
+    "ci": {
+      "run_id": 41392546712,
+      "url": "https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546712",
+      "conclusion": "success",
+      "tested_sha": "24c953b42338a69ed4b03588058d451b21f825b2",
+      "backend": {
+        "passed": 1495,
+        "skipped": 6,
+        "subtests_passed": 2
+      },
+      "frontend": {
+        "passed": 186,
+        "typecheck": "PASS",
+        "lint": "PASS",
+        "api_contract": "PASS",
+        "builds": [
+          "standard",
+          "demo",
+          "showcase"
+        ]
+      },
+      "minimal_runtime": {
+        "passed": 54,
+        "pip_check": "PASS"
+      },
+      "isolated_showcase": {
+        "passed": 102,
+        "skipped": 1
+      },
+      "ml_pipeline": {
+        "passed": 13
+      },
+      "quality_unittest": {
+        "run": 11,
+        "skipped": 1,
+        "status": "PASS"
+      }
+    },
     "local_focused_tests": {
       "passed": 45,
       "failed": 0
     },
-    "deployment_authorized": false
-  }
+    "deployment_authorized": false,
+    "local_showcase_tests": {
+      "passed": 103,
+      "failed": 0,
+      "warnings": 1
+    },
+    "workflow_yaml_parse": "PASS",
+    "initial_ci_failure": {
+      "run_id": 41392304808,
+      "reason": "Docker frontend stage omitted committed public JSON fixtures imported by TypeScript tests",
+      "fix_commit": "24c953b42338a69ed4b03588058d451b21f825b2"
+    },
+    "tested_sha": "24c953b42338a69ed4b03588058d451b21f825b2",
+    "qualification_workflow": {
+      "run_id": 41392546684,
+      "url": "https://github.com/tala-bulids/inbox-nizer/actions/runs/41392546684",
+      "conclusion": "failure",
+      "meaning": "Expected nonzero enforcement of BLOCKED real-model gate",
+      "linux_image_build": "PASS",
+      "constraint_and_dependency_smoke": "PASS",
+      "memory_limit_bytes": 536870912,
+      "swap_limit_bytes": 0,
+      "cpu_fraction": 0.1,
+      "real_model_inference": false,
+      "real_model_status": "BLOCKED",
+      "reason": "Approved private artifact descriptor unavailable",
+      "public_evidence": "github-actions-20261102.json",
+      "artifact_id": 13117654707,
+      "artifact_zip_bytes": 445,
+      "artifact_sha256": "a4cf2a91064a05bfc52b766238a2adb53fdaf02c1f6752c80811a387a9ef659a",
+      "image_id": "sha256:91c27a572885e0919576bda09a84e2c546e23ad05a3cc83d85f16ff998d52b2b"
+    },
+    "final_followup": "Documentation/public-evidence only; code/workflows match tested 24c953b; redundant CI skipped"
+  },
+  "current_preparation_sha": "24c953b42338a69ed4b03588058d451b21f825b2"
 }
