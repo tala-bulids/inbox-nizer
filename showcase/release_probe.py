@@ -32,7 +32,7 @@ def memory():
     result={'rss_mib':m.rss/2**20,'process_peak_mib':peak,'peak_wset_mib':peak}
     if sys.platform=='linux':
         result['cgroup_v2']={name:Path('/sys/fs/cgroup',name).read_text().strip()
-                            for name in ('memory.current','memory.peak','memory.max','memory.swap.max','memory.events','cpu.max','cpu.stat')
+                            for name in ('memory.current','memory.peak','memory.max','memory.swap.max','memory.events','memory.stat','cpu.max','cpu.stat')
                             if Path('/sys/fs/cgroup',name).is_file()}
     return result
 
@@ -132,7 +132,8 @@ def parent(args):
     base=f'http://127.0.0.1:{args.port}'
     report={'encoder':args.encoder,'platform':sys.platform,'fresh_process':True,'os_cache_controlled':False,
             'cpu_throttling':('See recorded cgroup CPU/memory limits; do not assume constrained' if sys.platform=='linux' else 'Not emulated; Windows timings are not 0.1-CPU Render timings'),
-            'render_capacity_verified':False,'production_approved':False,'real_inference':True,'mocked_inference':False,'snapshots':{}}
+            'render_capacity_verified':False,'production_approved':False,'real_inference':True,'mocked_inference':False,'snapshots':{},
+            'allocator_environment':{key:os.environ.get(key) for key in ('MALLOC_ARENA_MAX','MALLOC_MMAP_THRESHOLD_','MALLOC_TRIM_THRESHOLD_')}}
     def call(client,path,body=None):
         start=time.perf_counter()
         response=client.get(base+path) if body is None else client.post(base+path,json=body)
@@ -186,6 +187,7 @@ def parent(args):
                 assert client.post(base+'/api/showcase/ask',json={'question':'x'*1001}).status_code==422
                 assert client.post(base+'/api/showcase/predict',content=b'x'*24001).status_code==413
             sample(client,'max_classifier','/api/showcase/predict',{'subject':'x'*300,'body':('Meeting invoice interview. '*300)[:6000]},n=2)
+            report['snapshots']['before_max_encoder']=client.get(base+'/api/__probe/stats').json()
             report['max_encoder']=client.get(base+'/api/__probe/max-tokens').json()
             with ThreadPoolExecutor(max_workers=4) as pool:
                 outcomes=list(pool.map(lambda _:call(client,'/api/showcase/ask',question),range(4)))

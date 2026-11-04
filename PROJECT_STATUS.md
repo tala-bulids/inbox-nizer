@@ -1,5 +1,16 @@
 # Inbox-nizer — project status and V1 release contract
 
+**4 November 2026 — final memory optimization, awaiting one final private run:**
+Private artifact delivery is resolved. The real Linux run on 2 November completed
+inference at 512 MiB / 0.1 CPU / zero swap, with no OOM, but **FAILED** the unchanged
+400 MiB headroom gate at **500.0078125 MiB**. This supersedes earlier provisioning
+blockers below. A shared Free-only launcher now bounds glibc allocator retention;
+model files, graph optimization, inference features and thresholds are unchanged.
+Focused tests **38 passed**; full isolated showcase **105 passed**. The final
+private qualification will record peak memory and enforce unchanged measured QA,
+language and task results. [Profiling and exact scope](docs/free-qualification/MEMORY_OPTIMIZATION.md).
+No Render, production data, credentials or billing changes.
+
 **2 November 2026 — GitHub Actions qualification authorized:** The owner selected
 GitHub-hosted Ubuntu/Docker and explicitly ruled out local installations, restarts,
 SSH and Render changes. A dedicated branch-push workflow now builds only tracked

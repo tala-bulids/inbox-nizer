@@ -21,4 +21,5 @@ ENV SHOWCASE_RUNTIME=e5-int8-fp32-corpus-v1 \
     SHOWCASE_CLASSIFIER_PATH=/models/candidate.joblib \
     OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
     HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+ENTRYPOINT ["sh", "/app/deploy/with-showcase-memory.sh"]
 CMD ["python", "-m", "showcase.release_probe", "--encoder", "free-candidate", "--output", "/evidence/linux-free.json"]
