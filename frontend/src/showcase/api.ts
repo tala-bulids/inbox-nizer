@@ -155,6 +155,7 @@ export const Portfolio = z.object({
     ),
   }),
   rag: z.object({
+    tasks: z.object({ f1: z.number() }).optional(),
     memory_mib: z.number(),
     qa: z.object({
       n: z.number(),

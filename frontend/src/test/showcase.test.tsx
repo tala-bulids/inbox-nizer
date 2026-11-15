@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import comparison from "../../../docs/phase2/evidence/experiment-comparison.json";
@@ -18,6 +18,7 @@ const email = {
 let calls: { url: string; init: RequestInit | undefined }[];
 beforeEach(() => {
   calls = [];
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     calls.push({ url: String(url), init });
     const path = String(url);
@@ -91,6 +92,7 @@ beforeEach(() => {
         },
         rag: {
           memory_mib: 880.27,
+          tasks: { f1: 1 },
           qa: { n: 20, retrieval: { "recall@5": 0.7619 } },
         },
         evidence_version: "phase2@5b7cf7b + phase3@96fc1c0",
@@ -99,25 +101,8 @@ beforeEach(() => {
   });
 });
 
-test("public Ask is extractive and tasks link to supporting original mail", async () => {
-  const user = await open("/tasks");
-  await user.click(screen.getByRole("button", { name: "Extract tasks" }));
-  expect(await screen.findByText("Responsible: Maya")).toBeVisible();
-  expect(screen.getByText("Deadline state: Explicit")).toBeVisible();
-  await user.click(screen.getByRole("link", { name: "Open supporting email" }));
-  expect(screen.getByLabelText("Filter collection")).toBeVisible();
-  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-  expect(screen.getByLabelText("Choose a source")).toHaveValue("1");
-});
 afterEach(() => vi.restoreAllMocks());
-test("Model Lab identifies the separate hosting candidate in both languages", async () => {
-  const user = await open("/lab");
-  expect(await screen.findByText(/Experimental hosting candidate:/)).toBeVisible();
-  expect(screen.getByText("e5-int8-fp32-corpus-v1")).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
-  expect(screen.getByText(/مرشح استضافة تجريبي:/)).toBeVisible();
-});
-async function open(path = "/") {
+async function open(path = "/ask") {
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -125,27 +110,47 @@ async function open(path = "/") {
     </MemoryRouter>,
   );
   await user.click(screen.getByRole("button", { name: "Switch to English" }));
-  await screen.findByRole("link", { name: "Email Collection" });
-  if (path.startsWith("/intelligence"))
-    await user.click(await screen.findByRole("button", { name: "Playground" }));
-  if (!path.startsWith("/lab") && !path.startsWith("/intelligence"))
-    await screen.findByLabelText("Choose a source");
+  if (["/lab", "/intelligence"].some((p) => path.startsWith(p))) {
+    await screen.findByRole("heading", { name: "The idea" });
+    if (path.startsWith("/intelligence"))
+      await user.click(screen.getByRole("button", { name: "Playground" }));
+  } else if (path !== "/") await screen.findByLabelText("Choose a source");
   return user;
 }
-test("anonymous Ask sends no credentials and renders computed answer with source", async () => {
+test("homepage introduces the project and both calls to action work", async () => {
+  const user = await open("/");
+  expect(
+    screen.getByRole("heading", { name: "Inbox-nizer", level: 1 }),
+  ).toBeVisible();
+  expect(
+    screen.getByText(/not a service for managing your personal email/),
+  ).toBeVisible();
+  await user.click(screen.getByRole("link", { name: /Try the project/ }));
+  expect(await screen.findByLabelText("Your question")).toBeVisible();
+  await user.click(screen.getByRole("link", { name: "Home" }));
+  await user.click(screen.getByRole("link", { name: "Explore Model Lab" }));
+  expect(
+    await screen.findByRole("heading", { name: "The idea" }),
+  ).toBeVisible();
+});
+test("Ask keeps real request contract and separates answer from cited source", async () => {
   const user = await open();
-  expect(screen.queryByText("Continue with Google")).not.toBeInTheDocument();
   await user.click(
     screen.getByRole("button", { name: "What is the Atlas workshop date?" }),
   );
-  await user.click(screen.getByRole("button", { name: "Ask AI" }));
+  await user.click(screen.getByRole("button", { name: "Ask" }));
+  const answer = await screen.findByRole("region", { name: "Answer" });
+  expect(answer).toHaveTextContent("Workshop date: 2026-11-05");
+  expect(answer).not.toHaveTextContent("email_id");
   expect(
-    await screen.findByRole("region", { name: "Answer" }),
-  ).toHaveTextContent("Workshop date: 2026-11-05 [email_id=1]");
-  expect(screen.getByRole("link", { name: /Open source/ })).toHaveAttribute(
-    "href",
-    "/collection?email=1",
+    screen.getByRole("region", { name: "Supporting messages" }),
+  ).toBeVisible();
+  await user.click(
+    screen.getByText("Atlas workshop", { selector: "summary span" }),
   );
+  expect(
+    screen.getByRole("link", { name: "Open source message" }),
+  ).toHaveAttribute("href", "/collection?email=1");
   expect(
     calls.every(
       (c) =>
@@ -155,120 +160,164 @@ test("anonymous Ask sends no credentials and renders computed answer with source
   expect(
     JSON.parse(String(calls.find((c) => c.url.endsWith("ask"))?.init?.body)),
   ).toEqual({ question: "What is the Atlas workshop date?", mode: "grounded" });
+  await user.click(screen.getByRole("link", { name: "Source 1" }));
+  expect(screen.getByLabelText("Choose a source")).toHaveValue("1");
 });
-test("live prediction is explicit and editable; tasks include original evidence", async () => {
+test("insufficient evidence is localized without presenting retrieval as an answer", async () => {
+  const user = await open();
+  vi.mocked(fetch).mockResolvedValueOnce(
+    Response.json({
+      status: "insufficient_evidence",
+      answer: "Backend fallback",
+      mode: "retrieval_only",
+      verification: "no_verified_answer",
+      sources: [],
+    }),
+  );
+  await user.type(screen.getByLabelText("Your question"), "Unknown question");
+  await user.click(screen.getByRole("button", { name: "Ask" }));
+  expect(
+    await screen.findByText(/couldn't find enough information/),
+  ).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
+  expect(
+    screen.getByText("لم أجد معلومات كافية في الرسائل للإجابة عن هذا السؤال."),
+  ).toBeVisible();
+  expect(screen.queryByText("Backend fallback")).not.toBeInTheDocument();
+});
+test("tasks preserve deadlines and evidence without invented priority", async () => {
+  const user = await open("/tasks");
+  await user.click(screen.getByRole("button", { name: "Extract tasks" }));
+  expect(await screen.findByText("Submit the form")).toBeVisible();
+  expect(screen.getByText("Maya")).toBeVisible();
+  expect(screen.getByText("2026-11-02", { selector: "dd bdi" })).toBeVisible();
+  expect(
+    screen.queryByText(/Priority|Rule strength|Deadline state|UTC/),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByText("Original source"));
+  expect(
+    screen.getByRole("group").querySelector("blockquote")?.textContent,
+  ).toBe(email.body);
+  await user.click(screen.getByRole("link", { name: "Open supporting email" }));
+  expect(screen.getByLabelText("Filter collection")).toBeVisible();
+});
+test("missing or conditional task deadlines are not invented or hidden", async () => {
+  const user = await open("/tasks");
+  vi.mocked(fetch).mockResolvedValueOnce(
+    Response.json({
+      method: "rules",
+      tasks: [
+        {
+          email_id: 1,
+          task: "Review if approved",
+          confidence: 0.9,
+          deadline_date: null,
+          deadline_text: null,
+          deadline_state: "missing",
+          responsible: null,
+          conditional: true,
+          state: "superseded",
+          superseded_by: [2],
+          evidence: { subject: email.subject, body: email.body },
+        },
+      ],
+    }),
+  );
+  await user.click(screen.getByRole("button", { name: "Extract tasks" }));
+  expect(await screen.findByText("Not stated in the message")).toBeVisible();
+  expect(screen.getByText(/depends on a condition/)).toBeVisible();
+  expect(screen.getByText(/cancelled in a later message/)).toBeVisible();
+  expect(screen.getByRole("link", { name: "View update" })).toHaveAttribute(
+    "href",
+    "/collection?email=2",
+  );
+});
+test("Model Lab distinguishes deployed pipeline and Linux qualification", async () => {
+  const user = await open("/lab");
+  expect(screen.getByText(/ONNX INT8/)).toBeVisible();
+  expect(screen.getByText(/not a separately trained model/)).toBeVisible();
+  expect(screen.getByText(/500.01/)).toBeVisible();
+  expect(screen.getByText(/333.14/)).toBeVisible();
+  expect(screen.getByText(/3.90 to 6.60 seconds/)).toBeVisible();
+  expect(
+    screen.queryByText(/hosting acceptance remain open|e5-int8-fp32-corpus-v1/),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
+  expect(
+    screen.getByRole("heading", { name: "النموذج المستخدم في الموقع" }),
+  ).toBeVisible();
+});
+test("training keeps real saved loss, data separation and historical fine-tuning limits", async () => {
+  const user = await open("/lab");
+  await user.click(screen.getByRole("button", { name: "Training & data" }));
+  expect(screen.getByText(/24 fictional messages are separate/)).toBeVisible();
+  expect(
+    screen.getByText(/did not train DistilBERT from scratch/),
+  ).toBeVisible();
+  await user.click(screen.getByText("Training details & reproducibility"));
+  expect(screen.getByText(/No epoch-by-epoch loss curves/)).toBeVisible();
+  expect(screen.getByText("0.1423")).toBeVisible();
+  expect(screen.getByText("0.1894")).toBeVisible();
+});
+test("evaluation keeps verified metrics and separates excluded historical results", async () => {
+  const user = await open("/lab");
+  await user.click(screen.getByRole("button", { name: "Evaluation" }));
+  const table = screen.getByRole("region", { name: "Classifier comparison" });
+  expect(within(table).getByText("88.4%")).toBeVisible();
+  expect(within(table).getByText("83.7%")).toBeVisible();
+  expect(within(table).queryByText("DistilBERT")).not.toBeInTheDocument();
+  expect(screen.getByText("76.2%")).toBeVisible();
+  expect(screen.getByText("1.00")).toBeVisible();
+  await user.click(screen.getByText("Detailed metrics & errors"));
+  expect(screen.getByText(/quality gate failed/)).toBeVisible();
+  expect(screen.getByText(/20\/56/)).toBeVisible();
+  expect(screen.getByText(/1\/11/)).toBeVisible();
+  await user.selectOptions(screen.getByLabelText("Inspect experiment"), "B");
+  expect(
+    screen.getByText(/Historical result excluded from selection/),
+  ).toBeVisible();
+  await user.click(screen.getByText("Confusion matrix", { exact: true }));
+  expect(screen.getByRole("region", { name: "Confusion table" })).toBeVisible();
+});
+test("prediction remains editable, bounded and cleared when leaving playground", async () => {
   const user = await open("/intelligence");
   expect(calls.some((c) => c.url.endsWith("predict"))).toBe(false);
+  expect(screen.getByLabelText("Text")).toHaveAttribute("maxlength", "6000");
   await user.clear(screen.getByLabelText("Text"));
   await user.type(
     screen.getByLabelText("Text"),
     "Please review this fictional report.",
   );
   await user.click(screen.getByRole("button", { name: "Run prediction" }));
-  expect(await screen.findByText(/Events & Invitations/)).toBeVisible();
+  expect(await screen.findByText("Events & Invitations")).toBeVisible();
+  expect(screen.getByText(/not a probability of correctness/)).toBeVisible();
+  expect(screen.getByText(/12.5 ms/)).toBeVisible();
+  expect(screen.queryByText(/phase2-A/)).not.toBeInTheDocument();
   expect(
     JSON.parse(String(calls.find((c) => c.url.endsWith("predict"))?.init?.body))
       .body,
   ).toBe("Please review this fictional report.");
-  await user.click(screen.getByRole("link", { name: "Smart Tasks" }));
-  await user.click(screen.getByRole("button", { name: "Extract tasks" }));
-  expect(await screen.findByText("Submit the form")).toBeVisible();
-  await user.click(screen.getByText("Original source"));
-  expect(
-    screen.getByRole("group").querySelector("blockquote")?.textContent,
-  ).toBe(email.body);
-});
-test("Model Lab preserves failed quality gate and separate language evidence", async () => {
-  const user = await open("/lab");
-  await user.click(await screen.findByRole("button", { name: "Evaluation" }));
-  expect(await screen.findByText(/quality gate FAILED/)).toBeVisible();
-  expect(screen.getByText(/English: 20\/56/)).toBeVisible();
-  expect(screen.getByText(/Arabic-heavy: 1\/11/)).toBeVisible();
-});
-test("missing model gives explicit failure with no invented prediction", async () => {
-  const user = await open("/intelligence");
-  vi.mocked(fetch).mockResolvedValueOnce(
-    Response.json({ detail: { code: "model_unavailable" } }, { status: 503 }),
-  );
-  await user.click(screen.getByRole("button", { name: "Run prediction" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "no canned result",
-  );
-  expect(screen.queryByLabelText("Analysis result")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Run prediction" })).toBeEnabled();
-});
-test("language toggles RTL and no Gmail/session requests are issued", async () => {
-  const user = await open("/tasks");
-  expect(document.documentElement.dir).toBe("ltr");
-  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
-  await waitFor(() => expect(document.documentElement.dir).toBe("rtl"));
-  expect(screen.getByRole("button", { name: "استخرج المهام" })).toBeVisible();
-  expect(calls.every((c) => !/(gmail|auth|session)/.test(c.url))).toBe(true);
-});
-
-test("navigation preserves the selected source query", async () => {
-  const user = await open("/tasks?email=1");
-  const link = screen.getByRole("link", {
-    name: "Email Collection",
-  });
-  expect(link).toHaveAttribute("href", "/collection?email=1");
-  await user.click(link);
-  expect(screen.getByLabelText("Choose a source")).toHaveValue("1");
-});
-
-test("Model Lab uses saved metrics, changes experiments, and never invents loss curves", async () => {
-  const user = await open("/lab");
-  await user.click(
-    await screen.findByRole("button", { name: "Training & data" }),
-  );
-  expect(
-    await screen.findByText(/Epoch loss curves: Not available/),
-  ).toBeVisible();
-  expect(screen.getByText("0.1423")).toBeVisible();
-  expect(screen.getByText("0.1894")).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "Evaluation" }));
-  expect(await screen.findByText("88.4%")).toBeVisible();
-  expect(
-    screen.getByText(/Selected model Arabic: Not evaluated/),
-  ).toBeVisible();
-  await user.selectOptions(screen.getByLabelText("Inspect experiment"), "C");
-  expect(screen.getByText("83.7%")).toBeVisible();
-  await user.click(screen.getByText("Confusion matrix", { exact: true }));
-  expect(screen.getByRole("region", { name: "Confusion table" })).toBeVisible();
-  await user.selectOptions(screen.getByLabelText("Inspect experiment"), "B");
-  expect(screen.getByText(/Excluded: unknown historical/)).toBeVisible();
-});
-
-test("inline citations and collection filtering expose original source records", async () => {
-  const user = await open();
-  await user.click(
-    screen.getByRole("button", { name: "What is the Atlas workshop date?" }),
-  );
-  await user.click(screen.getByRole("button", { name: "Ask AI" }));
-  await user.click(await screen.findByRole("link", { name: "Source 1" }));
-  await user.type(screen.getByLabelText("Filter collection"), "nonexistent");
-  expect(screen.getByText("No matching messages")).toBeVisible();
-  await user.clear(screen.getByLabelText("Filter collection"));
-  expect(
-    screen.getByRole("link", { name: /Atlas workshop EN/ }),
-  ).toHaveAttribute("href", "/collection?email=1");
-});
-
-test("prediction input is bounded, uncalibrated and cleared after leaving the playground", async () => {
-  const user = await open("/intelligence");
-  expect(await screen.findByLabelText("Text")).toHaveAttribute(
-    "maxlength",
-    "6000",
-  );
-  await user.click(screen.getByRole("button", { name: "Run prediction" }));
-  expect(
-    await screen.findByText(/Raw model score is not a probability/),
-  ).toBeVisible();
-  expect(screen.getByText(/phase2-A · 12.5 ms/)).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "Models" }));
+  await user.click(screen.getByRole("button", { name: "Overview" }));
   expect(screen.queryByLabelText("Analysis result")).not.toBeInTheDocument();
 });
-
+test.each([
+  [503, "model is unavailable"],
+  [422, "Shorten it and retry"],
+])(
+  "prediction failure %s gives recovery without invented results",
+  async (status, message) => {
+    const user = await open("/intelligence");
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ detail: "unavailable" }, { status }),
+    );
+    await user.click(screen.getByRole("button", { name: "Run prediction" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.queryByLabelText("Analysis result")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Run prediction" }),
+    ).toBeEnabled();
+  },
+);
 test("pending prediction prevents duplicate submits and recovers after rate limiting", async () => {
   const user = await open("/intelligence");
   let resolve!: (response: Response) => void;
@@ -280,19 +329,31 @@ test("pending prediction prevents duplicate submits and recovers after rate limi
   );
   await user.click(screen.getByRole("button", { name: "Run prediction" }));
   expect(screen.getByRole("button", { name: "Analyzing…" })).toBeDisabled();
-  resolve(Response.json({ detail: { code: "rate_limited" } }, { status: 429 }));
+  resolve(Response.json({ detail: "busy" }, { status: 429 }));
   expect(await screen.findByRole("alert")).toHaveTextContent("retry shortly");
   expect(screen.getByRole("button", { name: "Run prediction" })).toBeEnabled();
-  expect(screen.queryByLabelText("Analysis result")).not.toBeInTheDocument();
 });
-
-test("invalid model input explains recovery without echoing input", async () => {
-  const user = await open("/intelligence");
-  vi.mocked(fetch).mockResolvedValueOnce(
-    Response.json({ code: "invalid_input" }, { status: 422 }),
-  );
-  await user.click(screen.getByRole("button", { name: "Run prediction" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Shorten it and retry",
-  );
+test("navigation preserves source and collection filtering remains usable", async () => {
+  const user = await open("/tasks?email=1");
+  const link = screen.getByRole("link", { name: "Email Collection" });
+  expect(link).toHaveAttribute("href", "/collection?email=1");
+  await user.click(link);
+  await user.type(screen.getByLabelText("Filter collection"), "nonexistent");
+  expect(screen.getByText("No matching messages")).toBeVisible();
+  await user.clear(screen.getByLabelText("Filter collection"));
+  expect(
+    screen.getByRole("link", { name: /Atlas workshop learning/ }),
+  ).toHaveAttribute("href", "/collection?email=1");
+});
+test("Arabic labels and RTL remain consistent without Gmail requests or reference metadata", async () => {
+  const user = await open("/tasks");
+  expect(document.documentElement.dir).toBe("ltr");
+  await user.click(screen.getByRole("button", { name: "التبديل للعربية" }));
+  await waitFor(() => expect(document.documentElement.dir).toBe("rtl"));
+  expect(screen.getByRole("heading", { name: "المهام" })).toBeVisible();
+  expect(screen.getByLabelText("اختر رسالة")).toBeVisible();
+  expect(
+    screen.queryByText(/UTC|تاريخ المجموعة المرجعي/),
+  ).not.toBeInTheDocument();
+  expect(calls.every((c) => !/(gmail|auth|session)/.test(c.url))).toBe(true);
 });

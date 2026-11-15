@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Link,
   NavLink,
@@ -10,10 +10,6 @@ import {
 import { z } from "zod";
 import { LocaleProvider, useLocale } from "../app/locale";
 import { AppBoundary } from "../components/shared/AppBoundary";
-import { DesktopTopBar } from "../components/ui/DesktopTopBar";
-import { RetroWindow } from "../components/ui/RetroWindow";
-import { AskComposer } from "../features/ask/AskComposer";
-import "./showcase.css";
 import { ModelLab } from "./ModelLab";
 import {
   Prediction,
@@ -23,6 +19,7 @@ import {
   request,
   type CollectionEmail,
 } from "./api";
+import "./showcase.css";
 
 export function useRequest<T>() {
   const [data, setData] = useState<T>();
@@ -54,16 +51,16 @@ export function Failure({ code }: { code: string }) {
   const { t } = useLocale();
   if (!code) return null;
   return (
-    <p role="alert">
+    <p role="alert" className="notice">
       {code === "model"
         ? t(
-            "النموذج غير متاح. يلزم تجهيز الملفات المحلية. لم تُستخدم إجابة جاهزة.",
-            "Model unavailable. Provision the local model files; no canned result was substituted.",
+            "تعذر تشغيل النموذج الآن. حاول مرة أخرى لاحقًا.",
+            "The model is unavailable. Please try again later.",
           )
         : code === "busy"
           ? t(
-              "النموذج مشغول. حاول بعد قليل.",
-              "Inference is busy. Please retry shortly.",
+              "النظام مشغول الآن. حاول بعد قليل.",
+              "The model is busy. Please retry shortly.",
             )
           : code === "input"
             ? t(
@@ -78,133 +75,285 @@ export function Failure({ code }: { code: string }) {
   );
 }
 
+export function Panel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="feature-panel">
+      <header className="section-heading">
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+const categories: Record<string, string> = {
+  Business: "أعمال",
+  "Customer Support": "دعم العملاء",
+  "Events & Invitations": "فعاليات ودعوات",
+  "Finance & Bills": "شؤون مالية وفواتير",
+  "Job Application": "طلبات توظيف",
+  Newsletters: "نشرات بريدية",
+  Personal: "رسائل شخصية",
+  Promotions: "عروض ترويجية",
+  Reminders: "تذكيرات",
+  "Travel & Bookings": "سفر وحجوزات",
+};
+export function categoryName(name: string, language: string) {
+  return language === "ar" ? categories[name] || name : name;
+}
+
+function Home() {
+  const { t } = useLocale();
+  return (
+    <div className="home">
+      <section className="home-intro">
+        <p className="eyebrow">
+          {t(
+            "مشروع في معالجة اللغة الطبيعية",
+            "A natural language processing project",
+          )}
+        </p>
+        <h1 dir="ltr">Inbox-nizer</h1>
+        <h2>
+          {t(
+            "فهم البريد الإلكتروني باستخدام الذكاء الاصطناعي",
+            "Understanding email with AI",
+          )}
+        </h2>
+        <p className="home-description">
+          {t(
+            "مشروع يهدف إلى الاستفادة من الذكاء الاصطناعي في فهم محتوى الرسائل الإلكترونية، وتصنيفها، والإجابة عن الأسئلة المتعلقة بها، واستخراج المهام المهمة منها.",
+            "A project exploring how AI can understand email, classify messages, answer questions about their content, and extract tasks.",
+          )}
+        </p>
+        <div className="actions">
+          <Link className="button primary" to="/ask">
+            {t("جرّب المشروع", "Try the project")}{" "}
+            <span aria-hidden="true">↗</span>
+          </Link>
+          <Link className="button quiet" to="/lab">
+            {t("مختبر النماذج", "Explore Model Lab")}
+          </Link>
+        </div>
+        <p className="home-notice">
+          {t(
+            "هذا الموقع نسخة توضيحية لعرض فكرة المشروع وتجربة النماذج المستخدمة فيه، وليس خدمة لإدارة بريدك الشخصي.",
+            "This showcase presents the project and its models. It is not a service for managing your personal email.",
+          )}
+        </p>
+      </section>
+      <section
+        className="home-capabilities"
+        aria-label={t("استكشف المشروع", "Explore the project")}
+      >
+        {(
+          [
+            [
+              "/ask",
+              "01",
+              "اسأل البريد",
+              "Ask Mail",
+              "ابحث في معنى الرسائل واقرأ الإجابة مع مصدرها.",
+              "Find relevant messages and read answers with their sources.",
+            ],
+            [
+              "/tasks",
+              "02",
+              "المهام",
+              "Smart Tasks",
+              "استخرج الطلبات والمواعيد من نص الرسالة.",
+              "Extract requests and deadlines from a message.",
+            ],
+            [
+              "/lab",
+              "03",
+              "مختبر النماذج",
+              "Model Lab",
+              "تعرّف على التجارب والنتائج وجرّب تصنيف الرسائل.",
+              "Explore the experiments and results, then try classification.",
+            ],
+          ] as const
+        ).map(([path, number, ar, en, arBody, enBody]) => (
+          <Link to={path} key={path}>
+            <span className="step-number">{number}</span>
+            <h3>{t(ar, en)}</h3>
+            <p>{t(arBody, enBody)}</p>
+            <span className="text-link">
+              {t("استكشف", "Explore")} <span aria-hidden="true">↗</span>
+            </span>
+          </Link>
+        ))}
+      </section>
+    </div>
+  );
+}
+
 function Ask() {
   const { t } = useLocale();
   const state = useRequest<z.infer<typeof Answer>>();
   const [question, setQuestion] = useState("");
+  const submit = () => {
+    if (question.trim())
+      void state.run("ask", Answer, { question, mode: "grounded" });
+  };
+  const answer = state.data;
   return (
-    <RetroWindow
+    <Panel
       title={t("اسأل البريد", "Ask Mail")}
-      bodyClassName="p-4 flex flex-col gap-4"
+      description={t(
+        "اطرح سؤالًا عن الرسائل الموجودة في المشروع، وسيبحث النظام عن المعلومات المتعلقة بسؤالك ويعرض الإجابة مع مصدرها.",
+        "Ask about the project's messages. The system finds relevant information and shows an answer with its source.",
+      )}
     >
-      <p>
-        {t(
-          "استرجاع دلالي حقيقي من مجموعة خيالية، مع إجابات مرتبطة بالمصادر.",
-          "Real semantic retrieval over an authored collection, with source-linked answers.",
-        )}
-      </p>
-      <div className="flex flex-wrap gap-2">
+      <form
+        className="question-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <label htmlFor="question">{t("سؤالك", "Your question")}</label>
+        <textarea
+          id="question"
+          dir="auto"
+          rows={3}
+          maxLength={1000}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder={t("اكتب سؤالك هنا...", "Write your question here…")}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              (e.ctrlKey || e.metaKey) &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <div className="form-actions">
+          <small>
+            {t(
+              "تُستخرج الإجابة من الرسائل، ويمكنك مراجعة مصدرها.",
+              "Answers are extracted from messages, with sources you can check.",
+            )}
+          </small>
+          <button className="primary" disabled={state.busy || !question.trim()}>
+            {state.busy ? t("جارٍ البحث…", "Searching…") : t("اسأل", "Ask")}
+          </button>
+        </div>
+      </form>
+      <div
+        className="suggestions"
+        aria-label={t("أسئلة مقترحة", "Suggested questions")}
+      >
         {[
-          "What is the Atlas workshop date?",
-          "ما تاريخ الورشة؟",
-          "What meetings do I have this week?",
-          "هل عندي مهام متأخرة؟",
-          "What is the latest update on ORDER-778?",
+          t("ما تاريخ الورشة؟", "What is the Atlas workshop date?"),
+          t(
+            "ما آخر تحديث للطلب ORDER-778؟",
+            "What is the latest update on ORDER-778?",
+          ),
         ].map((q) => (
           <button key={q} onClick={() => setQuestion(q)}>
             {q}
           </button>
         ))}
       </div>
-      <p className="text-sm">
-        {t(
-          "استرجاع E5 متعلم، وإجابات استخراجيّة حتمية؛ ليست توليد LLM.",
-          "Learned E5 retrieval with deterministic extractive answers, not LLM generation.",
-        )}
-      </p>
-      <AskComposer
-        maxLength={1000}
-        draft={question}
-        onChange={setQuestion}
-        busy={state.busy}
-        onSubmit={() => {
-          if (question.trim())
-            void state.run("ask", Answer, {
-              question,
-              mode: "grounded",
-            });
-        }}
-      />
-      <p className="text-sm">
-        {t(
-          "لا تُحفظ الأسئلة أو تُسجل أو تُرسل لطرف ثالث. استخدم أمثلة خيالية.",
-          "Questions are not saved, logged or sent to third parties. Use fictional examples.",
-        )}
-      </p>
       <Failure code={state.error} />
-      {state.data && (
-        <section aria-label={t("الإجابة", "Answer")} aria-live="polite">
-          <p className="whitespace-pre-wrap" dir="auto">
-            {state.data.answer.split(/(\[email_id=\d+\])/g).map((part, i) => {
-              const id = /^\[email_id=(\d+)\]$/.exec(part)?.[1];
-              return id &&
-                state.data!.sources.some(
-                  (source) => source.email_id === Number(id),
-                ) ? (
-                <Link
-                  key={i}
-                  to={`/collection?email=${id}`}
-                  aria-label={`${t("المصدر", "Source")} ${id}`}
-                >
-                  {part}
-                </Link>
-              ) : (
-                part
-              );
-            })}
+      {answer && (
+        <section
+          className="answer-result"
+          aria-label={t("الإجابة", "Answer")}
+          aria-live="polite"
+        >
+          <h2>{t("الإجابة", "Answer")}</h2>
+          <p className="answer-copy" dir="auto">
+            {answer.status !== "answered"
+              ? t(
+                  "لم أجد معلومات كافية في الرسائل للإجابة عن هذا السؤال.",
+                  "I couldn't find enough information in the messages to answer this question.",
+                )
+              : answer.answer.split(/(\[email_id=\d+\])/g).map((part, i) => {
+                  const id = /^\[email_id=(\d+)\]$/.exec(part)?.[1];
+                  return id &&
+                    answer.sources.some((s) => s.email_id === Number(id)) ? (
+                    <Link
+                      className="citation"
+                      key={i}
+                      to={`/collection?email=${id}`}
+                      aria-label={`${t("المصدر", "Source")} ${id}`}
+                    >
+                      [
+                      {answer.sources.findIndex(
+                        (s) => s.email_id === Number(id),
+                      ) + 1}
+                      ]
+                    </Link>
+                  ) : (
+                    part
+                  );
+                })}
           </p>
-          <small>
-            {state.data.mode} · {state.data.verification}
-          </small>
-          {state.data.verification === "not_semantically_verified" && (
-            <p>
+          {answer.verification === "not_semantically_verified" && (
+            <p className="notice">
               {t(
-                "قد يخطئ التوليد. تحقق من المصدر؛ صحة الاستشهاد لا تثبت صحة المعنى.",
-                "Generation can be wrong. Check the source; valid citations do not verify meaning.",
+                "راجع الرسائل المرتبطة للتأكد من معنى الإجابة.",
+                "Check the linked messages to verify the answer's meaning.",
               )}
             </p>
           )}
-          {state.data.sources.map((s) => (
-            <article className="surface p-3 my-3" key={s.email_id}>
-              <Link to={`/collection?email=${s.email_id}`}>
-                {s.subject} — {t("افتح المصدر", "Open source")}
-              </Link>
-              <blockquote dir="auto" className="whitespace-pre-wrap">
-                {s.content}
-              </blockquote>
-              <small>
-                {t(
-                  "درجة التشابه، وليست احتمال صحة",
-                  "Similarity, not correctness probability",
-                )}
-                : {s.score.toFixed(3)}
-              </small>
-            </article>
-          ))}
+          {answer.sources.length > 0 && (
+            <section
+              className="answer-sources"
+              aria-label={t("الرسائل المرتبطة بالإجابة", "Supporting messages")}
+            >
+              <h3>{t("الرسائل المرتبطة بالإجابة", "Supporting messages")}</h3>
+              {answer.sources.map((s, i) => (
+                <details key={s.email_id}>
+                  <summary>
+                    <span className="source-number">{i + 1}</span>
+                    <span dir="auto">{s.subject}</span>
+                  </summary>
+                  <blockquote dir="auto">{s.content}</blockquote>
+                  <Link to={`/collection?email=${s.email_id}`}>
+                    {t("افتح الرسالة الأصلية", "Open source message")}
+                  </Link>
+                </details>
+              ))}
+            </section>
+          )}
         </section>
       )}
-    </RetroWindow>
+    </Panel>
   );
 }
 
 export function Intelligence({ email }: { email: CollectionEmail }) {
-  const { t } = useLocale();
+  const { t, language } = useLocale();
   const state = useRequest<z.infer<typeof Prediction>>();
   const [subject, setSubject] = useState(email.subject);
   const [body, setBody] = useState(email.body);
   return (
-    <RetroWindow
-      title={t("جرّب النموذج", "Inference playground")}
-      bodyClassName="p-4 flex flex-col gap-3"
-    >
+    <section className="playground">
+      <h2>{t("جرّب تصنيف رسالة", "Try classifying a message")}</h2>
       <p>
         {t(
-          "تنبؤ فعلي من النموذج المختار: TF-IDF وانحدار لوجستي. تم تقييمه بالإنجليزية فقط ولم يجتز معيار الجودة الإنتاجية.",
-          "Live inference with the selected TF-IDF + logistic regression research model. English validation only; Arabic classification is not evaluated. Not production approved.",
+          "يستخدم التصنيف TF-IDF مع الانحدار اللوجستي. جُرّب النموذج على بيانات إنجليزية؛ لم يُقيّم تصنيفه للعربية.",
+          "Classification uses TF-IDF with logistic regression. The model was evaluated on English data; Arabic classification has not been evaluated.",
         )}
       </p>
       <label>
-        {t("العنوان", "Subject")}
+        {t("عنوان الرسالة", "Subject")}
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
@@ -213,163 +362,237 @@ export function Intelligence({ email }: { email: CollectionEmail }) {
         />
       </label>
       <label>
-        {t("النص", "Text")}
+        {t("محتوى الرسالة", "Text")}
         <textarea
-          aria-label={t("النص", "Text")}
+          aria-label={t("محتوى الرسالة", "Text")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           maxLength={6000}
-          rows={7}
+          rows={6}
           dir="auto"
         />
       </label>
-      <small>
-        {t(
-          "استخدم نصاً خيالياً فقط. لا نحفظ المدخلات أو نسجلها أو نستخدمها للتدريب أو نرسلها لأطراف ثالثة.",
-          "Use fictional text only. Inputs are not stored, logged, used for training or sent to third parties.",
-        )}
-      </small>
-      <button
-        className="primary"
-        disabled={state.busy || !body.trim()}
-        onClick={() => void state.run("predict", Prediction, { subject, body })}
-      >
-        {state.busy
-          ? t("جارٍ التحليل…", "Analyzing…")
-          : t("شغّل التنبؤ", "Run prediction")}
-      </button>
+      <div className="form-actions">
+        <small>
+          {t(
+            "استخدم نصًا افتراضيًا. لا تُحفظ المدخلات أو تُستخدم للتدريب.",
+            "Use fictional text. Inputs are not stored or used for training.",
+          )}
+        </small>
+        <button
+          className="primary"
+          disabled={state.busy || !body.trim()}
+          onClick={() =>
+            void state.run("predict", Prediction, { subject, body })
+          }
+        >
+          {state.busy
+            ? t("جارٍ التحليل…", "Analyzing…")
+            : t("صنّف الرسالة", "Run prediction")}
+        </button>
+      </div>
       <Failure code={state.error} />
       {state.data && (
-        <div aria-label={t("نتيجة التحليل", "Analysis result")}>
+        <section
+          className="prediction-result"
+          aria-label={t("نتيجة التصنيف", "Analysis result")}
+          aria-live="polite"
+        >
           {state.data.predictions.map((p) => (
-            <p key={p.category}>
-              {p.category} · {t("درجة النموذج", "Model score")}:{" "}
-              {p.confidence.toFixed(3)}
-            </p>
+            <div key={p.category}>
+              <span className="eyebrow">{t("التصنيف", "Classification")}</span>
+              <h3>{categoryName(p.category, language)}</h3>
+              <p>
+                {t("درجة النموذج", "Model score")}:{" "}
+                <bdi>{p.confidence.toFixed(3)}</bdi>
+              </p>
+            </div>
           ))}
-          <p>
+          <small>
             {t(
-              "الدرجة الخام ليست احتمال صحة",
-              "Raw model score is not a probability of correctness",
+              "الدرجة ليست احتمالًا مؤكدًا لصحة التصنيف.",
+              "The raw model score is not a probability of correctness.",
             )}
-          </p>
-          <p>
-            {state.data.model_version} · {state.data.processing_ms.toFixed(1)}{" "}
-            ms{" "}
+          </small>
+          <p className="muted">
+            {t("زمن المعالجة", "Processing time")}:{" "}
+            <bdi>{state.data.processing_ms.toFixed(1)} ms</bdi>
             {state.data.cold_load_included &&
-              t("(يشمل تحميل النموذج)", "(includes model load)")}
+              t(" (يشمل تحميل النموذج)", " (includes model loading)")}
           </p>
-          <p>{t("ملخص استخراجي", "Extractive summary")}</p>
+          <h3>{t("مقتطف من الرسالة", "Extractive summary")}</h3>
           <blockquote dir="auto">{state.data.summary}</blockquote>
-        </div>
+        </section>
       )}
-    </RetroWindow>
+    </section>
   );
 }
 
-function SmartTasks({ email }: { email: CollectionEmail }) {
+function SmartTasks({
+  email,
+  selector,
+}: {
+  email: CollectionEmail;
+  selector: ReactNode;
+}) {
   const { t } = useLocale();
   const state = useRequest<z.infer<typeof Tasks>>();
   return (
-    <RetroWindow
-      title={t("المهام الذكية", "Smart Tasks")}
-      bodyClassName="p-4 flex flex-col gap-3"
+    <Panel
+      title={t("المهام", "Smart Tasks")}
+      description={t(
+        "يعرض هذا القسم المهام التي استخرجها النظام من محتوى الرسائل، مثل المواعيد والطلبات والأعمال المطلوب إنجازها.",
+        "Find tasks in the messages, including requests, deadlines, and work to follow up on.",
+      )}
     >
-      <p>
-        {t(
-          "استخراج حقيقي بالقواعد والمواعيد النسبية إلى تاريخ الرسالة. ليس نموذجاً مدرباً.",
-          "Live rule-based extraction with deadlines relative to the message date. This is not a trained model.",
-        )}
-      </p>
-      <button
-        className="primary"
-        disabled={state.busy}
-        onClick={() => void state.run(`emails/${email.id}/tasks`, Tasks)}
-      >
-        {state.busy
-          ? t("جارٍ الاستخراج…", "Extracting…")
-          : t("استخرج المهام", "Extract tasks")}
-      </button>
-      <button
-        disabled={state.busy}
-        onClick={() => void state.run("tasks", Tasks)}
-      >
-        {t("اعرض مهام المجموعة", "Explore all tasks")}
-      </button>
-      <p className="text-sm">
-        {t(
-          "حالة الإنجاز غير معروفة. المواعيد تُقرأ من الرسائل ولا تُفترض.",
-          "Completion is unknown. Deadlines come from source messages, never assumptions.",
-        )}
-      </p>
+      <div className="task-selector">{selector}</div>
+      <div className="actions">
+        <button
+          className="primary"
+          disabled={state.busy}
+          onClick={() => void state.run(`emails/${email.id}/tasks`, Tasks)}
+        >
+          {state.busy
+            ? t("جارٍ الاستخراج…", "Extracting…")
+            : t("استخرج المهام", "Extract tasks")}
+        </button>
+        <button
+          className="quiet"
+          disabled={state.busy}
+          onClick={() => void state.run("tasks", Tasks)}
+        >
+          {t("مهام جميع الرسائل", "Explore all tasks")}
+        </button>
+      </div>
       <Failure code={state.error} />
-      {state.data &&
-        (state.data.tasks.length ? (
-          state.data.tasks.map((task, i) => (
-            <article className="surface p-3" key={i}>
-              <p dir="auto">{task.task}</p>
-              <p>
-                {task.deadline_date ??
-                  task.deadline_text ??
-                  t("لا يوجد موعد صريح", "No explicit deadline")}
-              </p>
-              <small>
-                {t(
-                  "قوة القاعدة وليست احتمالاً",
-                  "Rule strength, not probability",
-                )}
-                : {task.confidence}
-              </small>
-              <p>
-                {t("المسؤول", "Responsible")}:{" "}
-                {task.responsible ?? t("غير مذكور", "Not stated")}
-              </p>
-              <p>
-                {t("حالة الموعد", "Deadline state")}:{" "}
-                {task.deadline_state === "ambiguous"
-                  ? t("غير محسوم", "Ambiguous")
-                  : task.deadline_state === "explicit"
-                    ? t("مذكور", "Explicit")
-                    : t("غير مذكور", "Missing")}
-              </p>
-              {task.conditional && (
-                <p>
-                  {t(
-                    "طلب مشروط؛ راجع الشرط في المصدر.",
-                    "Conditional request; check the source condition.",
+      {state.data && (
+        <div className="task-list" aria-live="polite">
+          {state.data.tasks.length ? (
+            state.data.tasks.map((task, i) => (
+              <article className="task-item" key={i}>
+                <h2 dir="auto">{task.task}</h2>
+                <dl className="task-meta">
+                  <div>
+                    <dt>{t("الموعد", "Deadline")}</dt>
+                    <dd>
+                      {task.deadline_date || task.deadline_text ? (
+                        <bdi>{task.deadline_date ?? task.deadline_text}</bdi>
+                      ) : (
+                        t("غير مذكور في الرسالة", "Not stated in the message")
+                      )}
+                    </dd>
+                  </div>
+                  {task.responsible && (
+                    <div>
+                      <dt>{t("المسؤول", "Responsible")}</dt>
+                      <dd dir="auto">{task.responsible}</dd>
+                    </div>
                   )}
-                </p>
+                </dl>
+                {task.deadline_state === "ambiguous" && (
+                  <p>
+                    {t(
+                      "الموعد غير واضح؛ راجع الرسالة الأصلية.",
+                      "The deadline is unclear; check the original message.",
+                    )}
+                  </p>
+                )}
+                {task.conditional && (
+                  <p>
+                    {t(
+                      "هذا الطلب مرتبط بشرط مذكور في الرسالة.",
+                      "This request depends on a condition in the message.",
+                    )}
+                  </p>
+                )}
+                {task.state === "superseded" && (
+                  <p>
+                    {t(
+                      "أُلغيت هذه المهمة في رسالة لاحقة.",
+                      "This task was cancelled in a later message.",
+                    )}{" "}
+                    {task.superseded_by?.map((id) => (
+                      <Link key={id} to={`/collection?email=${id}`}>
+                        {t("راجع التحديث", "View update")}
+                      </Link>
+                    ))}
+                  </p>
+                )}
+                <details>
+                  <summary>{t("الرسالة الأصلية", "Original source")}</summary>
+                  <blockquote dir="auto">
+                    {task.evidence.text ?? task.evidence.body}
+                  </blockquote>
+                  <Link to={`/collection?email=${task.email_id}`}>
+                    {t("افتح الرسالة", "Open supporting email")}
+                  </Link>
+                </details>
+              </article>
+            ))
+          ) : (
+            <p>
+              {t(
+                "لم أجد مهمة واضحة في هذه الرسالة.",
+                "No clear task was found in this message.",
               )}
-              {task.state === "superseded" && (
-                <p>
-                  {t("ألغته رسالة لاحقة.", "Cancelled by a later message.")}{" "}
-                  {task.superseded_by?.map((id) => (
-                    <Link key={id} to={`/collection?email=${id}`}>
-                      #{id}{" "}
-                    </Link>
-                  ))}
-                </p>
-              )}
-              <Link to={`/collection?email=${task.email_id}`}>
-                {t("افتح الرسالة الداعمة", "Open supporting email")}
-              </Link>
-              <details>
-                <summary>{t("المصدر الأصلي", "Original source")}</summary>
-                <blockquote className="whitespace-pre-wrap" dir="auto">
-                  {task.evidence.text ?? task.evidence.body}
-                </blockquote>
-              </details>
-            </article>
-          ))
-        ) : (
-          <p>
-            {t(
-              "لم تُستخرج مهام آمنة من هذا النص.",
-              "No safe actionable task was extracted.",
-            )}
-          </p>
-        ))}
-    </RetroWindow>
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function EmailReader({
+  email,
+  emails,
+  select,
+  hideSelector = false,
+}: {
+  email: CollectionEmail;
+  emails: CollectionEmail[];
+  select: (id: string) => void;
+  hideSelector?: boolean;
+}) {
+  const { t } = useLocale();
+  return (
+    <aside
+      className="email-reader"
+      aria-label={t("الرسالة المختارة", "Selected message")}
+    >
+      {!hideSelector && (
+        <label>
+          {t("اختر رسالة", "Choose a source")}
+          <select value={email.id} onChange={(e) => select(e.target.value)}>
+            {emails.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.subject}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <article>
+        <h2 dir="auto">{email.subject}</h2>
+        <dl className="email-meta">
+          <div>
+            <dt>{t("المرسل", "Sender")}</dt>
+            <dd>
+              <bdi>{email.sender}</bdi>
+            </dd>
+          </div>
+          <div>
+            <dt>{t("التاريخ", "Date")}</dt>
+            <dd>
+              <bdi>{email.date.slice(0, 10)}</bdi>
+            </dd>
+          </div>
+        </dl>
+        <p className="email-body" dir="auto">
+          {email.body}
+        </p>
+      </article>
+    </aside>
   );
 }
 
@@ -379,9 +602,11 @@ function Workspace() {
   const [error, setError] = useState("");
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const isLab =
-    location.pathname === "/lab" || location.pathname === "/intelligence";
   const [filter, setFilter] = useState("");
+  const isHome = location.pathname === "/";
+  const isLab = ["/lab", "/intelligence"].includes(location.pathname);
+  const isCollection = location.pathname === "/collection";
+  const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const c = new AbortController();
     void request("collection", Collection, c.signal)
@@ -391,38 +616,62 @@ function Workspace() {
       });
     return () => c.abort();
   }, []);
+  useEffect(() => {
+    window.scrollTo?.(0, 0);
+    mainRef.current?.focus({ preventScroll: true });
+  }, [location.pathname]);
+  useEffect(() => {
+    document.title = t(
+      "Inbox-nizer | مشروع لفهم البريد",
+      "Inbox-nizer | Email AI project",
+    );
+  }, [t]);
   const selected =
     data?.emails.find((e) => e.id === Number(params.get("email"))) ??
     data?.emails[0];
+  const matches =
+    data?.emails.filter((e) =>
+      `${e.subject} ${e.body} ${e.sender}`
+        .toLowerCase()
+        .includes(filter.toLowerCase()),
+    ) ?? [];
   return (
-    <>
-      <DesktopTopBar
-        language={language === "en" ? "en" : "ar"}
-        onToggleLanguage={toggle}
-      />
-      <main className="max-w-7xl mx-auto p-4 flex flex-col gap-4">
-        <div className="page-heading">
-          <div>
-            <h1>
-              {t("هندسة الذكاء الاصطناعي للبريد", "Email AI Engineering")}
-            </h1>
-            <p>
-              {t(
-                "استكشف النماذج والاسترجاع والاستخراج. مجموعة مؤلفة خيالية، ونتائج تُحسب عند الطلب.",
-                "Explore inference, retrieval and extraction. Authored fictional inputs; results computed on request.",
-              )}
-            </p>
-          </div>
+    <div className="showcase">
+      <a className="skip-link" href="#main">
+        {t("انتقل إلى المحتوى", "Skip to content")}
+      </a>
+      <header className="site-header">
+        <div className="header-inner">
+          <Link className="brand" to="/" dir="ltr">
+            <span className="brand-mark" aria-hidden="true">
+              ✉
+            </span>{" "}
+            Inbox-nizer
+          </Link>
+          <button
+            className="language-toggle"
+            onClick={toggle}
+            aria-label={
+              language === "ar" ? "Switch to English" : "التبديل للعربية"
+            }
+          >
+            <span lang={language === "ar" ? "en" : "ar"}>
+              {language === "ar" ? "English" : "العربية"}
+            </span>
+          </button>
         </div>
+      </header>
+      <div className="page-shell">
         <nav
           className="showcase-nav"
-          aria-label={t("أقسام الذكاء الاصطناعي", "AI sections")}
+          aria-label={t("أقسام المشروع", "Project sections")}
         >
           {(
             [
-              ["/", "اسأل البريد", "Ask Mail"],
-              ["/tasks", "المهام الذكية", "Smart Tasks"],
-              ["/collection", "مجموعة البريد", "Email Collection"],
+              ["/", "الرئيسية", "Home"],
+              ["/ask", "اسأل البريد", "Ask Mail"],
+              ["/tasks", "المهام", "Smart Tasks"],
+              ["/collection", "الرسائل", "Email Collection"],
               ["/lab", "مختبر النماذج", "Model Lab"],
             ] as const
           ).map(([path, ar, en]) => (
@@ -435,156 +684,155 @@ function Workspace() {
             </NavLink>
           ))}
         </nav>
-        {data?.metadata && (
-          <p className="text-sm">
-            {t("تاريخ المجموعة المرجعي", "Collection reference date")}:{" "}
-            <bdi>
-              {new Date(data.metadata.reference_datetime).toLocaleString(
-                language === "ar" ? "ar-SA-u-ca-gregory" : "en-GB",
-                { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" },
-              )}{" "}
-              UTC
-            </bdi>{" "}
-            ·{" "}
-            {t(
-              "الأسبوع يبدأ يوم الاثنين. هذه مجموعة خيالية وليست تقويمك الشخصي.",
-              "Week starts Monday. This fictional collection is not your personal calendar.",
-            )}
-          </p>
-        )}
-        <Failure code={error} />
-        {!data && !error && (
-          <p role="status">
-            {t("جارٍ تحميل المجموعة…", "Loading collection…")}
-          </p>
-        )}
-        {selected && (
-          <div
-            className={
-              isLab
-                ? "min-w-0"
-                : "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4"
-            }
-          >
-            {!isLab && (
-              <aside className="min-w-0">
-                <RetroWindow
-                  title={t("مجموعة البريد", "Email collection")}
-                  bodyClassName="p-4 flex flex-col gap-3"
+        <main id="main" tabIndex={-1} ref={mainRef}>
+          {isHome ? (
+            <Home />
+          ) : (
+            <>
+              <Failure code={error} />
+              {!data && !error && (
+                <p role="status">
+                  {t("جارٍ تحميل الرسائل…", "Loading messages…")}
+                </p>
+              )}
+              {selected && (
+                <div
+                  className={
+                    isLab
+                      ? "lab-page"
+                      : `workspace-grid ${isCollection ? "collection-grid" : ""}`
+                  }
                 >
-                  <label>
-                    {t("اختر مصدراً", "Choose a source")}
-                    <select
-                      value={selected.id}
-                      onChange={(e) => setParams({ email: e.target.value })}
-                    >
-                      {data!.emails.map((e) => (
-                        <option value={e.id} key={e.id}>
-                          {e.subject}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <h2 dir="auto">{selected.subject}</h2>
-                  <small>
-                    {selected.sender} · {selected.date.slice(0, 10)}
-                  </small>
-                  <p dir="auto" className="whitespace-pre-wrap break-words">
-                    {selected.body}
-                  </p>
-                  <small>
-                    {t(
-                      "أمثلة خيالية بترخيص CC0، وليست بريداً شخصياً أو بيانات تدريب أو معيار جودة ممثلاً.",
-                      "CC0 authored examples. Not personal mail, training data or a representative quality benchmark.",
-                    )}
-                  </small>
-                </RetroWindow>
-              </aside>
+                  {!isLab && (
+                    <EmailReader
+                      email={selected}
+                      emails={data!.emails}
+                      select={(id) => setParams({ email: id })}
+                      hideSelector={location.pathname === "/tasks"}
+                    />
+                  )}
+                  <div className="workspace-content">
+                    <Routes>
+                      <Route path="ask" element={<Ask />} />
+                      <Route
+                        path="tasks"
+                        element={
+                          <SmartTasks
+                            key={selected.id}
+                            email={selected}
+                            selector={
+                              <label>
+                                {t("اختر رسالة", "Choose a source")}
+                                <select
+                                  value={selected.id}
+                                  onChange={(e) =>
+                                    setParams({ email: e.target.value })
+                                  }
+                                >
+                                  {data!.emails.map((e) => (
+                                    <option key={e.id} value={e.id}>
+                                      {e.subject}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            }
+                          />
+                        }
+                      />
+                      <Route
+                        path="intelligence"
+                        element={<ModelLab email={selected} />}
+                      />
+                      <Route
+                        path="lab"
+                        element={<ModelLab email={selected} />}
+                      />
+                      <Route
+                        path="collection"
+                        element={
+                          <Panel
+                            title={t("الرسائل", "Email Collection")}
+                            description={t(
+                              "مجموعة من الرسائل الافتراضية أُعدت لتجربة خصائص المشروع وعرض طريقة عمل النماذج.",
+                              "Fictional messages created to explore the project's features and show how the models work.",
+                            )}
+                          >
+                            <label>
+                              {t("ابحث في الرسائل", "Filter collection")}
+                              <input
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                dir="auto"
+                                maxLength={200}
+                              />
+                            </label>
+                            <h2 className="list-heading">
+                              {t("جميع الرسائل", "All messages")}{" "}
+                              <span>({matches.length})</span>
+                            </h2>
+                            <ul className="collection-list">
+                              {matches.map((e) => (
+                                <li key={e.id}>
+                                  <Link
+                                    aria-current={
+                                      e.id === selected.id ? "true" : undefined
+                                    }
+                                    to={`/collection?email=${e.id}`}
+                                  >
+                                    <strong dir="auto">{e.subject}</strong>
+                                    <small>
+                                      <bdi>{e.sender}</bdi>
+                                      <bdi>{e.date.slice(0, 10)}</bdi>
+                                    </small>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                            {!matches.length && (
+                              <p role="status">
+                                {t(
+                                  "لا توجد رسائل تطابق البحث.",
+                                  "No matching messages",
+                                )}
+                              </p>
+                            )}
+                          </Panel>
+                        }
+                      />
+                      <Route
+                        path="*"
+                        element={
+                          <Link to="/">
+                            {t("العودة للرئيسية", "Return home")}
+                          </Link>
+                        }
+                      />
+                    </Routes>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+        <footer className="site-footer">
+          <span>
+            {t(
+              "Inbox-nizer · مشروع في الذكاء الاصطناعي",
+              "Inbox-nizer · An AI project",
             )}
-            <section className="min-w-0">
-              <Routes>
-                <Route index element={<Ask />} />
-                <Route
-                  path="tasks"
-                  element={<SmartTasks key={selected.id} email={selected} />}
-                />
-                <Route
-                  path="intelligence"
-                  element={<ModelLab email={selected} />}
-                />
-                <Route
-                  path="collection"
-                  element={
-                    <RetroWindow
-                      title={t("استكشف المجموعة", "Explore the collection")}
-                      bodyClassName="p-4 flex flex-col gap-3"
-                    >
-                      <p>
-                        {t(
-                          "٢٤ رسالة مؤلفة باللغتين. اختر رسالة لعرض نصها ومصدرها.",
-                          "24 authored bilingual messages. Select a message to inspect its original text.",
-                        )}
-                      </p>
-                      <label>
-                        {t("ابحث في المجموعة", "Filter collection")}
-                        <input
-                          value={filter}
-                          onChange={(e) => setFilter(e.target.value)}
-                          dir="auto"
-                          maxLength={200}
-                        />
-                      </label>
-                      <ul className="collection-list">
-                        {data!.emails
-                          .filter((e) =>
-                            `${e.subject} ${e.body} ${e.sender}`
-                              .toLowerCase()
-                              .includes(filter.toLowerCase()),
-                          )
-                          .map((e) => (
-                            <li key={e.id}>
-                              <Link
-                                aria-current={
-                                  e.id === selected.id ? "true" : undefined
-                                }
-                                to={`/collection?email=${e.id}`}
-                              >
-                                <strong dir="auto">{e.subject}</strong>
-                                <small dir="auto">
-                                  {e.language.toUpperCase()} ·{" "}
-                                  {e.date.slice(0, 10)} · {e.sender}
-                                </small>
-                              </Link>
-                            </li>
-                          ))}
-                      </ul>
-                      {!data!.emails.some((e) =>
-                        `${e.subject} ${e.body} ${e.sender}`
-                          .toLowerCase()
-                          .includes(filter.toLowerCase()),
-                      ) && (
-                        <p role="status">
-                          {t("لا توجد نتائج", "No matching messages")}
-                        </p>
-                      )}
-                    </RetroWindow>
-                  }
-                />
-                <Route path="lab" element={<ModelLab email={selected} />} />
-                <Route
-                  path="*"
-                  element={
-                    <Link to="/">
-                      {t("العودة إلى اسأل البريد", "Return to Ask Mail")}
-                    </Link>
-                  }
-                />
-              </Routes>
-            </section>
-          </div>
-        )}
-      </main>
-    </>
+          </span>
+          <a
+            href="https://github.com/tala-bulids/inbox-nizer"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("المشروع على GitHub", "View on GitHub")}{" "}
+            <span aria-hidden="true">↗</span>
+          </a>
+        </footer>
+      </div>
+    </div>
   );
 }
 
