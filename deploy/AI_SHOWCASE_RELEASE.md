@@ -1,5 +1,11 @@
 # Existing-service AI showcase transition — approval required
 
+**15 November 2026 update:** Use [the final transition configuration](AI_SHOWCASE_FINAL_TRANSITION.md).
+Linux qualification passed at 333.140625 MiB, the environment inventory is
+operator-confirmed, and the owner reports `SHOWCASE_GITHUB_TOKEN` is securely
+configured in Render. The old pending blockers and descriptor proposal below
+are historical. Render configuration changes and deployment still await approval.
+
 **2 November qualification update:** GitHub Actions Ubuntu/Docker image build
 and constrained native dependency checks passed. Real-model Linux capacity remains
 **BLOCKED** pending approved private artifact provisioning; see the
