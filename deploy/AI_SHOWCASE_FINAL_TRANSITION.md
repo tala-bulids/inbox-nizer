@@ -1,4 +1,8 @@
-# Final Free Render transition — preparation only
+# Historical final Free Render transition preparation
+
+**Status as of 16 November 2026:** the owner-approved transition was executed, and final frontend commit [3ea9d60](https://github.com/tala-bulids/inbox-nizer/commit/3ea9d607cebffe9e3e8cbbc80097caa6e9518600) is live. [Current status](../PROJECT_STATUS.md) · [Saved live acceptance](../docs/showcase-portfolio/live-verification.json).
+
+The preparation text below preserves the original approved plan. Its pending/approval wording describes that stage; do not repeat the transition. For local startup use the [current guide](../docs/SHOWCASE_GUIDE.md).
 
 This note supersedes the outdated qualification, inventory and descriptor-only statements in `deploy/AI_SHOWCASE_RELEASE.md`. It does not authorize deployment.
 

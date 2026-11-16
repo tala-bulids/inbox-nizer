@@ -1,4 +1,6 @@
-# GitHub Actions Linux qualification — 2 November 2026
+# Historical Linux qualification workflow — 2 November 2026
+
+**Qualification is complete:** see [the final PASS at 333.140625 MiB](MEMORY_OPTIMIZATION.md#final-measured-verdict--pass). The instructions and pending conditions below record the original run preparation; no rerun is requested.
 
 The owner selected GitHub-hosted Ubuntu with Docker. Local WSL/Docker installs,
 restarts, SSH and Render changes are **not authorized**. This supersedes the local

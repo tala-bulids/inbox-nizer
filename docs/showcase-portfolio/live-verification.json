@@ -1,0 +1,101 @@
+{
+  "scope": "Frontend acceptance with existing real models; no retraining or memory qualification",
+  "base": "https://inbox-nizer-beta.onrender.com",
+  "completedAt": "2026-11-16T03:56:09.205Z",
+  "results": [
+    {
+      "width": 1440,
+      "locales": [
+        "ar",
+        "en"
+      ],
+      "realInference": true,
+      "runtime": "e5-int8-fp32-corpus-v1",
+      "originalQuestion": "answered",
+      "novelQuestion": "answered",
+      "missingEvidence": "insufficient_evidence",
+      "arabicQuestion": "answered",
+      "tasksAndCitations": true,
+      "metricsMatchSavedEvidence": true,
+      "confusionMatrix": true,
+      "deepLinksAndRefresh": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "thirdPartyBrowserRequests": 0,
+      "cookies": 0,
+      "browserStorageEntries": 0,
+      "prediction": {
+        "model": "phase2-A",
+        "sha256": "ad110b70dae9b9875e37ca43103519e23ff4afcb79219ded99ca02d38c8ce11d",
+        "category": "Job Application",
+        "score": 0.8010989820745978
+      },
+      "screenshots": [
+        "1440-home-ar.png",
+        "1440-home-en.png",
+        "1440-ask-en.png",
+        "1440-tasks-en.png",
+        "1440-collection-en.png",
+        "1440-lab-en.png",
+        "1440-training-en.png",
+        "1440-evaluation-en.png",
+        "1440-prediction-en.png",
+        "1440-prediction-ar.png",
+        "1440-lab-ar.png",
+        "1440-training-ar.png",
+        "1440-evaluation-ar.png",
+        "1440-tasks-ar.png",
+        "1440-ask-ar.png",
+        "1440-collection-ar.png"
+      ]
+    },
+    {
+      "width": 390,
+      "locales": [
+        "ar",
+        "en"
+      ],
+      "realInference": true,
+      "runtime": "e5-int8-fp32-corpus-v1",
+      "originalQuestion": "answered",
+      "novelQuestion": "answered",
+      "missingEvidence": "insufficient_evidence",
+      "arabicQuestion": "answered",
+      "tasksAndCitations": true,
+      "metricsMatchSavedEvidence": true,
+      "confusionMatrix": true,
+      "deepLinksAndRefresh": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": 0,
+      "privateApiRequests": 0,
+      "thirdPartyBrowserRequests": 0,
+      "cookies": 0,
+      "browserStorageEntries": 0,
+      "prediction": {
+        "model": "phase2-A",
+        "sha256": "ad110b70dae9b9875e37ca43103519e23ff4afcb79219ded99ca02d38c8ce11d",
+        "category": "Job Application",
+        "score": 0.8010989820745978
+      },
+      "screenshots": [
+        "390-home-ar.png",
+        "390-home-en.png",
+        "390-ask-en.png",
+        "390-tasks-en.png",
+        "390-collection-en.png",
+        "390-lab-en.png",
+        "390-training-en.png",
+        "390-evaluation-en.png",
+        "390-prediction-en.png",
+        "390-prediction-ar.png",
+        "390-lab-ar.png",
+        "390-training-ar.png",
+        "390-evaluation-ar.png",
+        "390-tasks-ar.png",
+        "390-ask-ar.png",
+        "390-collection-ar.png"
+      ]
+    }
+  ]
+}

@@ -1,4 +1,12 @@
-# Same-origin web deployment
+# Deployment documentation
+
+The current showcase uses `build-showcase-free.sh` and `start-showcase-free.sh`, with the `showcase.free_app:application` factory and no automatic migrations. For local operation, use the [current showcase guide](../docs/SHOWCASE_GUIDE.md). For completed qualification and deployment evidence, see [project status](../PROJECT_STATUS.md).
+
+The [transition preparation](AI_SHOWCASE_FINAL_TRANSITION.md) is a historical operational record, not a request to reconfigure or deploy again.
+
+## Historical same-origin deployment design
+
+The remaining instructions describe the earlier personal-mail application. Do not mix its database, OAuth, migration or proxy configuration with the current showcase.
 
 This is a deployment design and example, not an executed internet deployment. Review hostname, certificates, OS paths, timeouts and resource limits for your host. No Docker is required.
 

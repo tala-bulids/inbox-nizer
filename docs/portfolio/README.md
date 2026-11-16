@@ -1,4 +1,6 @@
-# Sanitized portfolio screenshots
+# Historical Gmail portfolio screenshots — October 2026
+
+For the current AI showcase, use the [latest actual live screenshots](../showcase-portfolio/README.md). The captures below document the earlier personal-mail frontend with local test fixtures; they do not show the deployed final showcase.
 
 Captured on 24 October 2026 from the existing built frontend at code candidate
 b3225fa, served by deploy/render_app.py on a local loopback address. No product

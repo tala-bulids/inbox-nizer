@@ -1,5 +1,7 @@
 # Phase 2 — reproducible classification research
 
+> Dated research record. Candidate A was later selected for the [deployed showcase](../SHOWCASE_GUIDE.md). “No deployment” below describes this phase only. The validation results remain validation results; no independent test evaluation was added.
+
 28 October 2026; development branch `codex/ai-showcase-phase1`, starting at
 `906e228d20b1e43956b9bff874b9e380be76987f`. This phase never changes the serving
 model, website, Google configuration or database. Experiment outputs are research

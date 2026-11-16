@@ -1,4 +1,6 @@
-# Existing-service AI showcase transition — approval required
+# Historical existing-service transition proposal
+
+**Completed later:** the approved transition and final frontend deployment have finished. See [current project status](../PROJECT_STATUS.md) and [live acceptance](../docs/showcase-portfolio/live-verification.json). The approval requirements, proposals and pending statements below are retained as a dated record, not an outstanding action.
 
 **15 November 2026 update:** Use [the final transition configuration](AI_SHOWCASE_FINAL_TRANSITION.md).
 Linux qualification passed at 333.140625 MiB, the environment inventory is

@@ -1,4 +1,6 @@
-# Portfolio source release freeze — 25 October 2026
+# Historical portfolio source freeze — 25 October 2026
+
+> This freeze concerns the earlier personal-mail application. The AI showcase was subsequently qualified and deployed; see [current project status](../../PROJECT_STATUS.md). The older production no-go remains historical evidence, not a current showcase hosting blocker.
 
 **PORTFOLIO SOURCE RELEASE: COMPLETE**
 

@@ -1,5 +1,7 @@
 # Phase 3 — Ask Mail and evidence-linked tasks
 
+> Dated research record for the original FP32 implementation. The [current runtime](../SHOWCASE_GUIDE.md) uses a separately evaluated INT8 question encoder with the original prepared FP32 corpus index. The benchmark below is not a new evaluation of that deployed hybrid.
+
 28 October 2026. Branch `codex/ai-showcase-phase1`, base
 `5b7cf7bdf1c77b9293d2431f0a91c15f5539ed1b`. Local implementation and evaluation;
 no deployment, database, credential or hosting configuration change.

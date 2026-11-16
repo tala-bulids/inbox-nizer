@@ -1,4 +1,10 @@
-# Free-serving qualification — 1 November 2026
+# Free-serving qualification evidence
+
+**Completed outcome:** final real Linux qualification passed at **333.140625 MiB**, below the unchanged 400 MiB target. See [the final verdict and exact evidence](MEMORY_OPTIMIZATION.md#final-measured-verdict--pass). The showcase was subsequently deployed; [current status](../../PROJECT_STATUS.md).
+
+## Historical qualification record — 1–2 November 2026
+
+The blocked/no-go status and proposed next actions below were accurate at this earlier stage. They are retained as evidence, not current instructions or a request for another run.
 
 **2 November update:** GitHub Actions Ubuntu/Docker is the only authorized Linux
 test environment. The image build and actual 512 MiB / zero-swap / 0.1-CPU

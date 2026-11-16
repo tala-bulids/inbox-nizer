@@ -1,4 +1,6 @@
-# inbox-nizer local classifier review
+# Historical personal-mail classifier review
+
+This local human-review tool belongs to the earlier Gmail classifier workflow. It is retained for research history, not required to run the [current AI showcase](docs/SHOWCASE_GUIDE.md).
 
 From the project folder, run:
 

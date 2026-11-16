@@ -1,8 +1,10 @@
 # Inbox-nizer validation evidence
 
-**Current source freeze:** see [the final evidence ledger](release/PORTFOLIO_FREEZE.md)
-and [PROJECT_STATUS.md](../PROJECT_STATUS.md). The dated results below are historical,
-not the latest suite counts or production approval.
+For the current showcase, see [project status](../PROJECT_STATUS.md), [classification evidence](phase2/README.md), [final memory qualification](free-qualification/MEMORY_OPTIMIZATION.md#final-measured-verdict--pass) and [live acceptance](showcase-portfolio/live-verification.json).
+
+## Historical personal-mail validation ledger
+
+The dated results below and the [October source freeze](release/PORTFOLIO_FREEZE.md) describe earlier work, not the latest showcase acceptance or production approval.
 
 Checked locally on 18–19 October 2026 with Python 3.11.9, Node 24.11.1 and npm 11.6.2.
 Direct Python requirements are pinned to the tested installed environment; the frontend

@@ -1,4 +1,6 @@
-# Phase 5 — measured release candidate, deployment not authorized
+# Phase 5 — historical release candidate
+
+> This record predates the final memory pass and authorized deployment. Its “NO-GO” and “not deployed” statements are historical. See [current status](../../PROJECT_STATUS.md) and [final Linux qualification](../free-qualification/MEMORY_OPTIMIZATION.md#final-measured-verdict--pass).
 
 29 October 2026. Branch: `codex/ai-showcase-phase1`. Application baseline:
 `8a0ee5a1aca4c75c53f3348ff2f9681fbb0f10ca`. No Render configuration, production

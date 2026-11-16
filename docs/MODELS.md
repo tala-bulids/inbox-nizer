@@ -1,4 +1,10 @@
-# inbox-nizer local model setup
+# Model documentation
+
+For the selected classifier and deployed E5 runtime, use the [current showcase setup](SHOWCASE_GUIDE.md) and [classification model card](phase2/MODEL_CARD.md). Local inference needs authorized access to the exact private artifacts.
+
+## Historical personal-mail model setup
+
+The DistilBERT configuration and quality status below describe the retained earlier application. This is not the classifier selected for the deployed showcase.
 
 ## Email classifier
 

@@ -1,343 +1,237 @@
-# Inbox-nizer — AI Engineering portfolio
-
-Explore multilingual semantic retrieval, evidence-grounded email answers, task
-extraction and reproducible model experiments in the existing bilingual React UI.
-The public showcase works without Google OAuth or a personal mailbox.
-
-**Phase 4 is implemented locally, not deployed.** The intended public URL remains
-`https://inbox-nizer-beta.onrender.com`. [Local setup, evidence and limitations](docs/phase4/README.md).
-
-- **Ask Mail:** ask your own question; learned E5 retrieval and clearly labelled extractive answers.
-- **Smart Tasks:** inspect requests, deadlines, uncertainty and original source evidence.
-- **Email Collection:** browse 24 authored CC0 bilingual samples; no personal mail.
-- **Model Lab:** compare actual experiments, inspect metrics and run the selected research classifier.
-
-![Actual local Model Lab with saved experiment outputs](docs/phase4/screenshots/1440-lab-en.png)
-
-The selected TF-IDF model achieved 0.704 macro F1 on 215 consumed English validation
-examples. Arabic classification and final test quality are not evaluated. Historical
-DistilBERT quality failures remain visible. No generated metrics or training curves
-are presented. Real E5 retrieval currently exceeds the verified Render Free memory
-allocation; this branch does not claim production hosting readiness.
-
-[Research pipeline](docs/phase2/README.md) · [RAG evaluation](docs/phase3/README.md) ·
-[Project status](PROJECT_STATUS.md) · [Safe interaction screenshots](docs/phase4/README.md#verification-and-screenshots)
-
-## Historical Gmail application and release evidence
-
-The material below describes preserved earlier releases and the older static demo,
-not the new AI showcase or a new deployment. Current Phase 4 instructions are above.
-
-> **Phase 3:** real multilingual retrieval, explicitly extractive Ask answers and source-linked tasks are implemented locally. [Evaluation and limitations](docs/phase3/README.md) include two retained evidence failures and a Render Free memory blocker. This is not a deployment announcement.
-
-> **Phase 2 research:** reproducible dataset preparation, two real classifier fits and historical-model evaluation are recorded in [the research report](docs/phase2/README.md) and [model card](docs/phase2/MODEL_CARD.md). Results are English validation diagnostics; no production quality pass or Arabic accuracy is claimed. No serving model was replaced.
-
-> **AI Engineering refocus — Phase 1 development branch.** This branch adds real model inference, source-grounded Ask, task extraction and Model Lab without a Gmail/DB dependency. See [the specification and local setup](docs/AI_SHOWCASE_SPEC.md). It has not been deployed; the hosted links and release history below describe earlier versions. The original Gmail application is preserved.
-
 # Inbox-nizer
 
-Inbox-nizer is a read-only Gmail organizer with an Arabic/English React interface.
-It imports mail in small resumable batches and presents messages, category/priority
-suggestions, extractive summaries and source-linked tasks in one workspace.
+**[Live Demo](https://inbox-nizer-beta.onrender.com)** · [Model Lab](https://inbox-nizer-beta.onrender.com/lab) · [Local setup](docs/SHOWCASE_GUIDE.md) · [Evidence & project status](PROJECT_STATUS.md)
 
-**[Try the interactive demo →](https://inbox-nizer-demo.onrender.com/)**
+I built Inbox-nizer to explore how NLP can help understand email content: classify a message, find information across messages, and extract work that needs attention. This repository brings together the experiments, evaluation, application code, and deployment work behind the project.
 
-**PUBLIC PORTFOLIO DEMO: GO.** No login required. Explore 24 fictional messages,
-category/priority filters, details, example summaries and source-linked tasks in
-Arabic or English. This separate static website makes no Gmail, database or model
-requests. [Demo architecture and live verification](docs/release/PUBLIC_DEMO.md).
+The live site is an Arabic/English research showcase using 24 fictional emails. You can try the AI features without connecting a personal mailbox.
 
-**PORTFOLIO SOURCE RELEASE: COMPLETE**
+<div dir="rtl" lang="ar">
 
-**FULL GMAIL-CONNECTED PRODUCTION: NO-GO**
+مشروع يهدف إلى فهم محتوى الرسائل الإلكترونية باستخدام الذكاء الاصطناعي، من تصنيف الرسائل والبحث في معناها إلى الإجابة عن الأسئلة واستخراج المهام. يعرض الموقع فكرة المشروع وتجارب النماذج ونتائجها باستخدام رسائل افتراضية، وليس بريدًا شخصيًا.
 
-The source release is frozen for portfolio review, not production use. Classification
-is **experimental and unapproved**. The release branch contains the tested application
-and documented limitations. The live
-Render service still runs an older commit. [PROJECT_STATUS.md](PROJECT_STATUS.md)
-is the release contract and evidence ledger; [RENDER_RELEASE.md](deploy/RENDER_RELEASE.md)
-contains the existing-host installation and recovery procedure.
+</div>
 
-The local candidate passed **1,380 backend tests and 162 frontend tests**; GitHub
-backend/frontend CI also passed at `30d7c35` and `1d37c46`.
-[GitHub Actions](https://github.com/tala-bulids/inbox-nizer/actions/workflows/ci.yml)
-records checks for each published commit; see [final freeze evidence](docs/release/PORTFOLIO_FREEZE.md).
-These checks prove application behavior under their stated fixtures, not production
-capacity, real Google consent or classifier accuracy.
+<a href="https://inbox-nizer-beta.onrender.com"><img src="docs/showcase-portfolio/homepage.png" alt="Inbox-nizer's deployed homepage in English" width="900"></a>
 
-## Product preview
+## What I wanted to learn
 
-Actual production-build UI, using **synthetic example.invalid messages and mocked
-API responses** with the render-free capability profile. The displayed categories,
-summaries and connection state are fixtures, not live inference or Gmail results.
-No private mailbox data appears in these screenshots.
+- Build and evaluate an email classification pipeline, rather than rely on a model name or a single accuracy score.
+- Connect semantic retrieval to answers that a visitor can trace back to a message.
+- Extract tasks conservatively, keeping deadlines and uncertainty tied to the source.
+- Turn the research into a usable bilingual interface and fit real inference within a free hosting memory limit.
 
-![Arabic inbox with synthetic messages](docs/portfolio/inbox-ar.png)
+## Try the features
 
-[English inbox](docs/portfolio/inbox-en.png) · [Mobile connection settings](docs/portfolio/settings-mobile.png) · [Screenshot provenance](docs/portfolio/README.md)
+| Feature | What it does |
+| --- | --- |
+| **Ask Mail** | Searches the demonstration emails by meaning and returns extractive answers with source links, or reports insufficient evidence. |
+| **Smart Tasks** | Extracts requests, responsible people and deadlines using Arabic/English rules; retains missing, ambiguous, conditional and cancelled-task states. |
+| **Email Collection** | Lets visitors read and filter the fictional messages behind the examples. |
+| **Model Lab** | Explains the experiments, compares saved results, shows limitations, and runs the selected classifier on editable text. |
 
-The intended journey is Google app sign-in → separate Gmail read-only consent →
-automatic bounded import → inbox/detail/tasks → incremental updates. Reload resumes
-saved progress. Disconnect stops Gmail access while retaining imported data; reconnect
-uses the same account. The browser drives continuation, so it must remain active.
+The answers are **extractive, not generated chatbot responses**. Task extraction is rule-based, not a separately trained model.
 
-## Architecture and runtime scope
+## My technical work
+
+My work spans dataset cleaning and grouped splitting, training and comparing classifiers, studying earlier fine-tuning experiments, integrating pretrained sentence embeddings, building source-linked answers and task extraction, and presenting the results in React. I also worked on offline model loading, artifact verification, ONNX Runtime memory use, and deployment on the existing Render Free service.
+
+The repository preserves earlier Gmail integration and classifier experiments. The live showcase uses the smaller, explicitly selected runtime described below; it does not serve the historical personal-mail application.
+
+## Data preparation
+
+The classification source is [imnim/multiclass-email-classification](https://huggingface.co/datasets/imnim/multiclass-email-classification/tree/e95090f0bb6dae0b05c9cd6db314dcae1d40db3f). The publisher declares MIT and provides synthetic generation code; individual row provenance is not independently verified.
+
+From **2,105 source rows**, **2,103 usable English examples** remained after cleaning and quarantining two contradictory rows. Preparation includes HTML/text normalization, contact/URL/long-number redaction, duplicate handling, and grouping similar templates before splitting.
+
+| Training | Validation | Reserved test |
+| ---: | ---: | ---: |
+| 1,679 | 215 | 209 — not evaluated |
+
+Vocabulary and feature fitting use the training split only. The corpus lacks sender/thread metadata and was used in earlier experiments, so grouping cannot rule out all leakage. The reserved partition is not a new independent release holdout.
+
+The **24 Arabic/English demonstration emails are a separate authored CC0 collection**. They are not classifier training data or personal Gmail messages. Raw training text and fitted private artifacts are not distributed.
+
+[Dataset card](docs/phase2/evidence/dataset-card.json) · [Preparation and evaluation methodology](docs/phase2/README.md)
+
+## Training, comparison and selection
+
+| Approach | What was trained or reused | Role |
+| --- | --- | --- |
+| **TF-IDF + Logistic Regression** | Fitted word/character features and ten balanced one-vs-rest linear classifiers on the training split. | Selected classifier used by the site. |
+| **Frozen multilingual E5 + linear classifier** | Reused pretrained E5 with frozen weights; trained only the logistic-regression heads on its embeddings. | Tested whether semantic features helped classification. |
+| **Historical DistilBERT** | Earlier fine-tuning work adapted a pretrained transformer. A separate later comparison evaluated an existing checkpoint without training it again. | Historical evidence; excluded from selection because its original training split is unavailable. |
+
+The historical v2 report records three epochs with the last two layers trained. That is **not** the same artifact as the checkpoint used in the later three-model comparison. I did not train these language models from scratch, and the newer A/C comparison did not perform transformer fine-tuning.
+
+### Classification results
+
+**The selected classifier reached 88.37% validation accuracy and 0.7043 Macro F1 on 215 English validation messages.** Validation informed selection; these are not independent test results.
+
+| Eligible candidate | Validation accuracy | Macro F1 |
+| --- | ---: | ---: |
+| **TF-IDF + Logistic Regression (selected)** | **88.37%** | **0.7043** |
+| Frozen E5 + Logistic Regression | 83.72% | 0.6591 |
+
+Accuracy accepts a prediction matching any reference label. Macro F1 compares the single prediction against all reference labels, then averages categories equally. These definitions matter because the source supports multiple labels.
+
+Among the eligible candidates, TF-IDF had stronger validation F1 and lower measured latency and memory use. DistilBERT's historical 93.49% / 0.7260 result on this validation corpus is **excluded from a fair ranking** because of possible prior exposure. On a different, deliberately difficult development set, the historical checkpoint scored 32/100 and failed the quality gate; neither set is an independent final benchmark.
+
+[Saved comparison](docs/phase2/evidence/experiment-comparison.json) · [Model card](docs/phase2/MODEL_CARD.md) · [Historical fine-tuning and quality evidence](docs/release/V03_V10_EVIDENCE.md)
+
+## Semantic search, answers and tasks
+
+The site uses pretrained **multilingual-e5-small** to represent text as normalized 384-dimensional embeddings. Questions are encoded with the verified INT8 ONNX model and compared with original FP32 embeddings precomputed for the fictional message passages. The fixed corpus avoids re-embedding every message at startup.
+
+Retrieval identifies relevant passages. Deterministic extraction and composition then select supported facts and attach message citations. If a verified answer cannot be found, the interface distinguishes retrieved material from an answer. Task rules extract requests and dates from the source text; an unspecified deadline is not invented.
+
+| Research check | Recorded result | Evaluation context |
+| --- | ---: | --- |
+| Original FP32 retrieval Recall@5 | 76.19% | Relevant reference messages found among the first five results, on a 20-question authored suite. |
+| Answer evidence-set accuracy | 90% | Two of the 20 cases had evidence-set mismatches. |
+| Task extraction F1 | 1.00 | 16 authored task-test messages, including negative cases. |
+
+These fixtures were authored with AI assistance and are **not independent human evaluation**. The Recall@5 figure above describes the original FP32 experiment, not a new measurement of deployed INT8 retrieval. The later hybrid candidate has its own [ranking comparison](docs/free-qualification/comparison.json), including a Recall@3 tradeoff. Final memory qualification confirmed unchanged QA/task aggregates relative to its baseline, not universal answer correctness.
+
+[Retrieval/task evidence](docs/phase3/benchmark-v1.json) · [Current runtime](showcase/free_runtime.py)
+
+## Architecture
 
 ```mermaid
-flowchart LR
-  Browser[React + TypeScript SPA] -->|same-origin /api| API[FastAPI]
-  API -->|OIDC sign-in + separate Gmail OAuth| Google[Google / Gmail readonly]
-  API --> DB[(PostgreSQL + pgvector)]
-  API --> Sync[Bounded sync + durable checkpoints]
-  Sync --> Source[Original email + derived processing states]
-  Source --> DB
-  Sync --> AI[Local classifier + extractive enrichment]
+flowchart TD
+    Visitor["Arabic / English React interface"] --> API["FastAPI · same-origin API"]
+    Corpus["24 fictional emails + precomputed FP32 passage embeddings"] --> Search
+    API --> Classify["TF-IDF + Logistic Regression"]
+    API --> Query["E5 INT8 · question embedding"]
+    Query --> Search["Semantic retrieval"]
+    Search --> Answer["Extractive answer + source citations"]
+    API --> Tasks["Arabic / English task and deadline rules"]
+    Corpus --> Tasks
+    Classify --> Results["Results shown in the interface"]
+    Answer --> Results
+    Tasks --> Results
 ```
 
-The existing Render topology uses one Python process to serve the built SPA and
-mounted API. Session cookies, CSRF validation, account ownership and encrypted OAuth
-credentials protect the application boundary. Advisory locks serialize account sync;
-Gmail IDs prevent duplicates. This is application ownership enforcement, not a claim
-of database row-level-security policies.
+One Python process serves the built SPA and API. The showcase needs no database, Google OAuth, paid inference API, or generative LLM. The older Gmail/PostgreSQL implementation remains in the repository as separate development history.
 
-| Capability | render-free | Full/local |
-| --- | --- | --- |
-| Inbox, details, summaries, tasks, Gmail connection/recovery | Implemented and tested locally | Preserved |
-| Classification | FP32 ONNX implementation; provenance verified, quality unapproved | Existing experimental local classifier |
-| Semantic Search / Ask | Navigation/routes disabled; API rejects before heavy inference | pgvector, local embeddings and optional Qwen/GGUF |
-| Model downloads on a user request | None | Explicit offline provisioning required |
+## Memory optimization and deployment
 
-No paid inference API is used. Hosted dependencies exclude Torch, Transformers,
-SentenceTransformer and llama-cpp; full/local implementations remain in the repository.
-See [installation](#full-application-setup), [models](docs/MODELS.md) and
-[validation](docs/VALIDATION.md) for requirements and limits.
+The final allocation change reduced constrained Linux container peak memory by **33.37%**:
 
-## Demonstrated limitations
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Container peak memory | 500.01 MiB | **333.14 MiB** |
+| Maximum 512-token encoder latency | 3.90 s | 6.60 s |
 
-- ONNX provenance is verified against `results/checkpoint-3159`; fresh Torch/ONNX
-  parity passed on 111/111 inputs. The original training report/split is unavailable.
-- Classification remains **experimental/unapproved**. On 100 deliberately difficult,
-  consumed development examples: English 20/56, Arabic-heavy 1/11, overall 32/100.
-  These are **not representative accuracy**; language groups are heuristic. V10's
-  untouched representative human-reviewed holdout is missing. Bilingual UI does not
-  establish Arabic classification quality. [Exact evidence](docs/release/V03_V10_EVIDENCE.md).
-- Linux memory/concurrent-workload capacity and actual hosted acceptance remain
-  unverified. Empty platform metrics are not evidence of adequate capacity.
-- An encrypted backup has operator-reported checksum/decryption/archive checks;
-  a real isolated database restoration has not been tested.
-- The current free database expires on **21 November 2026**. Continuity, coordinated
-  credential rotation remain production blockers. The operator confirms the temporary
-  external IP rule was removed and verified; no networking change is needed here.
-- Invited-user access is the intended beta scope; this is not unrestricted public signup.
+The qualification used **512 MiB RAM, 0.1 CPU and no swap**, with a 400 MiB engineering target. The final change tuned glibc allocation retention; it did not change weights, model precision, input limits, or the measured quality aggregates. INT8 adaptation was an earlier, separately evaluated decision. The reduced peak came with increased maximum-input latency.
 
-## Implemented features
+These figures are **Linux cgroup measurements**, not sampled Render memory or average interactive latency. [Exact memory evidence](docs/free-qualification/MEMORY_OPTIMIZATION.md).
 
-- **Experimental classification:** a ten-label DistilBERT pipeline; the supported
-  trainer uses weighted binary cross-entropy. No classifier is production approved.
-  The product returns the highest-scoring label and its raw sigmoid score. That score
-  is not a calibrated probability of correctness.
-- **Inbox:** account-owned Gmail sync, filters, pagination, priority, clean message text,
-  summaries, and conservative task/deadline extraction.
-- **Search and Ask (full/local only):** local multilingual embeddings with pgvector, structured facts,
-  literal extraction, clarification and optional local GGUF synthesis. Generated
-  answers retain an unverified-synthesis notice and source links.
-- **Authentication:** Google application sign-in, separate Gmail read consent, encrypted
-  OAuth credentials, browser sessions with CSRF checks and operator bearer tokens.
-- **Frontend:** Inbox, Email Detail, Search, Ask Mail, Tasks and Settings, with the
-  existing retro design and Arabic/English presentation.
+The deployed application commit is [`3ea9d60`](https://github.com/tala-bulids/inbox-nizer/commit/3ea9d607cebffe9e3e8cbbc80097caa6e9518600). Live acceptance passed in Arabic and English at 1440 px and 390 px, including real inference, citations, tasks, metrics and deep-link refresh. Model files are acquired privately with size/SHA-256 verification and safe redirect handling. Automatic migrations are not part of startup. The Free service can take time to wake after inactivity.
 
-Categories: Business, Customer Support, Events & Invitations, Finance & Bills,
-Job Application, Newsletters, Personal, Promotions, Reminders, Travel & Bookings.
+[Live acceptance record](docs/showcase-portfolio/live-verification.json) · [Current setup and runtime guide](docs/SHOWCASE_GUIDE.md)
 
-## Install dependencies
+## Screenshots
 
-Python 3.11 is the validated interpreter. Application use also needs PostgreSQL,
-Google OAuth configuration and explicitly provisioned model artifacts. The optional
-research commands below do not require Gmail or a web server.
+These are actual captures of the deployed frontend, with fictional `example.invalid` messages and real model responses. No personal mailbox, credentials, or private model files are shown.
 
-```powershell
-git clone --branch codex/inbox-nizer-release https://github.com/tala-bulids/inbox-nizer.git inbox-nizer
+<details>
+<summary>Ask Mail, Model Lab, evaluation and mobile</summary>
+
+**Ask Mail — answer and supporting message**
+
+<img src="docs/showcase-portfolio/ask-mail.png" alt="Live Ask Mail result with an original-message citation" width="800">
+
+**Model Lab — implementation and model choices**
+
+<img src="docs/showcase-portfolio/model-lab.png" alt="Live Model Lab with the three separate processing paths and memory results" width="650">
+
+**Evaluation — validation results and research limitations**
+
+<img src="docs/showcase-portfolio/evaluation.png" alt="Live evaluation tables separating classifier validation from retrieval fixtures" width="650">
+
+**Mobile — Arabic RTL homepage**
+
+<img src="docs/showcase-portfolio/mobile.png" alt="Arabic homepage on a 390-pixel mobile viewport" width="280">
+
+</details>
+
+[Capture provenance](docs/showcase-portfolio/README.md)
+
+## Technologies and tools
+
+| Area | Tools |
+| --- | --- |
+| NLP and experiments | Python, scikit-learn, TF-IDF, Logistic Regression, Hugging Face, PyTorch, DistilBERT, multilingual E5 |
+| Deployed inference | ONNX Runtime CPU, SentencePiece, NumPy, SciPy, joblib |
+| Application | FastAPI, Uvicorn, React, TypeScript, Vite |
+| Verification | pytest, Vitest, Testing Library, Playwright, GitHub Actions |
+| Deployment | Render Free, authenticated artifact delivery, hash verification, Linux memory profiling |
+| Preserved earlier application | Gmail API, Google OAuth, PostgreSQL/pgvector, Alembic |
+
+PyTorch/Transformers support research and historical experiments; they are not required by the minimal deployed showcase runtime.
+
+## Run locally
+
+The [Live Demo](https://inbox-nizer-beta.onrender.com) is the easiest way to explore the project.
+
+A public clone includes the application, fictional corpus, prepared corpus index and aggregate evidence. **The three exact model assets are private and not included.** Real local inference requires authorized access to those assets; it does not silently download substitutes.
+
+```bash
+git clone --branch codex/ai-showcase-phase1 https://github.com/tala-bulids/inbox-nizer.git
 cd inbox-nizer
-python -m venv env
-.\env\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m venv .venv
+# Linux/macOS:
+source .venv/bin/activate
+# Windows PowerShell instead: .\.venv\Scripts\Activate.ps1
+
+python -m pip install -r deploy/requirements-showcase-free.txt
+npm --prefix frontend ci
+npm --prefix frontend run build:showcase
 ```
 
-On Linux/macOS activate with `source env/bin/activate`. Direct Python dependencies
-are pinned to the tested environment; optional GGUF support is separate. CPU is supported.
-For CUDA-specific PyTorch packages, follow PyTorch's instructions for your hardware.
+Use Python 3.11 and Node 24. Continue with the [artifact provisioning and launch instructions](docs/SHOWCASE_GUIDE.md#local-setup). No retraining, database or Gmail credentials are needed for the showcase.
 
-## Optional classifier research workflow
+For frontend component checks, which use explicit test fixtures:
 
-Training is not required to launch the app with an explicitly provisioned local artifact, and
-is outside the current V1 closure scope. Continue to [application setup](#full-application-setup)
-when working on the product.
-
-### Data and base model
-
-Training accepts a local `.arrow` file, JSON list, or JSONL rows with `subject`, `body`
-and a nonempty `labels` list. An already prepared `text` field is also supported.
-A row looks like this; a single row is not enough to train:
-
-```json
-{"subject":"Interview invitation","body":"Please confirm your attendance.","labels":["Job Application"]}
+```bash
+cd frontend
+npm test -- src/test/showcase.test.tsx
+npm run build:showcase
 ```
 
-Use sufficient independent examples to populate every training class. Contradictory
-exact duplicates are quarantined. Template/near-duplicate groups and available sender
-domains stay within one partition. Unsplittable datasets are rejected.
-
-The original project used `imnim/multiclass-email-classification`. Download public data
-and the base model explicitly when online, or provide your own authorized local data:
-
-```powershell
-hf download distilbert-base-uncased --local-dir results/distilbert-base
-python -c "from pathlib import Path; from datasets import load_dataset; Path('results').mkdir(exist_ok=True); load_dataset('imnim/multiclass-email-classification', split='train').to_json('results/training.jsonl')"
-```
-
-Public annotations are not representative human-reviewed mailbox gold. The English
-base model does not establish Arabic classification quality. Keep private data outside
-Git; `results/` is ignored. Training and inference read local artifacts only.
-
-### Training, prediction and evaluation
-
-```powershell
-python app.py --dataset-file results/training.jsonl --base-model results/distilbert-base --epochs 3
-python predict.py --subject "Interview invitation" --body "Please confirm your attendance."
-python evaluate.py --samples examples/evaluation.json --output results/evaluation.json
-```
-
-All three commands default to **`results/email-classifier`**, resolved against the
-project directory. `EMAIL_MODEL_PATH` in the environment or project `.env` overrides
-that shared location. `--output-dir` (training) and `--model` (prediction/evaluation)
-override it for one command. Explicit relative artifact paths are also project-relative;
-data/sample paths are relative to the shell's working directory.
-
-Training refuses nonempty output directories. Evaluate a new candidate explicitly
-before changing `EMAIL_MODEL_PATH`. Existing `results/checkpoint-3159` installations
-remain usable by setting that path explicitly. No legacy weights are moved or replaced.
-
-New artifacts from the supported trainer contain weights, tokenizer, label mappings, multi-label problem type, training
-token limit, split manifest and training report. Prediction and evaluation share loading,
-preprocessing, truncation and sigmoid scoring. Missing/incompatible artifacts fail
-instead of downloading a substitute model. Model weights are not included in Git.
-
-Validation macro F1 and top-one accuracy select the checkpoint, with early stopping.
-The test partition is untouched unless `--evaluate-test` is explicitly requested for a
-final diagnostic. Never repeatedly use test results to select candidates. The example
-evaluation file is synthetic and is not an accuracy benchmark.
-
-References: [DistilBERT](https://huggingface.co/docs/transformers/model_doc/distilbert)
-and [model saving/loading](https://huggingface.co/docs/transformers/main_classes/model).
-
-## Full application setup
-
-Prerequisites: install dependencies above; explicitly provision a compatible classifier
-artifact and set `EMAIL_MODEL_PATH` for experimental full/local use. Model weights and Google credentials
-are intentionally not distributed with this repository. There is currently no approved
-public classifier bundle, so a clean clone is not a turnkey hosted release. For
-render-free serving, use the separate checked-in recipe only after its approval gates.
-
-1. Install PostgreSQL with pgvector available. Provision an application database and a
-   separate database ending in `_test`. Production needs distinct migration and
-   restricted runtime roles.
-2. Copy `.env.example` to `.env` and replace database placeholders. Generate a key with
-   `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-   and store it locally as `OAUTH_TOKEN_KEYS` for a new installation only. Preserve
-   all existing key generations when restoring or continuing an installation.
-3. For a **new empty development database**, run `python -m alembic upgrade head`.
-   For an existing mailbox, first follow [backup, quarantine and ownership procedures](deploy/OPERATIONS.md).
-   Maintenance/backfill scripts are not ordinary startup steps.
-4. Configure a Google web OAuth client, save its JSON as `credentials.json` and register
-   both callbacks from `.env.example`. Invite your verified address through
-   `GOOGLE_LOGIN_ALLOWED_EMAILS`. Application login and Gmail consent are separate.
-   Testing-mode OAuth apps also require an allowed Google Console test user.
-5. Start the backend:
-
-   ```powershell
-   python -m uvicorn main:app --host localhost --port 8000 --no-access-log
-   ```
-
-6. In another terminal, run the frontend (Node 24+ recommended for browser checks):
-
-   ```powershell
-   cd frontend
-   npm ci
-   Copy-Item .env.example .env
-   npm run dev
-   ```
-
-Open `http://localhost:5173`, sign in and connect Gmail in Settings. Recent-mail
-preparation starts automatically; subsequent updates use saved Gmail History.
-Keep the app active for continued work; reopening resumes committed progress.
-Use `localhost` consistently for local cookies and callbacks. Swagger is at
-`http://localhost:8000/docs`. Operator clients can provision a bearer token with
-`python backend_admin.py create-user --name local-owner`.
-
-Semantic search requires a locally cached `intfloat/multilingual-e5-small`; prepare it
-with `hf download intfloat/multilingual-e5-small`. See [model setup](docs/MODELS.md) for
-optional GGUF generation. Failed enrichment is recorded per message and can be retried.
-
-More: [frontend](frontend/README.md), [deployment](deploy/README.md),
-[bounded sync](deploy/BOUNDED_SYNC.md), [Google release requirements](deploy/GOOGLE_PUBLIC_RELEASE.md).
-Real consent, hosted TLS, restore drills and production capacity need separate validation.
-
-## Tests and checks
-
-Offline classifier mechanics tests need no database or downloaded model:
-
-```powershell
-python -m pytest tests/unit --confcutdir=tests/unit -q
-```
-
-For the full suite, configure `DATABASE_URL` and a distinct `TEST_DATABASE_URL` ending
-in `_test`, with pgvector available:
-
-```powershell
-python -m pytest -q
-python -m unittest quality.test_local_classifier_review -v
-python -m pip check
-```
-
-The full suite blocks production-engine connections and rolls back fixture rows.
-A fresh test database is initialized through the migration chain. Real provider/model
-benchmarks are opt-in. The classifier roundtrip uses tiny random weights and synthetic
-data: it verifies pipeline mechanics, not prediction quality.
-
-From `frontend/`:
-
-```powershell
-npm run api:generate
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
-
-GitHub Actions runs the backend with PostgreSQL/pgvector and the frontend checks.
-
-## Project structure
+## Repository map
 
 ```text
-inbox-nizer/
-  app.py, predict.py, evaluate.py       # Training, prediction and evaluation CLIs
-  classifier_config.py                 # Shared artifact paths
-  classifier_contract.py               # Labels, problem type and token limits
-  main.py, routes.py, schemas.py        # FastAPI application and API
-  authentication.py, browser_auth.py   # Bearer/session authentication
-  google_login.py, gmail_*.py          # Sign-in, consent and bounded sync
-  email_*.py, task_*.py, priority.py   # Cleaning and enrichment
-  rag_*.py, fact_*.py, semantic_*.py   # Grounded answers and retrieval
-  alembic/                             # Preserved migration history
-  frontend/                            # React/TypeScript UI and tests
-  quality/                             # Diagnostics and private review tools
-  tests/unit/, test_*.py               # Classifier and integration tests
-  examples/                            # Synthetic sample inputs
-  deploy/, docs/                       # Current guides and historical notes
-  results/, private_review/            # Local artifacts; ignored by Git
+frontend/src/showcase/       Bilingual showcase and Model Lab
+showcase/                   Serving factory, retrieval, tasks, artifact verification
+showcase/collection.json     Fictional demonstration messages
+ml_phase2/                  Reproducible classification experiments
+app.py, predict.py           Preserved transformer training / prediction entry points
+quality/                    Evaluation and review tools
+deploy/                     Runtime recipes and dated operational records
+docs/phase2/, docs/phase3/   Classification and retrieval/task research evidence
+docs/free-qualification/    Resource qualification and memory evidence
+docs/showcase-portfolio/    Latest screenshots and live acceptance
+docs/history/              Earlier implementation reports
+main.py, gmail_*.py          Preserved personal-mail application
 ```
 
-All 24 accessible local development commits are preserved above the original GitHub
-commit, together with the reviewed accessible working-tree source. See
-[source provenance](docs/SOURCE_AUDIT.md). Historical reports live in `docs/history/`;
-their metrics are not new results or current production claims.
+[Documentation index](docs/README.md) · [Project status and historical timeline](PROJECT_STATUS.md)
+
+## Research limitations
+
+- Classification validation is English-only; Arabic UI and multilingual retrieval do not establish Arabic classification accuracy.
+- Validation was used for model selection. A representative, independent final test is still missing.
+- The training source is template-heavy and weakly annotated. Historical exposure and incomplete metadata limit leakage claims.
+- Model scores are uncalibrated. Small authored QA/task fixtures do not establish broad reliability.
+- Hosting and browser acceptance demonstrate this bounded research showcase, not production readiness for personal-mail automation.
+
+## References
+
+- [Dataset and preparation record](docs/phase2/README.md)
+- [Classification model card and errors](docs/phase2/MODEL_CARD.md)
+- [DistilBERT paper](https://arxiv.org/abs/1910.01108)
+- [Multilingual E5 model card](https://huggingface.co/intfloat/multilingual-e5-small)
+- [TF-IDF in scikit-learn](https://scikit-learn.org/stable/modules/feature_extraction.html#text-feature-extraction)
+- [ONNX Runtime](https://onnxruntime.ai/docs/)

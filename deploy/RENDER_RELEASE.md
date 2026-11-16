@@ -1,4 +1,6 @@
-# Existing Render release recipe and recovery gate
+# Historical October Render release recipe
+
+This recipe describes the earlier personal-mail application and its unresolved quality gates. For the deployed fictional-data showcase, see [current status](../PROJECT_STATUS.md) and the [showcase guide](../docs/SHOWCASE_GUIDE.md). Do not apply historical migration/start commands to the showcase.
 
 Prepared 24 October 2026. **Portfolio source frozen; hosted production NO-GO. Not deployed.**
 PROJECT_STATUS.md owns the release verdict.

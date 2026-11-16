@@ -1,5 +1,9 @@
 # Final frontend and content polish
 
+**Follow-up, 16 November 2026:** this frontend was deployed as [3ea9d60](https://github.com/tala-bulids/inbox-nizer/commit/3ea9d607cebffe9e3e8cbbc80097caa6e9518600) on 15 November, with Arabic/English desktop/mobile acceptance completed on 16 November. [Actual captures and evidence](../docs/showcase-portfolio/README.md).
+
+## Original preparation record
+
 Prepared on 15 November 2026 for approval. No deployment performed.
 
 The public showcase now opens with a short bilingual introduction at `/`.

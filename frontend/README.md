@@ -1,4 +1,12 @@
-# inbox-nizer frontend
+# Inbox-nizer frontend
+
+## Current AI showcase
+
+The deployed Arabic/English frontend is in `src/showcase/`. Build it with `npm run build:showcase`; follow the [current local setup guide](../docs/SHOWCASE_GUIDE.md) for its real-model API. The latest application commit is [3ea9d60](https://github.com/tala-bulids/inbox-nizer/commit/3ea9d607cebffe9e3e8cbbc80097caa6e9518600). [Live demo](https://inbox-nizer-beta.onrender.com) · [Actual screenshots](../docs/showcase-portfolio/README.md).
+
+## Historical Gmail frontend documentation
+
+The routes, default build and development instructions below describe the retained personal-mail application, not the current showcase build.
 
 Arabic/English React application with the existing retro design. The frontend
 provides Inbox, Email Detail, Search, Ask Mail, Tasks and Gmail Settings.

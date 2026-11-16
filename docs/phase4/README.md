@@ -1,5 +1,7 @@
 # Phase 4 — interactive AI portfolio
 
+> Historical implementation phase. The showcase and final frontend were later deployed. See [current status](../../PROJECT_STATUS.md) and [latest screenshots](../showcase-portfolio/README.md). The local-only statements below describe 29 October.
+
 29 October 2026. Development branch: `codex/ai-showcase-phase1`, based on
 Phase 3 commit `96fc1c0bb10c66aacbc8e94f61de22aa00ad11e8`. Local implementation;
 not a deployment or production model approval. The intended public URL remains

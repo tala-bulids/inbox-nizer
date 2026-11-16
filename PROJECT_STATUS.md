@@ -1,4 +1,18 @@
-# Inbox-nizer — project status and V1 release contract
+# Inbox-nizer — current status and development history
+
+## Current showcase — 16 November 2026
+
+The [AI showcase is live](https://inbox-nizer-beta.onrender.com) at application commit [3ea9d60](https://github.com/tala-bulids/inbox-nizer/commit/3ea9d607cebffe9e3e8cbbc80097caa6e9518600), deployed on 15 November. Arabic/English desktop and mobile acceptance completed on 16 November with real model inference, citations, tasks, classification and Model Lab checks. See the [saved acceptance record](docs/showcase-portfolio/live-verification.json) and [screenshots](docs/showcase-portfolio/README.md).
+
+The final Linux memory qualification **passed at 333.140625 MiB**, a **33.372916% reduction** from 500.0078125 MiB, below the unchanged 400 MiB engineering target. [Exact evidence](docs/free-qualification/MEMORY_OPTIMIZATION.md#final-measured-verdict--pass).
+
+The selected TF-IDF/Logistic Regression classifier achieved **88.37% validation accuracy and 0.7043 Macro F1**. Validation informed selection; this is not independent test performance. The site uses a fictional collection, pretrained E5 retrieval, extractive answers and rule-based tasks. It is a bounded research showcase, not production approval for the historical Gmail application.
+
+[Current setup](docs/SHOWCASE_GUIDE.md) · [Research and documentation index](docs/README.md). This portfolio update changes documentation and repository presentation only; it does not redeploy the application.
+
+## Historical timeline and release contracts
+
+The dated entries below preserve earlier decisions and constraints. Pending/no-go statements describe those stages and are superseded for the showcase by the current status above. Historical personal-mail quality gates are not retroactively passed.
 
 **4 November 2026 — final memory optimization, awaiting one final private run:**
 Private artifact delivery is resolved. The real Linux run on 2 November completed
@@ -102,7 +116,7 @@ compute suggestions below are superseded; no paid hosting is authorized.
 
 Last audited: **23–24 October 2026**. Code baseline: **`05f452ab0c168c376153f0ddae84b044c73bfb53`**, branch **`codex/inbox-nizer-release`**.
 
-**Public demo launch, 25 October 2026: PUBLIC PORTFOLIO DEMO — GO.** [Open the verified interactive demo](https://inbox-nizer-demo.onrender.com/). Separate Render Static Site `srv-dbeuol4s728c73dh4n5g`, deploy `dep-dbeuolks728c73dh4o8g`, serves exact commit `0d383fea7bd913f63ffe752c22919859d88c39d3`. Anonymous desktop/mobile browser acceptance passed in Arabic and English, including filtering, pagination, detail/tasks, direct refresh and zero account/API/credential access. [Exact evidence](docs/release/PUBLIC_DEMO.md). **FULL GMAIL-CONNECTED PRODUCTION remains NO-GO**; V10 is still FAILED and the private service/database were not changed. This separately authorized isolated demo does not waive any production gate.
+**Public demo launch, 25 October 2026: PUBLIC PORTFOLIO DEMO — GO.** Historical static-demo URL: `https://inbox-nizer-demo.onrender.com/` (current project: [AI showcase](https://inbox-nizer-beta.onrender.com)). Separate Render Static Site `srv-dbeuol4s728c73dh4n5g`, deploy `dep-dbeuolks728c73dh4o8g`, serves exact commit `0d383fea7bd913f63ffe752c22919859d88c39d3`. Anonymous desktop/mobile browser acceptance passed in Arabic and English, including filtering, pagination, detail/tasks, direct refresh and zero account/API/credential access. [Exact evidence](docs/release/PUBLIC_DEMO.md). **FULL GMAIL-CONNECTED PRODUCTION remains NO-GO**; V10 is still FAILED and the private service/database were not changed. This separately authorized isolated demo does not waive any production gate.
 
 **Final portfolio freeze, 25 October 2026:** **PORTFOLIO SOURCE RELEASE: COMPLETE. HOSTED PRODUCTION RELEASE: NO-GO.** This explicitly closes source/portfolio presentation scope, not the unchanged production acceptance gates. The release branch is verified as GitHub's default; the operator confirms the temporary external IP rule was removed and verified. Exposed-credential rotation remains deferred. This final state supersedes earlier candidate/default-branch/IP-rule statements below. See [the final freeze ledger](docs/release/PORTFOLIO_FREEZE.md) for A/B/C dispositions, checks and exact remaining production blockers. No application code or infrastructure changed in this freeze.
 
@@ -885,8 +899,8 @@ The operator's final instruction confirms temporary external PostgreSQL IP-rule 
 
 ## Public interactive demo acceptance — 25 October 2026
 
-**PUBLIC PORTFOLIO DEMO: GO.** The isolated frontend-only deployment is shareable at
-https://inbox-nizer-demo.onrender.com/ with no Google account or login. All 24 messages,
+**Historical outcome — PUBLIC PORTFOLIO DEMO: GO.** The isolated frontend-only deployment was shared at
+`https://inbox-nizer-demo.onrender.com/` with no Google account or login. The current project link is the [AI showcase](https://inbox-nizer-beta.onrender.com). All 24 messages,
 example categories/summaries and ten source-linked tasks are authored fictional data.
 Existing inbox/detail/tasks/navigation components are reused; no AI inference, Gmail
 synchronization, backend API or database participates. The example notice and disabled

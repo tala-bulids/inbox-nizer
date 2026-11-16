@@ -1,4 +1,6 @@
-# Public interactive demo — isolated static deployment
+# Historical October static demo
+
+The current project entry point is the [AI showcase on the original service](https://inbox-nizer-beta.onrender.com). See [current status](../../PROJECT_STATUS.md). The separate static site, old URL and fixture-based acceptance below describe the October demo and are not the current portfolio destination.
 
 The public-demo task explicitly authorizes a separate synthetic-data-only website;
 it does not reopen full Gmail-connected production approval.
@@ -123,7 +125,7 @@ the existing GitHub workflow still runs its backend checks automatically.
 
 **FULL GMAIL-CONNECTED PRODUCTION: NO-GO until its acceptance gates pass.**
 
-- Public URL and direct entry: **https://inbox-nizer-demo.onrender.com/**.
+- Historical public URL: `https://inbox-nizer-demo.onrender.com/`. Current project: [AI showcase](https://inbox-nizer-beta.onrender.com).
 - Example deep links: `/#/email/1`, `/#/tasks`, `/#/settings`.
 - Render Static Site: `inbox-nizer-demo`, `srv-dbeuol4s728c73dh4n5g`.
 - Deploy: `dep-dbeuolks728c73dh4o8g`, live at 2026-10-25 11:47:59 UTC.
